@@ -1,0 +1,367 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#f6f5ef" />
+  <title>TOPIK 学习计划</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand-mark" id="brandMark" aria-hidden="true">한</div>
+      <div class="brand-copy">
+        <p class="eyebrow" id="examEyebrow">TOPIK I · 目标 2级</p>
+        <h1 id="plannerTitle">韩语备考周计划</h1>
+      </div>
+      <div class="header-actions">
+        <button class="icon-button" id="todayButton" title="回到本周">今</button>
+        <button class="account-button" id="openAccount" title="登录并同步学习进度">
+          <span class="cloud-dot" id="cloudDot">☁</span>
+          <span><small id="accountLabel">云同步</small><strong id="accountState">未登录</strong></span>
+        </button>
+        <button class="profile-button" id="openSettings">
+          <span class="profile-avatar" id="profileAvatar">유</span>
+          <span><small>学习设置</small><strong id="profileIntensity">中等强度</strong></span>
+        </button>
+      </div>
+    </header>
+
+    <nav class="main-tabs" aria-label="主要页面">
+      <button class="tab active" data-view="calendar"><span>▦</span> 周计划</button>
+      <button class="tab" data-view="errors"><span>◎</span> 错题集 <b id="errorBadge">0</b></button>
+      <button class="tab" data-view="progress"><span>↗</span> 学习进度</button>
+    </nav>
+
+    <main>
+      <section class="view active" id="calendarView">
+        <div class="summary-row">
+          <div class="week-control">
+            <button class="round-button" id="prevWeek" aria-label="上一周">←</button>
+            <div>
+              <p class="section-kicker">第一轮 · 第 1 周</p>
+              <h2>6月22日—6月28日</h2>
+            </div>
+            <button class="round-button" id="nextWeek" aria-label="下一周">→</button>
+          </div>
+          <div class="week-stats">
+            <div><span>本周计划</span><strong id="plannedHours">7.2 小时</strong></div>
+            <div><span>已完成</span><strong id="completedHours">1.4 小时</strong></div>
+            <div class="progress-stat"><span>周进度</span><strong id="progressText">19%</strong><i><em id="progressBar"></em></i></div>
+          </div>
+        </div>
+
+        <div class="focus-card">
+          <div class="focus-icon">✦</div>
+          <div>
+            <p>明日复习重点</p>
+            <strong id="tomorrowFocus">先解决「否定表达漏听」：复听 5 题，再做 5 道变式题。</strong>
+          </div>
+          <button class="text-button" data-view-jump="errors">查看错题 →</button>
+        </div>
+
+        <div class="reminder-card" id="dailyReminderCard">
+          <div class="reminder-copy">
+            <span class="reminder-icon">◷</span>
+            <div>
+              <strong id="dailyReminderTitle">每日复盘提醒</strong>
+              <p id="dailyReminderText">开启后，晚上根据当天打卡整理明日重点。</p>
+            </div>
+          </div>
+          <div class="reminder-controls">
+            <label class="toggle-line"><input type="checkbox" id="dailyReminderEnabled" /><span>开启</span></label>
+            <input type="time" id="dailyReminderTime" value="21:30" aria-label="每日复盘提醒时间" />
+            <button class="secondary-button compact" id="dailyReminderNotify" type="button">浏览器通知</button>
+          </div>
+        </div>
+
+        <div class="legend" id="calendarLegend">
+          <span class="legend-listening">听力</span>
+          <span class="legend-reading">阅读</span>
+          <span class="legend-vocab" id="vocabLegend">词汇 / 语法</span>
+          <span class="legend-writing hidden" id="writingLegend">写作</span>
+          <span class="legend-speaking hidden" id="speakingLegend">口语</span>
+          <span class="legend-mock">模拟测验</span>
+          <span class="legend-review">错题复盘</span>
+        </div>
+
+        <div class="calendar-wrap">
+          <div class="week-calendar" id="weekCalendar" aria-label="本周课程表"></div>
+        </div>
+      </section>
+
+      <section class="view" id="errorsView">
+        <div class="page-heading">
+          <div>
+            <p class="section-kicker">自动整理 · 按时复习</p>
+            <h2>错题集</h2>
+            <p>不只记答案，更记录错在哪里、下次该怎么想。</p>
+          </div>
+          <div class="heading-actions">
+            <button class="secondary-button" id="openImport">＋ 导入旧错题</button>
+            <button class="primary-button" id="startDueReview">暂无到期复习</button>
+          </div>
+        </div>
+
+        <div class="error-overview">
+          <button class="overview-card" data-overview-filter="due" aria-pressed="false"><span class="overview-icon red">!</span><div><small>待复习</small><strong id="dueOverviewCount">0 个知识点</strong></div><b>→</b></button>
+          <button class="overview-card" data-overview-filter="frequent" aria-pressed="false"><span class="overview-icon amber">↻</span><div><small>高频错误</small><strong id="frequentOverviewCount">0 个强化包</strong></div><b>→</b></button>
+          <button class="overview-card" data-overview-filter="mastered" aria-pressed="false"><span class="overview-icon green">✓</span><div><small>已掌握知识点</small><strong id="masteredOverviewCount">0 个知识点</strong></div><b>→</b></button>
+        </div>
+        <p class="overview-hint">点击卡片筛选 · 再次点击返回全部</p>
+        <div class="error-list" id="errorList"></div>
+      </section>
+
+      <section class="view" id="progressView">
+        <div class="page-heading">
+          <div>
+            <p class="section-kicker">第一轮截止 · 8月2日</p>
+            <h2>学习进度</h2>
+            <p>离暂定考试日 10月18日还有 120 天。</p>
+          </div>
+          <div class="score-pill"><small>当前模拟</small><strong>126 / 200</strong><span>目标 140+</span></div>
+        </div>
+
+        <div class="progress-grid">
+          <article class="chart-card wide">
+            <div class="card-title"><div><p>近四周正确率</p><strong>正在稳步上升</strong></div><span class="positive">+12%</span></div>
+            <div class="bar-chart" aria-label="近四周正确率柱状图">
+              <div><i style="height:52%"></i><span>第1周</span><b>58%</b></div>
+              <div><i style="height:61%"></i><span>第2周</span><b>65%</b></div>
+              <div><i style="height:68%"></i><span>第3周</span><b>72%</b></div>
+              <div><i style="height:76%"></i><span>本周</span><b>81%</b></div>
+            </div>
+          </article>
+          <article class="chart-card">
+            <div class="card-title"><div><p>能力分布</p><strong>阅读更稳定</strong></div></div>
+            <div class="skill-bars">
+              <div><span>听力</span><i><em style="width:62%"></em></i><b>62%</b></div>
+              <div><span>阅读</span><i><em style="width:78%"></em></i><b>78%</b></div>
+              <div><span>词汇</span><i><em style="width:70%"></em></i><b>70%</b></div>
+              <div><span>语法</span><i><em style="width:66%"></em></i><b>66%</b></div>
+            </div>
+          </article>
+          <article class="chart-card">
+            <div class="card-title"><div><p>本周习惯</p><strong>连续学习 5 天</strong></div></div>
+            <div class="habit-days">
+              <span class="done">一</span><span class="done">二</span><span class="done">三</span><span class="done">四</span><span class="done">五</span><span>六</span><span>日</span>
+            </div>
+            <p class="habit-note">最常见问题：看到熟悉词后过早作答。</p>
+          </article>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="modal-backdrop hidden" id="taskModal" role="dialog" aria-modal="true" aria-labelledby="taskModalTitle">
+    <div class="modal-panel task-panel">
+      <button class="modal-close" data-close="taskModal">×</button>
+      <div class="modal-category" id="taskModalCategory">听力</div>
+      <h2 id="taskModalTitle">听力短对话</h2>
+      <p class="modal-meta" id="taskModalMeta"></p>
+      <div class="standard-box">
+        <h3>完成标准</h3>
+        <ul id="taskStandards"></ul>
+      </div>
+      <div class="checkin-form">
+        <h3>学习打卡</h3>
+        <label>完成情况
+          <select id="taskStatus">
+            <option value="planned">未开始</option>
+            <option value="progress">进行中</option>
+            <option value="completed">已完成</option>
+            <option value="rescheduled">改期</option>
+          </select>
+        </label>
+        <div class="form-split">
+          <label>正确题数<input id="correctCount" type="number" min="0" placeholder="12" /></label>
+          <label>总题数<input id="totalCount" type="number" min="1" placeholder="15" /></label>
+        </div>
+        <label>哪里最难？<textarea id="taskNote" rows="2" placeholder="例如：否定词没听到"></textarea></label>
+      </div>
+      <div class="modal-actions">
+        <button class="secondary-button" id="openPractice">开始练习</button>
+        <button class="primary-button" id="saveCheckin">保存打卡</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop hidden" id="practiceModal" role="dialog" aria-modal="true" aria-labelledby="practiceTitle">
+    <div class="modal-panel practice-panel">
+      <button class="modal-close" data-close="practiceModal">×</button>
+      <div class="practice-head">
+        <div>
+          <p class="section-kicker" id="practiceEyebrow">AI生成练习题 · 第1组 / 共3组</p>
+          <h2 id="practiceTitle">助词强化练习</h2>
+        </div>
+        <span class="question-progress" id="questionProgress">1 / 5</span>
+      </div>
+      <div id="questionArea"></div>
+      <div class="practice-feedback hidden" id="practiceFeedback"></div>
+      <div class="modal-actions">
+        <button class="secondary-button" id="prevQuestion">上一题</button>
+        <button class="primary-button" id="nextQuestion">下一题</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop hidden" id="masteryRecordModal" role="dialog" aria-modal="true" aria-labelledby="masteryRecordTitle">
+    <div class="modal-panel mastery-record-panel">
+      <button class="modal-close" data-close="masteryRecordModal">×</button>
+      <p class="section-kicker">掌握记录</p>
+      <h2 id="masteryRecordTitle">数量词：명、개、권</h2>
+      <p class="modal-meta" id="masteryRecordMeta"></p>
+      <div class="mastery-proof"><span>✓</span><div><strong>已达到掌握标准</strong><p>连续两次正确完成延迟变式题，并能讲明思路。</p></div></div>
+      <ol class="mastery-history" id="masteryHistory"></ol>
+      <div class="record-summary"><span>当前结论</span><strong>已掌握，暂不安排高频复习</strong><p>如果以后再次答错，会自动恢复到错题复习队列。</p></div>
+      <div class="modal-actions"><button class="primary-button" data-close="masteryRecordModal">知道了</button></div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop hidden" id="rewardModal" role="dialog" aria-modal="true" aria-labelledby="rewardTitle">
+    <div class="modal-panel reward-panel">
+      <button class="modal-close" data-close="rewardModal">×</button>
+      <p class="section-kicker">奖励已解锁</p>
+      <div class="reward-visual" id="rewardVisual"><div class="reward-badge" id="rewardBadge">★</div></div>
+      <h2 id="rewardTitle">今日入场券已盖章</h2>
+      <p id="rewardText">你已经开始了。今天不用完美，只要留下第一条记录，就已经在靠近目标。</p>
+      <div class="reward-note" id="rewardNote">今天的应援灯为你亮一下。</div>
+      <div class="modal-actions"><button class="primary-button" data-close="rewardModal">收下奖励</button></div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop hidden" id="settingsModal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+    <div class="modal-panel settings-panel">
+      <button class="modal-close" data-close="settingsModal">×</button>
+      <p class="section-kicker">约 1 分钟</p>
+      <h2 id="settingsTitle">先了解你的学习情况</h2>
+      <p class="settings-intro">不确定的项目可以跳过，之后随时修改。</p>
+      <form id="settingsForm">
+        <fieldset><legend>考试名称</legend><div class="option-grid three"><label><input type="radio" name="exam" value="TOPIK" checked /><span>TOPIK<small>韩国语能力考试</small></span></label><label><input type="radio" name="exam" value="IELTS" /><span>雅思 IELTS<small>学术类 / 培训类</small></span></label><label><input type="radio" name="exam" value="OTHER" /><span>其他<small>自定义填写</small></span></label></div></fieldset>
+        <fieldset id="levelFieldset"><legend id="levelLegend">考试类型</legend><div class="option-grid two"><label><input type="radio" name="level" value="I" checked /><span><b id="levelOneTitle">TOPIK I</b><small id="levelOneNote">初级试卷 · 听力与阅读</small></span></label><label><input type="radio" name="level" value="II" /><span><b id="levelTwoTitle">TOPIK II</b><small id="levelTwoNote">中高级试卷 · 听力、写作与阅读</small></span></label></div></fieldset>
+        <fieldset id="targetGradeFieldset"><legend>目标等级 <small>按总分评定，并非逐级报考</small></legend><div class="chip-options" id="targetGradeOptions"><label><input type="radio" name="targetGrade" value="1" /><span>1级</span></label><label><input type="radio" name="targetGrade" value="2" checked /><span>2级</span></label></div><p class="field-help" id="targetGradeHelp">报考 TOPIK I，成绩达到对应分数后评为1级或2级。</p></fieldset>
+        <fieldset class="custom-exam-fields hidden" id="customExamFields"><legend>自定义考试</legend><div class="form-split"><label>考试或学习项目名称<input id="customExamName" type="text" placeholder="例如：教师资格证、Python入门" /></label><label>目标 <small>可选</small><input id="customExamGoal" type="text" placeholder="例如：笔试通过、完成基础课程" /></label></div></fieldset>
+        <fieldset class="planning-fields"><legend>学习目标与期限</legend><div class="form-split"><label>考试日期 <small>不确定可空</small><input id="examDate" type="date" /></label><label>第一轮计划用时 <small>可之后修改</small><span class="input-with-unit"><input id="firstRoundWeeks" type="number" min="1" max="52" step="1" value="6" /><b>周</b></span></label></div><label>需要学习的内容 <small>可选；不填则按考试范围和资料整理</small><textarea id="studyContent" rows="3" placeholder="例如：TOPIK I 听力、阅读和基础词汇；或指定教材章节"></textarea></label></fieldset>
+        <fieldset><legend>当前基础 <small>可选</small></legend><div class="chip-options"><label><input type="radio" name="foundation" value="入门" /><span>入门</span></label><label><input type="radio" name="foundation" value="一般" checked /><span>一般</span></label><label><input type="radio" name="foundation" value="较好" /><span>较好</span></label><label><input type="radio" name="foundation" value="不确定" /><span>不确定</span></label></div></fieldset>
+        <fieldset><legend>薄弱内容 <small>可多选，按考试自动调整</small></legend><div class="chip-options"><label id="listeningWeakOption"><input type="checkbox" name="weak" value="听力" checked /><span>听力</span></label><label id="readingWeakOption"><input type="checkbox" name="weak" value="阅读" checked /><span>阅读</span></label><label id="vocabWeakOption"><input type="checkbox" name="weak" value="词汇" /><span>词汇</span></label><label id="grammarWeakOption"><input type="checkbox" name="weak" value="语法" /><span>语法</span></label><label class="hidden" id="writingWeakOption"><input type="checkbox" name="weak" value="写作" /><span>写作</span></label><label class="hidden" id="speakingWeakOption"><input type="checkbox" name="weak" value="口语" /><span>口语</span></label></div><p class="field-help" id="weakHelp">TOPIK I 正式题型为听力和阅读；词汇、语法作为基础能力强化。</p></fieldset>
+        <fieldset><legend>每日强度</legend><div class="option-grid four"><label><input type="radio" name="intensity" value="轻量" /><span>轻量<small>30–45分钟</small></span></label><label><input type="radio" name="intensity" value="中等" checked /><span>中等<small>1–2小时</small></span></label><label><input type="radio" name="intensity" value="高强度" /><span>高强度<small>3–5小时</small></span></label><label><input type="radio" name="intensity" value="自定义" /><span>自定义<small>自己填写区间</small></span></label></div>
+          <div class="custom-duration hidden" id="customDuration"><label>每天最少<input type="number" id="durationMin" min="0.5" max="12" step="0.5" value="2" /><span>小时</span></label><span class="duration-dash">—</span><label>每天最多<input type="number" id="durationMax" min="0.5" max="12" step="0.5" value="4" /><span>小时</span></label></div>
+        </fieldset>
+        <fieldset><legend>每周学习日期 <small>可多选</small></legend><div class="chip-options"><label><input type="checkbox" name="studyDay" value="mon" checked /><span>周一</span></label><label><input type="checkbox" name="studyDay" value="tue" checked /><span>周二</span></label><label><input type="checkbox" name="studyDay" value="wed" checked /><span>周三</span></label><label><input type="checkbox" name="studyDay" value="thu" checked /><span>周四</span></label><label><input type="checkbox" name="studyDay" value="fri" checked /><span>周五</span></label><label><input type="checkbox" name="studyDay" value="sat" checked /><span>周六</span></label><label><input type="checkbox" name="studyDay" value="sun" checked /><span>周日</span></label></div></fieldset>
+        <fieldset class="planning-fields"><legend>每天可学习的北京时间</legend><div class="form-split"><label>开始时间<input id="availableStart" type="time" value="11:00" /></label><label>结束时间<input id="availableEnd" type="time" value="21:00" /></label></div><p class="field-help">课程只会安排在这个时间范围内。</p></fieldset>
+        <fieldset><legend>常用学习时段 <small>可多选，用于在可用时间内优先排课</small></legend><div class="chip-options"><label><input type="checkbox" name="time" value="上午" /><span>上午</span></label><label><input type="checkbox" name="time" value="下午" checked /><span>下午</span></label><label><input type="checkbox" name="time" value="晚上" checked /><span>晚上</span></label><label><input type="checkbox" name="time" value="不固定" /><span>不固定</span></label></div></fieldset>
+        <fieldset class="resource-fields"><legend>学习资料 <small>可选</small></legend><label>资料链接 <small>每行一个，可填写课程、考试官网或教材页面</small><textarea id="resourceLinks" rows="3" placeholder="https://...&#10;https://..."></textarea></label><label class="material-upload-zone"><input type="file" id="materialFiles" accept="image/*,.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.md" multiple /><span class="upload-icon">＋</span><span><strong>上传本地资料</strong><small>PDF、图片、Word、PPT、表格或文本；一次最多10个</small></span></label><div class="material-file-list" id="materialFileList"></div><label class="research-toggle"><input type="checkbox" id="autoResearch" checked /><span><strong>缺少资料时让AI搜索补充</strong><small>优先考试官网和权威资料，确认后才生成计划</small></span></label></fieldset>
+        <button class="primary-button full" type="submit">生成我的周计划</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-backdrop hidden" id="resourceConfirmModal" role="dialog" aria-modal="true" aria-labelledby="resourceConfirmTitle">
+    <div class="modal-panel resource-confirm-panel">
+      <button class="modal-close" data-close="resourceConfirmModal">×</button>
+      <p class="section-kicker">生成前确认</p>
+      <h2 id="resourceConfirmTitle">确认学习范围与资料</h2>
+      <p class="settings-intro">请最后核对一次关键信息。确认后，AI会按这些资料生成课程表。</p>
+      <div class="confirmation-grid">
+        <div><span>考试 / 项目</span><strong id="confirmExamName"></strong></div>
+        <div><span>目标</span><strong id="confirmExamGoal"></strong></div>
+        <div class="wide"><span>学习范围</span><p id="confirmStudyScope"></p></div>
+        <div class="wide"><span>学习安排</span><p id="confirmStudySchedule"></p></div>
+        <div class="wide"><span>资料来源</span><div id="confirmResourceSources"></div></div>
+      </div>
+      <div class="research-note" id="researchNote">
+        <div class="research-status-head"><span class="research-spinner" id="researchStatusIcon" aria-hidden="true"></span><strong>AI搜索结果预览</strong><span class="research-status-chip" id="researchStatusChip">准备中</span></div>
+        <p id="researchNoteText" aria-live="polite">优先查找官方考试说明、科目范围、题型、评分标准，再列出来源供你确认。</p>
+        <div class="research-progress" id="researchProgress" aria-hidden="true"><span>连接AI</span><span>核对官方资料</span><span>整理结果</span></div>
+      </div>
+      <div class="uncertainty-note">
+        <div class="uncertainty-head"><b>!</b><span>生成前请确认</span><em>必选</em></div>
+        <p id="confirmUncertainty"></p>
+        <label class="uncertainty-check"><input type="checkbox" id="confirmUncertaintyCheck" /><span>我已核对考试与资料信息，可以生成计划</span></label>
+      </div>
+      <div class="modal-actions"><button class="secondary-button" id="backToSettings">返回修改</button><button class="primary-button" id="confirmPlanSources">确认并生成计划</button></div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop hidden" id="importModal" role="dialog" aria-modal="true" aria-labelledby="importTitle">
+    <div class="modal-panel import-panel">
+      <button class="modal-close" data-close="importModal">×</button>
+      <p class="section-kicker">历史错题导入</p>
+      <h2 id="importTitle">拍照上传，自动整理</h2>
+      <p class="settings-intro">支持JPG、PNG或WebP照片，一次最多3张。上传前会自动压缩；看不清的内容会请你确认。</p>
+
+      <label class="upload-zone" id="uploadZone">
+        <input type="file" id="errorFiles" accept="image/jpeg,image/png,image/webp" multiple />
+        <span class="upload-icon">▧</span>
+        <strong>选择错题照片或PDF</strong>
+        <small>一次最多3张，可在下方预览和删除</small>
+      </label>
+      <div class="preview-section hidden" id="previewSection">
+        <div class="preview-heading"><strong>待导入预览</strong><span id="previewCount">0 / 3</span></div>
+        <div class="selected-files" id="selectedFiles"></div>
+      </div>
+      <button class="secondary-button full" id="useSampleImport">使用示例照片体验</button>
+
+      <div class="import-results hidden" id="importResults">
+        <div class="import-summary">
+          <span class="overview-icon green">✓</span>
+          <div><strong>识别到 3 道错题</strong><small>2道可直接导入，1道需要确认</small></div>
+        </div>
+        <article class="recognized-item">
+          <div><span class="tiny-label">词汇 / 语法</span><span class="confidence high">识别清晰</span></div>
+          <strong>助词 에 / 에서 的使用场所</strong>
+          <p>你的答案：에　·　正确答案：에서</p>
+          <label>你当时为什么会错？
+            <select class="import-reason"><option>不理解知识点</option><option>凭熟悉感猜答案</option><option>看漏关键信息</option><option>不记得</option></select>
+          </label>
+        </article>
+        <article class="recognized-item needs-check">
+          <div><span class="tiny-label">阅读</span><span class="confidence low">需要确认</span></div>
+          <strong>图片中第 7 题的作答痕迹不清楚</strong>
+          <div class="confirm-row"><button class="secondary-button import-choice">我选了②</button><button class="secondary-button import-choice">我选了③</button><button class="text-button">跳过此题</button></div>
+        </article>
+        <p class="prototype-note">原型暂用示例结果演示流程；正式版将接入图片识别与题目分析。</p>
+      </div>
+
+      <div class="modal-actions">
+        <button class="secondary-button" data-close="importModal">取消</button>
+        <button class="primary-button" id="analyzeImport">识别并整理</button>
+        <button class="primary-button hidden" id="confirmImport">确认导入错题集</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop hidden" id="accountModal" role="dialog" aria-modal="true" aria-labelledby="accountTitle">
+    <div class="modal-panel account-panel">
+      <button class="modal-close" data-close="accountModal">×</button>
+      <p class="section-kicker">跨设备保存</p>
+      <h2 id="accountTitle">登录后自动同步</h2>
+      <p class="settings-intro" id="accountIntro">换电脑或手机登录同一账号，即可恢复课程表、打卡和错题集。</p>
+      <div id="signedOutAccount">
+        <div class="checkin-form">
+          <label>邮箱<input id="accountEmail" type="email" autocomplete="email" placeholder="name@example.com" /></label>
+          <label>密码<input id="accountPassword" type="password" autocomplete="current-password" minlength="6" placeholder="至少6位" /></label>
+        </div>
+        <div class="modal-actions account-actions">
+          <button class="secondary-button" id="signUpButton">注册账号</button>
+          <button class="primary-button" id="signInButton">登录并同步</button>
+        </div>
+        <button class="text-button skip-login-button" id="skipLoginButton">先体验，稍后登录 →</button>
+        <p class="cloud-note">首次注册可能需要在邮箱中点击确认链接。</p>
+      </div>
+      <div class="signed-in-box hidden" id="signedInAccount">
+        <span class="overview-icon green">✓</span>
+        <div><small>当前账号</small><strong id="signedInEmail"></strong><p id="lastSyncText">学习进度已自动保存</p></div>
+      </div>
+      <div class="modal-actions hidden" id="signedInActions">
+        <button class="secondary-button" id="syncNowButton">立即同步</button>
+        <button class="secondary-button" id="signOutButton">退出登录</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="app.js?v=20260622-purple-reward-video"></script>
+</body>
+</html>
