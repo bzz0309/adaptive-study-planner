@@ -876,14 +876,16 @@ function writeRewardState(state) {
 
 function rewardVisualMarkup(reward) {
   if (reward.visual === "taegg-lamp") {
-    return `<div class="taegg-generated-card" aria-hidden="true">
-      <span class="taegg-card-orbit"></span>
-      <span class="taegg-card-glow"></span>
-      <span class="taegg-card-mark">${reward.badge}</span>
-      <span class="taegg-card-line"></span>
-      <span class="taegg-card-caption">FIRST CHECK-IN</span>
+    return `<button class="taegg-video-card is-replaying" type="button" aria-label="重播亮灯动画">
+      <img src="assets/first-day-cheer-light-ai.png" alt="" />
+      <span class="taegg-video-scene"></span>
+      <span class="taegg-video-dim"></span>
+      <span class="taegg-video-sheen"></span>
+      <span class="taegg-video-flare"></span>
+      <span class="taegg-video-progress"></span>
+      <span class="taegg-video-play" aria-hidden="true"></span>
       <span class="taegg-light-wash"></span>
-    </div>`;
+    </button>`;
   }
   if (reward.visual === "support-card") {
     return `<div class="reward-support-card" aria-hidden="true">
@@ -935,6 +937,14 @@ function showReward(reward) {
       lyricCard.dataset.page = String(next);
       lyricCard.querySelector(".lyric-lines").innerHTML = lyricPages[next].map(line => `<strong>${line}</strong>`).join("");
       lyricCard.querySelectorAll(".lyric-card-dots i").forEach((dot, index) => dot.classList.toggle("active", index === next));
+    });
+  }
+  const taeggVideo = $(".taegg-video-card");
+  if (taeggVideo) {
+    taeggVideo.addEventListener("click", () => {
+      taeggVideo.classList.remove("is-replaying");
+      void taeggVideo.offsetWidth;
+      taeggVideo.classList.add("is-replaying");
     });
   }
   $("#rewardTitle").textContent = reward.title;
