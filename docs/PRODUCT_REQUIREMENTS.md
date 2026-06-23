@@ -795,6 +795,33 @@ reward-companion-system/src/assets/reward/day1/day1-mobile.webp
 - 按视口比例选择横版或竖版素材
 - 保证泰蛋、应援棒和奖励卡片都完整可见
 
+### 10.4 PWA 与 iPhone 主屏幕
+
+奖励子项目需要支持 iPhone 添加到主屏幕，方便以更接近独立应用的方式预览和使用。
+
+当前阶段只做基础 PWA 配置：
+
+- `manifest.json`
+- iOS 主屏幕 meta
+- apple-touch-icon
+- 192x192 图标
+- 512x512 图标
+- standalone 显示模式
+
+当前阶段不做复杂 service worker 离线缓存，避免缓存旧版本导致更新困难。
+
+PWA 名称：
+
+```text
+Purple Cheer Companion
+```
+
+短名称：
+
+```text
+Purple Cheer
+```
+
 ## 11. 文案原则
 
 ### 11.1 用户喜欢的方向
