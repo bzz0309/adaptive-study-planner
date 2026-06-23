@@ -1,6 +1,7 @@
 import { motion, useReducedMotion } from "framer-motion";
 import type { CSSProperties } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createRewardAudioController } from "../audio/rewardAudio";
 import day1Desktop from "../assets/reward/day1/day1-desktop.webp";
 import day1Mobile from "../assets/reward/day1/day1-mobile.webp";
 import type { RewardConfigItem } from "../config/rewardConfig";
@@ -18,9 +19,26 @@ export function Day1Scene({ reward, onCollect, onClose, onComplete }: Day1SceneP
   const [closing, setClosing] = useState(false);
   const [previewEnded, setPreviewEnded] = useState(false);
   const [replayKey, setReplayKey] = useState(0);
+  const [soundEnabled, setSoundEnabled] = useState(false);
   const didCollectRef = useRef(false);
+  const audioRef = useRef<ReturnType<typeof createRewardAudioController> | null>(null);
   const particles = useMemo(() => Array.from({ length: reduceMotion ? 8 : 22 }, (_, index) => index), [reduceMotion]);
   const hasExternalExit = Boolean(onClose || onComplete);
+
+  useEffect(() => {
+    audioRef.current = createRewardAudioController();
+
+    return () => {
+      audioRef.current?.destroy();
+      audioRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (closing) {
+      audioRef.current?.stop();
+    }
+  }, [closing]);
 
   useEffect(() => {
     if (!collected) {
@@ -53,6 +71,7 @@ export function Day1Scene({ reward, onCollect, onClose, onComplete }: Day1SceneP
 
     didCollectRef.current = true;
     setCollected(true);
+    audioRef.current?.playCollect();
     onCollect?.();
   }
 
@@ -62,6 +81,14 @@ export function Day1Scene({ reward, onCollect, onClose, onComplete }: Day1SceneP
     setClosing(false);
     setPreviewEnded(false);
     setReplayKey((current) => current + 1);
+  }
+
+  async function handleEnableSound() {
+    const didStart = await audioRef.current?.start();
+
+    if (didStart) {
+      setSoundEnabled(true);
+    }
   }
 
   const timing = {
@@ -113,6 +140,16 @@ export function Day1Scene({ reward, onCollect, onClose, onComplete }: Day1SceneP
       animate={{ opacity: closing ? 0 : 1 }}
       transition={{ duration: reduceMotion ? 0.12 : 0.4, ease: "easeOut" }}
     >
+      <button
+        type="button"
+        className={`reward-sound-toggle${soundEnabled ? " is-on" : ""}`}
+        onClick={handleEnableSound}
+        disabled={soundEnabled}
+        aria-label={soundEnabled ? "声音已开启" : "开启奖励场景声音"}
+      >
+        {soundEnabled ? "声音已开" : "点一下开声音"}
+      </button>
+
       <motion.picture
         className="day1-art-layer"
         initial={{ opacity: 0, scale: reduceMotion ? 1 : 1.035, filter: "brightness(.28) saturate(.85)" }}
