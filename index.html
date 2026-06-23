@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#f6f5ef" />
   <title>TOPIK 学习计划</title>
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="styles.css?v=20260623-reward-card-copy" />
 </head>
 <body>
   <div class="app-shell">
@@ -223,10 +223,12 @@
     <div class="modal-panel reward-panel">
       <button class="modal-close" data-close="rewardModal">×</button>
       <div class="reward-visual" id="rewardVisual"><div class="reward-badge" id="rewardBadge">★</div></div>
-      <h2 id="rewardTitle">今日入场券已盖章</h2>
-      <p id="rewardText">你已经开始了。今天不用完美，只要留下第一条记录，就已经在靠近目标。</p>
-      <div class="reward-note" id="rewardNote">今天的应援灯为你亮一下。</div>
-      <div class="modal-actions"><button class="primary-button" data-close="rewardModal">收下奖励</button></div>
+      <div class="reward-copy-card">
+        <div class="reward-note" id="rewardNote">今天的应援灯为你亮一下。</div>
+        <h2 id="rewardTitle">今日入场券已盖章</h2>
+        <p id="rewardText">你已经开始了。今天不用完美，只要留下第一条记录，就已经在靠近目标。</p>
+        <div class="modal-actions"><button class="primary-button" data-close="rewardModal">收下</button></div>
+      </div>
     </div>
   </div>
 
@@ -361,6 +363,6 @@
   </div>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="app.js?v=20260622-taegg-video-story"></script>
+  <script src="app.js?v=20260623-reward-card-copy"></script>
 </body>
 </html>

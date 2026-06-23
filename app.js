@@ -852,7 +852,7 @@ function scheduleDailyReminder() {
 }
 
 const rewardCatalog = {
-  "first-checkin": { badge: "IN", visual: "taegg-lamp", title: "今日入场券已盖章", text: "你已经开始了。今天不用完美，只要留下第一条记录，就已经在靠近目标。", note: "今天的应援灯为你亮一下。" },
+  "first-checkin": { badge: "IN", visual: "taegg-lamp", title: "给今天也在学习的你", text: "第一条记录已经留下，先陪你开始。", note: "DAY 1 · 首日点亮 ✦" },
   "checkin-7": { badge: "7", visual: "support-card", title: "一周安可", text: "你已经留下 7 天记录了。这周不一定每天都顺，但你还是把学习接住了。", note: "收下一张「本周没有断掉」应援小卡。" },
   "checkin-14": { badge: "14", visual: "lyric-card", title: "慢慢有节奏", text: "这两周不是突然变厉害，是一点点把节奏找回来了。", note: "这一段节奏，先替你收好。" },
   "checkin-30": { badge: "30", visual: "ticket", title: "一个月巡演站", text: "你已经陪自己走过一个月。回头看，这些记录都是你一点点做过来的痕迹。", note: "收下一张「一个月站」纪念票根。" },
@@ -877,7 +877,12 @@ function writeRewardState(state) {
 function rewardVisualMarkup(reward) {
   if (reward.visual === "taegg-lamp") {
     return `<button class="taegg-video-card is-replaying" type="button" aria-label="重播亮灯动画">
-      <img src="assets/first-day-cheer-light-ai.png" alt="" />
+      <video class="taegg-reward-video" poster="assets/first-day-cheer-light-ai.png" playsinline preload="auto">
+        <source src="assets/seedance-taegg-light-landscape.mp4" type="video/mp4" media="(min-aspect-ratio: 4/3)" />
+        <source src="assets/seedance-taegg-light-portrait.mp4" type="video/mp4" />
+      </video>
+      <img class="taegg-video-fallback" src="assets/first-day-cheer-light-ai.png" alt="" />
+      <span class="reward-sound-hint">点一下开声音</span>
       <span class="taegg-video-scene"></span>
       <span class="taegg-video-dim"></span>
       <span class="taegg-video-sheen"></span>
@@ -923,7 +928,10 @@ function rewardVisualMarkup(reward) {
 }
 
 function showReward(reward) {
-  $("#rewardModal .reward-panel").classList.toggle("first-reward-panel", reward.visual === "taegg-lamp");
+  const rewardPanel = $("#rewardModal .reward-panel");
+  rewardPanel.classList.toggle("first-reward-panel", reward.visual === "taegg-lamp");
+  rewardPanel.classList.remove("reward-video-ended");
+  rewardPanel.classList.remove("reward-copy-visible");
   $("#rewardVisual").innerHTML = rewardVisualMarkup(reward);
   const lyricCard = $(".reward-lyric-card");
   if (lyricCard) {
@@ -941,11 +949,65 @@ function showReward(reward) {
   }
   const taeggVideo = $(".taegg-video-card");
   if (taeggVideo) {
-    taeggVideo.addEventListener("click", () => {
+    const rewardVideo = taeggVideo.querySelector(".taegg-reward-video");
+    const soundHint = taeggVideo.querySelector(".reward-sound-hint");
+    const updateTaeggTiming = () => {
+      if (!rewardVideo || !Number.isFinite(rewardVideo.duration)) return;
+      rewardPanel.classList.toggle("reward-copy-visible", rewardVideo.duration - rewardVideo.currentTime <= 1);
+    };
+    const playTaegg = () => {
+      if (!rewardVideo) return;
+      rewardVideo.play().catch(() => {
+        rewardVideo.muted = true;
+        soundHint?.classList.add("visible");
+        rewardVideo.play().catch(() => {});
+      });
+    };
+    const replayTaegg = () => {
+      rewardPanel.classList.remove("reward-video-ended");
+      rewardPanel.classList.remove("reward-copy-visible");
       taeggVideo.classList.remove("is-replaying");
+      taeggVideo.classList.remove("is-ended");
       void taeggVideo.offsetWidth;
       taeggVideo.classList.add("is-replaying");
+      if (rewardVideo) {
+        rewardVideo.muted = false;
+        rewardVideo.currentTime = 0;
+        soundHint?.classList.remove("visible");
+        playTaegg();
+      }
+    };
+    taeggVideo.addEventListener("click", () => {
+      if (rewardVideo?.muted) {
+        rewardVideo.muted = false;
+        if (rewardVideo.ended) {
+          rewardPanel.classList.remove("reward-video-ended");
+          rewardPanel.classList.remove("reward-copy-visible");
+          rewardVideo.currentTime = 0;
+        }
+        soundHint?.classList.remove("visible");
+        rewardVideo.play().catch(() => {
+          rewardVideo.muted = true;
+          soundHint?.classList.add("visible");
+          rewardVideo.play().catch(() => {});
+        });
+        return;
+      }
+      replayTaegg();
     });
+    if (rewardVideo) {
+      rewardVideo.addEventListener("loadeddata", () => {
+        updateTaeggTiming();
+        rewardVideo.muted = false;
+        playTaegg();
+      }, { once: true });
+      rewardVideo.addEventListener("timeupdate", updateTaeggTiming);
+      rewardVideo.addEventListener("ended", () => {
+        rewardPanel.classList.add("reward-copy-visible");
+        taeggVideo.classList.add("is-ended");
+        rewardPanel.classList.add("reward-video-ended");
+      });
+    }
   }
   $("#rewardTitle").textContent = reward.title;
   $("#rewardText").textContent = reward.text;
