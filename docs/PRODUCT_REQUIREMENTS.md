@@ -655,6 +655,40 @@ RewardScene
 | Day100 | Day100Poster | 占位 |
 | Day365 | Day365Ocean | 占位 |
 
+### 8.5 奖励领取状态
+
+当前阶段已提供最小可用的本地领取状态模块：
+
+```text
+reward-companion-system/src/rewards/rewardStorage.ts
+```
+
+本地存储 key：
+
+```text
+purple-cheer-collected-rewards
+```
+
+状态格式：
+
+```ts
+[1, 7, 14]
+```
+
+规则：
+
+- 先使用 `localStorage`
+- 不接后端
+- 已领取奖励不重复弹出
+- 如果本地数据损坏，自动清空并回到空状态，不能导致页面崩溃
+- 如果多个奖励同时满足，优先返回最早未领取的奖励
+
+当前奖励解锁节点：
+
+```text
+Day1 / Day7 / Day14 / Day30 / Day50 / Day100 / Day365
+```
+
 ## 9. Day1 奖励场景需求
 
 ### 9.1 场景定位
@@ -911,18 +945,35 @@ Purple Cheer
 
 主站在用户完成学习行为后，根据奖励规则决定是否打开 RewardScene。
 
+当前子项目已提供本地最小接入方式：
+
+```ts
+getNextRewardDay(studyDays)
+collectReward(rewardDay)
+isRewardCollected(rewardDay)
+resetCollectedRewards()
+```
+
+其中 `getNextRewardDay(studyDays)` 会根据学习天数和本地领取记录返回下一个应展示的奖励节点；如果没有可领取奖励，返回 `null`。
+
 示例：
 
 ```tsx
+const rewardDay = getNextRewardDay(studyDays)
+
+if (rewardDay !== null) {
+  setActiveRewardDay(rewardDay)
+}
+
 <RewardScene
-  day={1}
-  onCollect={(reward) => {
-    // 记录用户已领取奖励
+  rewardDay={activeRewardDay}
+  onCollect={() => {
+    collectReward(activeRewardDay)
   }}
-  onClose={(reward) => {
+  onClose={() => {
     // 关闭奖励场景
   }}
-  onComplete={(reward) => {
+  onComplete={() => {
     // 返回学习页或继续后续流程
   }}
 />
@@ -934,6 +985,24 @@ Purple Cheer
 - RewardScene 负责展示奖励
 - rewardConfig 负责提供文案和奖励类型
 - Day 组件只负责视觉表现
+- `onCollect` 负责记录奖励已领取
+- `onClose` / `onComplete` 负责关闭奖励场景或回到学习页
+
+开发环境中提供了一个示例组件：
+
+```text
+reward-companion-system/src/examples/StudyCompleteDemo.tsx
+```
+
+它用于模拟：
+
+- 当前学习天数
+- 点击「完成今天学习」
+- 触发奖励判断
+- 点击「收下」后写入本地领取记录
+- 没有奖励时显示普通完成提示
+
+该测试入口只在 `import.meta.env.DEV` 时显示，生产环境不显示调试入口。
 
 ## 14. 当前部署与代码位置
 
@@ -1004,6 +1073,9 @@ npm run dev
 - `rewardConfig.ts` 是奖励内容唯一数据源
 - `RewardScene` 是奖励系统唯一入口
 - Day7 到 Day365 保持占位
+- 本地领取状态使用 `purple-cheer-collected-rewards`
+- 已领取奖励不会重复弹出
+- localStorage 损坏不会导致页面崩溃
 - 无生产调试面板
 - mobile 不横向溢出
 - Safari 底部栏不遮挡按钮

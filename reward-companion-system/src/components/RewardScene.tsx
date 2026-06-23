@@ -11,6 +11,7 @@ import { Day7Card } from "../scenes/Day7Card";
 
 type RewardSceneProps = {
   day?: RewardDay;
+  rewardDay?: RewardDay;
   onCollect?: (reward: RewardConfigItem) => void;
   onClose?: (reward: RewardConfigItem) => void;
   onComplete?: (reward: RewardConfigItem) => void;
@@ -33,8 +34,8 @@ const sceneRegistry: Record<RewardSceneType, SceneComponent> = {
   Day365Ocean,
 };
 
-export function RewardScene({ day = 1, onCollect, onClose, onComplete }: RewardSceneProps) {
-  const reward = getRewardByDay(day);
+export function RewardScene({ day, rewardDay, onCollect, onClose, onComplete }: RewardSceneProps) {
+  const reward = getRewardByDay(rewardDay ?? day ?? 1);
   const ActiveScene = sceneRegistry[reward.sceneType];
 
   return (
