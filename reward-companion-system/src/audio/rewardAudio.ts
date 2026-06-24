@@ -1,5 +1,11 @@
 type BrowserAudioContext = typeof AudioContext;
 
+declare global {
+  interface Window {
+    webkitAudioContext?: BrowserAudioContext;
+  }
+}
+
 type RewardAudioState = {
   context: AudioContext;
   master: GainNode;
@@ -11,7 +17,7 @@ function getAudioContextConstructor(): BrowserAudioContext | null {
     return null;
   }
 
-  return window.AudioContext ?? null;
+  return window.AudioContext ?? window.webkitAudioContext ?? null;
 }
 
 function rampGain(gain: AudioParam, value: number, context: AudioContext, duration = 0.32) {
