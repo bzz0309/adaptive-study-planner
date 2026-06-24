@@ -228,6 +228,10 @@ button {
   background: rgba(255, 255, 255, 0.1);
 }
 
+.study-demo-feedback-actions {
+  padding-top: 2px;
+}
+
 .study-demo-status {
   display: grid;
   gap: 6px;
@@ -240,6 +244,157 @@ button {
 .study-demo-status strong {
   color: #fff;
   font-size: 17px;
+}
+
+.light-feedback-region {
+  position: fixed;
+  right: max(22px, calc(env(safe-area-inset-right) + 18px));
+  bottom: max(22px, calc(env(safe-area-inset-bottom) + 18px));
+  z-index: 80;
+  display: grid;
+  justify-items: end;
+  width: min(420px, calc(100vw - 36px));
+  pointer-events: none;
+}
+
+.light-feedback {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 14px;
+  width: 100%;
+  padding: 16px 14px 16px 16px;
+  border: 1px solid rgba(236, 219, 255, 0.36);
+  border-radius: 22px;
+  color: #fff9ff;
+  background:
+    radial-gradient(circle at 16% 26%, rgba(255, 255, 255, 0.18), transparent 18%),
+    linear-gradient(135deg, rgba(28, 17, 58, 0.86), rgba(96, 53, 132, 0.78));
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08),
+    inset 0 -18px 48px rgba(21, 10, 47, 0.38),
+    0 18px 52px rgba(0, 0, 0, 0.36),
+    0 0 32px rgba(172, 103, 255, 0.24);
+  overflow: hidden;
+  pointer-events: auto;
+  backdrop-filter: blur(18px) saturate(1.24);
+}
+
+.light-feedback::before {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  border-radius: 20px;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.18), transparent 30%),
+    radial-gradient(circle at 92% 0%, rgba(255, 226, 157, 0.18), transparent 25%);
+  pointer-events: none;
+}
+
+.light-feedback::after {
+  content: "";
+  position: absolute;
+  right: 54px;
+  top: 18px;
+  width: 13px;
+  height: 13px;
+  background: #fff5ff;
+  clip-path: polygon(50% 0, 61% 38%, 100% 50%, 61% 62%, 50% 100%, 39% 62%, 0 50%, 39% 38%);
+  filter: drop-shadow(0 0 12px rgba(255, 239, 255, 0.9));
+  opacity: 0.76;
+  pointer-events: none;
+}
+
+.light-feedback--breakthrough {
+  border-color: rgba(238, 190, 116, 0.42);
+  background:
+    radial-gradient(circle at 16% 26%, rgba(255, 234, 190, 0.16), transparent 18%),
+    linear-gradient(135deg, rgba(25, 20, 37, 0.9), rgba(83, 58, 94, 0.8));
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08),
+    inset 0 -18px 48px rgba(21, 10, 47, 0.38),
+    0 18px 52px rgba(0, 0, 0, 0.36),
+    0 0 34px rgba(216, 168, 96, 0.2);
+}
+
+.light-feedback-orb {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border: 1px solid rgba(244, 228, 255, 0.42);
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 42% 36%, #fff 0 11%, transparent 18%),
+    radial-gradient(circle, rgba(216, 176, 255, 0.92), rgba(124, 70, 217, 0.72) 58%, rgba(65, 32, 119, 0.76));
+  box-shadow:
+    inset 0 0 16px rgba(255, 255, 255, 0.26),
+    0 0 22px rgba(185, 118, 255, 0.62);
+  animation: feedbackOrbBreath 1.8s ease-in-out infinite;
+}
+
+.light-feedback--breakthrough .light-feedback-orb {
+  background:
+    radial-gradient(circle at 42% 36%, #fff 0 11%, transparent 18%),
+    radial-gradient(circle, rgba(255, 218, 151, 0.96), rgba(147, 95, 43, 0.74) 60%, rgba(66, 44, 35, 0.78));
+  box-shadow:
+    inset 0 0 16px rgba(255, 255, 255, 0.22),
+    0 0 22px rgba(236, 181, 102, 0.58);
+}
+
+.light-feedback-orb span {
+  width: 15px;
+  height: 15px;
+  background: #fff7ff;
+  clip-path: polygon(50% 0, 61% 38%, 100% 50%, 61% 62%, 50% 100%, 39% 62%, 0 50%, 39% 38%);
+  filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.94));
+}
+
+.light-feedback-copy {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.light-feedback-copy strong {
+  color: #fffaff;
+  font-size: 16px;
+  font-weight: 780;
+  line-height: 1.2;
+  text-shadow: 0 0 16px rgba(233, 211, 255, 0.44);
+}
+
+.light-feedback-copy span {
+  color: rgba(241, 228, 255, 0.78);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.light-feedback-close {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(241, 228, 255, 0.2);
+  border-radius: 999px;
+  padding: 0;
+  color: rgba(255, 250, 255, 0.78);
+  background: rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  font-size: 22px;
+  line-height: 1;
+}
+
+.light-feedback-close:hover {
+  border-color: rgba(255, 255, 255, 0.42);
+  background: rgba(255, 255, 255, 0.14);
 }
 
 .day1-scene {
@@ -1199,6 +1354,19 @@ button {
   }
 }
 
+@keyframes feedbackOrbBreath {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.88;
+  }
+
+  50% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+}
+
 @media (min-width: 1400px) {
   .reward-card {
     width: 430px;
@@ -1509,6 +1677,34 @@ button {
     top: 18px;
     right: 18px;
   }
+
+  .light-feedback-region {
+    right: 16px;
+    bottom: max(16px, calc(env(safe-area-inset-bottom) + 14px));
+    left: 16px;
+    width: auto;
+    justify-items: stretch;
+  }
+
+  .light-feedback {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    column-gap: 12px;
+    padding: 14px 12px 14px 14px;
+    border-radius: 20px;
+  }
+
+  .light-feedback-orb {
+    width: 38px;
+    height: 38px;
+  }
+
+  .light-feedback-copy strong {
+    font-size: 15px;
+  }
+
+  .light-feedback-copy span {
+    font-size: 13px;
+  }
 }
 
 @media (max-height: 680px) {
@@ -1532,5 +1728,9 @@ button {
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
     scroll-behavior: auto !important;
+  }
+
+  .light-feedback-orb {
+    animation: none;
   }
 }

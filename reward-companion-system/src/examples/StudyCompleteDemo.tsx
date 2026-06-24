@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { LightFeedbackQueue, type QueuedLightFeedback } from "../components/LightFeedback";
 import { RewardScene } from "../components/RewardScene";
 import type { RewardDay } from "../config/rewardConfig";
 import {
@@ -18,6 +19,7 @@ export function StudyCompleteDemo() {
   const [activeRewardDay, setActiveRewardDay] = useState<RewardDay | null>(null);
   const [status, setStatus] = useState("还没有完成今天学习");
   const [collectedVersion, setCollectedVersion] = useState(0);
+  const [feedbackItems, setFeedbackItems] = useState<QueuedLightFeedback[]>([]);
 
   const collectedRewards = useMemo(() => getCollectedRewards(), [collectedVersion]);
 
@@ -52,7 +54,23 @@ export function StudyCompleteDemo() {
     resetCollectedCards();
     setCollectedVersion((current) => current + 1);
     setActiveRewardDay(null);
+    setFeedbackItems([]);
     setStatus("领取记录已重置");
+  }
+
+  function enqueueFeedback(feedbackId: QueuedLightFeedback["feedbackId"], variant?: QueuedLightFeedback["variant"]) {
+    setFeedbackItems((current) => [
+      ...current,
+      {
+        queueId: `${feedbackId}-${Date.now()}-${current.length}`,
+        feedbackId,
+        variant,
+      },
+    ]);
+  }
+
+  function handleDismissFeedback(queueId: string) {
+    setFeedbackItems((current) => current.filter((item) => item.queueId !== queueId));
   }
 
   return (
@@ -82,6 +100,25 @@ export function StudyCompleteDemo() {
           </button>
         </div>
 
+        <div className="study-demo-actions study-demo-feedback-actions">
+          <button type="button" className="study-demo-secondary" onClick={() => enqueueFeedback("highlight_all_correct")}>
+            预览今日高光
+          </button>
+          <button type="button" className="study-demo-secondary" onClick={() => enqueueFeedback("breakthrough_wrong_question")}>
+            预览突破卡点
+          </button>
+          <button
+            type="button"
+            className="study-demo-secondary"
+            onClick={() => {
+              enqueueFeedback("highlight_all_correct", "short");
+              enqueueFeedback("breakthrough_wrong_question", "short");
+            }}
+          >
+            预览排队轻反馈
+          </button>
+        </div>
+
         <div className="study-demo-status">
           <strong>{status}</strong>
           <span>已领取：{collectedRewards.length > 0 ? collectedRewards.join("、") : "暂无"}</span>
@@ -95,6 +132,8 @@ export function StudyCompleteDemo() {
           onClose={handleCloseReward}
         />
       )}
+
+      <LightFeedbackQueue items={feedbackItems} onDismiss={handleDismissFeedback} />
     </main>
   );
 }

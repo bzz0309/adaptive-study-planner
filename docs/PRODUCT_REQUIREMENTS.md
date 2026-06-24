@@ -607,6 +607,16 @@ reward-companion-system/
 
 不使用全屏 `RewardScene`，第一期只做轻反馈组件，例如 `HighlightFeedback`。
 
+当前已提供轻反馈组件：
+
+```text
+LightFeedback
+HighlightFeedback
+LightFeedbackQueue
+```
+
+默认 2.6 秒后自动消失，支持手动关闭。多个轻反馈同时触发时进入队列，不同时叠加展示。
+
 触发场景包括：
 
 - 当天一组练习题全部正确
@@ -628,6 +638,16 @@ reward-companion-system/
 定位：突破卡点。
 
 不使用全屏 `RewardScene`，第一期只做轻反馈组件，例如 `BreakthroughFeedback`。
+
+当前已提供轻反馈组件：
+
+```text
+LightFeedback
+BreakthroughFeedback
+LightFeedbackQueue
+```
+
+默认 2.6 秒后自动消失，支持手动关闭。错题解决轻反馈在轻反馈队列中优先于答题全对轻反馈。
 
 触发场景包括：
 
@@ -661,6 +681,11 @@ reward-companion-system/
 3. `highlight_feedback`：答题全对奖励
 
 轻反馈可以延迟展示，不能覆盖或打断全屏 `RewardScene`。
+
+当前轻反馈内部队列优先级：
+
+1. `breakthrough_feedback`
+2. `highlight_feedback`
 
 示例：
 
