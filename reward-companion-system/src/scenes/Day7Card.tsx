@@ -1,5 +1,12 @@
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
+import hiddenPool1 from "../assets/reward/day7/pool/hidden-1.webp";
+import hiddenPool2 from "../assets/reward/day7/pool/hidden-2.webp";
+import hiddenPool3 from "../assets/reward/day7/pool/hidden-3.webp";
+import hiddenPool4 from "../assets/reward/day7/pool/hidden-4.webp";
+import hiddenPool5 from "../assets/reward/day7/pool/hidden-5.webp";
+import hiddenPool6 from "../assets/reward/day7/pool/hidden-6.webp";
+import hiddenPool7 from "../assets/reward/day7/pool/hidden-7.webp";
 import type { RewardConfigItem } from "../config/rewardConfig";
 import { day7FirstCard } from "../rewards/rewardCards";
 import { collectCard, collectReward } from "../rewards/rewardStorage";
@@ -11,8 +18,18 @@ type Day7CardProps = {
   onComplete?: () => void;
 };
 
-type Day7Phase = "ready" | "revealed" | "collecting" | "ended";
+type Day7Phase = "ready" | "drawing" | "revealed" | "collecting" | "ended";
 type CardSide = "front" | "back";
+
+const poolCards = [
+  { className: "card-0", image: hiddenPool1 },
+  { className: "card-1", image: hiddenPool2 },
+  { className: "card-2", image: hiddenPool3 },
+  { className: "card-3", image: hiddenPool4 },
+  { className: "card-4", image: hiddenPool5 },
+  { className: "card-5", image: hiddenPool6 },
+  { className: "card-6", image: hiddenPool7 },
+];
 
 export function Day7Card({ onCollect, onClose, onComplete }: Day7CardProps) {
   const reduceMotion = useReducedMotion();
@@ -35,16 +52,17 @@ export function Day7Card({ onCollect, onClose, onComplete }: Day7CardProps) {
       return;
     }
 
-    setPhase("revealed");
-    setSide("back");
+    setPhase("drawing");
+    setSide("front");
 
-    const flipTimer = window.setTimeout(
+    const revealTimer = window.setTimeout(
       () => {
+        setPhase("revealed");
         setSide("front");
       },
-      reduceMotion ? 80 : 680,
+      reduceMotion ? 120 : 940,
     );
-    timersRef.current.push(flipTimer);
+    timersRef.current.push(revealTimer);
   }
 
   function handleFlip() {
@@ -76,7 +94,7 @@ export function Day7Card({ onCollect, onClose, onComplete }: Day7CardProps) {
 
         setPhase("ended");
       },
-      reduceMotion ? 520 : 1550,
+      reduceMotion ? 420 : 980,
     );
     timersRef.current.push(collectTimer);
   }
@@ -87,29 +105,9 @@ export function Day7Card({ onCollect, onClose, onComplete }: Day7CardProps) {
     setSide("front");
   }
 
-  if (phase === "ended") {
-    return (
-      <motion.div
-        className="day7-end-state"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: reduceMotion ? 0.12 : 0.36 }}
-      >
-        <motion.div
-          className="day7-end-card"
-          initial={{ opacity: 0, y: reduceMotion ? 0 : 18 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: reduceMotion ? 0.12 : 0.42, ease: [0.22, 1, 0.36, 1] }}
-        >
-          <span>{day7FirstCard.rarity}</span>
-          <h1>已放进收藏柜</h1>
-          <p>{day7FirstCard.collectMessage}</p>
-          <button type="button" onClick={handleReplay}>
-            重新预览
-          </button>
-        </motion.div>
-      </motion.div>
-    );
+  function handleClose() {
+    onClose?.();
+    onComplete?.();
   }
 
   return (
@@ -134,21 +132,59 @@ export function Day7Card({ onCollect, onClose, onComplete }: Day7CardProps) {
 
       <div className="day7-stage">
         <AnimatePresence mode="wait">
-          {phase === "ready" ? (
+          {phase === "ended" ? (
             <motion.div
-              className="day7-pack"
+              className="day7-collected-state"
+              key="day7-collected"
+              initial={{ opacity: 0, y: reduceMotion ? 0 : 18 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 12 }}
+              transition={{ duration: reduceMotion ? 0.12 : 0.44, ease: [0.22, 1, 0.36, 1] }}
+            >
+              <span>{day7FirstCard.rarity}</span>
+              <p>{day7FirstCard.collectMessage}</p>
+            </motion.div>
+          ) : phase === "ready" || phase === "drawing" ? (
+            <motion.div
+              className={`day7-pack ${phase === "drawing" ? "is-drawing" : ""}`}
               key="day7-pack"
               initial={{ opacity: 0, y: 34, scale: 0.94 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -18, scale: 0.96 }}
               transition={{ duration: reduceMotion ? 0.12 : 0.56, ease: [0.22, 1, 0.36, 1] }}
             >
-              <div className="day7-pack-card card-a" aria-hidden="true" />
-              <div className="day7-pack-card card-b" aria-hidden="true" />
-              <div className="day7-pack-card card-c">
-                <span>{day7FirstCard.rarity}</span>
-                <strong>?</strong>
-              </div>
+              {poolCards.map((card, index) => (
+                <div
+                  className={`day7-pack-card ${card.className}`}
+                  aria-hidden="true"
+                  key={card.className}
+                >
+                  <img src={card.image} alt="" />
+                  {index === 3 && (
+                    <>
+                      <span>{day7FirstCard.rarity}</span>
+                      <strong>?</strong>
+                    </>
+                  )}
+                </div>
+              ))}
+              {phase === "drawing" && (
+                <motion.div
+                  className="day7-drawn-card"
+                  aria-hidden="true"
+                  initial={{ opacity: 0, y: 12, scale: 0.92, rotate: 0, rotateY: 0 }}
+                  animate={{
+                    opacity: 1,
+                    y: reduceMotion ? 0 : -76,
+                    scale: reduceMotion ? 1 : 1.16,
+                    rotate: 0,
+                    rotateY: reduceMotion ? 0 : 180,
+                  }}
+                  transition={{ duration: reduceMotion ? 0.12 : 0.82, ease: [0.16, 1, 0.3, 1] }}
+                >
+                  <img src={day7FirstCard.frontImage} alt="" />
+                </motion.div>
+              )}
             </motion.div>
           ) : (
             <motion.button
@@ -160,11 +196,13 @@ export function Day7Card({ onCollect, onClose, onComplete }: Day7CardProps) {
               initial={{ opacity: 0, y: 48, scale: 0.88, rotateY: reduceMotion ? 0 : 180 }}
               animate={{
                 opacity: phase === "collecting" ? 0 : 1,
-                y: phase === "collecting" ? -42 : 0,
-                scale: phase === "collecting" ? 0.68 : 1,
+                x: phase === "collecting" ? (reduceMotion ? 0 : 88) : 0,
+                y: phase === "collecting" ? (reduceMotion ? 0 : 118) : 0,
+                scale: phase === "collecting" ? 0.42 : 1,
+                rotate: phase === "collecting" ? 8 : 0,
                 rotateY: 0,
               }}
-              transition={{ duration: reduceMotion ? 0.12 : 0.76, ease: [0.16, 1, 0.3, 1] }}
+              transition={{ duration: reduceMotion ? 0.12 : 0.78, ease: [0.16, 1, 0.3, 1] }}
               aria-label={side === "front" ? "查看卡片背面" : "查看卡片正面"}
             >
               <span className="day7-card-glow" aria-hidden="true" />
@@ -194,6 +232,17 @@ export function Day7Card({ onCollect, onClose, onComplete }: Day7CardProps) {
           <button type="button" onClick={handleDraw}>
             抽一张
           </button>
+        ) : phase === "drawing" ? (
+          <div className="day7-drawing-label">正在抽取</div>
+        ) : phase === "ended" ? (
+          <div className="day7-end-actions">
+            <button type="button" onClick={handleReplay}>
+              重新抽
+            </button>
+            <button type="button" className="day7-secondary" onClick={handleClose}>
+              关闭
+            </button>
+          </div>
         ) : (
           <>
             <div className="day7-card-meta">
@@ -206,26 +255,12 @@ export function Day7Card({ onCollect, onClose, onComplete }: Day7CardProps) {
                 {side === "front" ? "查看背面" : "查看正面"}
               </button>
               <button type="button" onClick={handleCollect} disabled={phase === "collecting"}>
-                放进收藏柜
+                收下
               </button>
             </div>
           </>
         )}
       </motion.div>
-
-      <AnimatePresence>
-        {phase === "collecting" && (
-          <motion.div
-            className="day7-collect-message"
-            initial={{ opacity: 0, y: 18, scale: 0.96 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: reduceMotion ? 0.12 : 0.38, ease: [0.22, 1, 0.36, 1] }}
-          >
-            {day7FirstCard.collectMessage}
-          </motion.div>
-        )}
-      </AnimatePresence>
     </section>
   );
 }
