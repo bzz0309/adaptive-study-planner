@@ -580,14 +580,94 @@ reward-companion-system/
 
 - 连续 365 天打卡
 
-其他可扩展触发场景：
+其他可扩展触发场景应进入对应奖励线，不直接混入全屏里程碑奖励。
 
-- 错题解决
-- 高难题通过
-- 今日学习完成
-- 明日重点生成
+### 7.3 奖励线分层
 
-### 7.3 奖励表现方向
+奖励系统拆成三条奖励线，避免所有反馈都挤进同一种全屏奖励。
+
+#### 7.3.1 streak_reward：连续打卡奖励
+
+定位：长期坚持。
+
+代表用户连续学习形成的里程碑，适合使用全屏 `RewardScene`。当前一期自动解锁节点包括：
+
+- `streakDays >= 1`：Day1
+- `streakDays >= 7`：Day7
+- `streakDays >= 14`：Day14
+- `streakDays >= 30`：Day30
+- `streakDays >= 50`：Day50
+- `streakDays >= 100`：Day100
+
+连续 365 天奖励保留为远期规划，不属于当前一期自动解锁范围。
+
+#### 7.3.2 highlight_feedback：答题全对奖励
+
+定位：单日高光。
+
+不使用全屏 `RewardScene`，第一期只做轻反馈组件，例如 `HighlightFeedback`。
+
+触发场景包括：
+
+- 当天一组练习题全部正确
+- 一次小测全部正确
+- 某组题连续全对
+
+默认文案：
+
+```text
+标题：今日高光
+正文：今天的题目，被你稳稳拿下了。
+
+短版标题：全对通过
+短版正文：今天这一组，很稳。
+```
+
+#### 7.3.3 breakthrough_feedback：错题解决奖励
+
+定位：突破卡点。
+
+不使用全屏 `RewardScene`，第一期只做轻反馈组件，例如 `BreakthroughFeedback`。
+
+触发场景包括：
+
+- 首次解决错题
+- 连续解决 3 道错题
+- 一个知识点从错题队列移出
+- 延迟变式题连续两次正确
+
+默认文案：
+
+```text
+首次解决错题：
+标题：突破卡点
+正文：这道错题不是被跳过了，是被你慢慢拿下了。
+
+短版：
+标题：卡点通过
+正文：这次，真的会了。
+
+知识点掌握：
+标题：掌握确认
+正文：这个知识点，已经从错题队列毕业了。
+```
+
+#### 7.3.4 奖励展示优先级
+
+同一天触发多个奖励时，按以下顺序排队展示：
+
+1. `streak_reward`：连续打卡里程碑奖励
+2. `breakthrough_feedback`：错题解决奖励
+3. `highlight_feedback`：答题全对奖励
+
+轻反馈可以延迟展示，不能覆盖或打断全屏 `RewardScene`。
+
+示例：
+
+- 用户今天连续第 7 天，并且答题全对：先展示 Day7 `RewardScene`，Day7 完成后再展示「今日高光」轻反馈。
+- 用户今天解决错题，但没有达到连续奖励节点：只展示 `BreakthroughFeedback`。
+
+### 7.4 奖励表现方向
 
 可用奖励形式：
 
@@ -603,7 +683,7 @@ reward-companion-system/
 - 隐藏属性图
 - 泰蛋灯光动画
 
-### 7.4 泰妍与泰蛋元素使用原则
+### 7.5 泰妍与泰蛋元素使用原则
 
 奖励系统可以融合：
 
@@ -650,6 +730,18 @@ RewardScene
 - 不允许在各个 Day 里分散写业务判断
 - Day 组件只负责渲染对应奖励形态
 - `RewardScene` 负责统一选择奖励场景
+
+奖励类型和优先级由以下文件定义：
+
+```text
+reward-companion-system/src/rewards/rewardTypes.ts
+```
+
+轻反馈第一期文案占位由以下文件定义：
+
+```text
+reward-companion-system/src/rewards/feedbackConfig.ts
+```
 
 ### 8.3.1 视频情绪层与 React 交互层
 
@@ -704,6 +796,20 @@ purple-cheer-collected-rewards
 purple-cheer-collected-cards
 ```
 
+轻反馈第一期可以先不做长期存储。如果需要避免同一天重复展示，可预留：
+
+```text
+purple-cheer-daily-feedbacks
+```
+
+建议格式：
+
+```json
+{
+  "2026-06-24": ["highlight_all_correct", "breakthrough_wrong_question"]
+}
+```
+
 状态格式：
 
 ```ts
@@ -725,6 +831,7 @@ purple-cheer-collected-cards
 - 已领取奖励不重复弹出
 - 如果本地数据损坏，自动清空并回到空状态，不能导致页面崩溃
 - 如果多个奖励同时满足，优先返回最早未领取的奖励
+- 轻反馈不能覆盖全屏 `RewardScene`，需要在里程碑奖励完成后按优先级排队展示
 
 当前奖励解锁节点：
 
@@ -1123,7 +1230,7 @@ Day7 的定位是「第一次真正收藏」，不是大型舞台动画。
 
 ## 13. 与主站的接入方式
 
-主站在用户完成学习行为后，根据奖励规则决定是否打开 RewardScene。
+主站在用户完成学习行为后，根据奖励规则决定是否打开 RewardScene，或把轻反馈加入后续队列。
 
 当前子项目已提供本地最小接入方式：
 
@@ -1134,7 +1241,7 @@ isRewardCollected(rewardDay)
 resetCollectedRewards()
 ```
 
-其中 `getNextRewardDay(streakDays)` 会根据连续学习天数和本地领取记录返回下一个应展示的奖励节点；如果没有可领取奖励，返回 `null`。
+其中 `getNextRewardDay(streakDays)` 只负责连续打卡奖励线，会根据连续学习天数和本地领取记录返回下一个应展示的全屏奖励节点；如果没有可领取奖励，返回 `null`。
 
 当前一期判断规则：
 
@@ -1147,7 +1254,7 @@ streakDays >= 50  → Day50
 streakDays >= 100 → Day100
 ```
 
-如果多个奖励同时满足，返回最早未领取的奖励。
+如果多个连续打卡奖励同时满足，返回最早未领取的奖励。若同一天还触发错题解决或答题全对，主站应先展示连续打卡 `RewardScene`，再展示排队后的轻反馈。
 
 示例：
 
@@ -1175,11 +1282,13 @@ if (rewardDay !== null) {
 接入原则：
 
 - 主站负责判断是否触发奖励
-- RewardScene 负责展示奖励
+- `RewardScene` 只负责展示连续打卡里程碑奖励
+- 答题全对和错题解决第一期只用轻反馈，不进入全屏 `RewardScene`
 - rewardConfig 负责提供文案和奖励类型
 - Day 组件只负责视觉表现
 - `onCollect` 负责记录奖励已领取
 - `onClose` / `onComplete` 负责关闭奖励场景或回到学习页
+- 同一天多奖励按 `streak_reward`、`breakthrough_feedback`、`highlight_feedback` 的顺序排队
 
 开发环境中提供了一个示例组件：
 

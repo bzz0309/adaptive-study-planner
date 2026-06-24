@@ -1,6 +1,7 @@
+import { CURRENT_STREAK_REWARD_DAYS } from "./rewardTypes";
+
 const COLLECTED_REWARDS_KEY = "purple-cheer-collected-rewards";
 const COLLECTED_CARDS_KEY = "purple-cheer-collected-cards";
-const CURRENT_REWARD_DAYS = [1, 7, 14, 30, 50, 100] as const;
 
 export type CollectedCard = {
   cardId: string;
@@ -149,7 +150,7 @@ export function getNextRewardDay(streakDays: number): number | null {
 
   const normalizedStreakDays = Math.trunc(streakDays);
 
-  for (const rewardDay of CURRENT_REWARD_DAYS) {
+  for (const rewardDay of CURRENT_STREAK_REWARD_DAYS) {
     if (normalizedStreakDays >= rewardDay && !isRewardCollected(rewardDay)) {
       return rewardDay;
     }
