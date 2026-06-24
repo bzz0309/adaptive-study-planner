@@ -32,6 +32,7 @@ button {
 .reward-shell,
 .reward-stage,
 .day1-scene,
+.day7-scene,
 .placeholder-scene {
   position: relative;
   width: 100vw;
@@ -632,6 +633,370 @@ button {
   line-height: 1.6;
 }
 
+.day7-scene {
+  isolation: isolate;
+  display: grid;
+  grid-template-columns: minmax(280px, 0.88fr) minmax(320px, 1fr);
+  grid-template-rows: 1fr auto;
+  align-items: center;
+  gap: clamp(20px, 4vw, 72px);
+  padding: clamp(28px, 5vw, 78px);
+  color: #fff7ea;
+  background:
+    radial-gradient(ellipse at 50% 105%, rgba(141, 91, 198, 0.28), transparent 52%),
+    linear-gradient(180deg, #08080a 0%, #101014 45%, #050507 100%);
+}
+
+.day7-scene::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background:
+    linear-gradient(100deg, transparent 0 18%, rgba(133, 93, 181, 0.13) 34%, transparent 52%),
+    repeating-linear-gradient(90deg, rgba(232, 194, 132, 0.045) 0 1px, transparent 1px 82px);
+  opacity: 0.82;
+  pointer-events: none;
+}
+
+.day7-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.day7-bg::before {
+  content: "";
+  position: absolute;
+  inset: 7%;
+  border: 1px solid rgba(207, 163, 97, 0.2);
+  border-radius: 34px;
+  opacity: 0.7;
+}
+
+.day7-bg-line {
+  position: absolute;
+  left: 50%;
+  width: min(520px, 52vw);
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(225, 181, 106, 0.52), transparent);
+  transform: translateX(-50%);
+}
+
+.day7-bg-line.line-one {
+  top: 18%;
+}
+
+.day7-bg-line.line-two {
+  bottom: 18%;
+}
+
+.day7-bg-star {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  background: #f9d58d;
+  clip-path: polygon(50% 0, 61% 38%, 100% 50%, 61% 62%, 50% 100%, 39% 62%, 0 50%, 39% 38%);
+  filter: drop-shadow(0 0 18px rgba(241, 198, 121, 0.78));
+}
+
+.day7-bg-star.star-one {
+  top: 16%;
+  left: 13%;
+}
+
+.day7-bg-star.star-two {
+  right: 12%;
+  bottom: 17%;
+}
+
+.day7-copy,
+.day7-stage,
+.day7-action-panel,
+.day7-collect-message {
+  position: relative;
+  z-index: 1;
+}
+
+.day7-copy {
+  align-self: center;
+  max-width: 470px;
+  text-shadow: 0 18px 42px rgba(0, 0, 0, 0.36);
+}
+
+.day7-copy span {
+  display: inline-flex;
+  padding: 7px 13px;
+  border: 1px solid rgba(225, 181, 106, 0.42);
+  border-radius: 999px;
+  color: rgba(245, 213, 159, 0.9);
+  background: rgba(16, 16, 20, 0.54);
+  font-size: 13px;
+  font-weight: 720;
+}
+
+.day7-copy h1 {
+  margin: 20px 0 0;
+  color: #fff8ed;
+  font-size: clamp(42px, 5.8vw, 86px);
+  line-height: 1.04;
+  font-weight: 760;
+}
+
+.day7-copy p {
+  margin: 16px 0 0;
+  color: rgba(236, 216, 188, 0.78);
+  font-size: clamp(17px, 1.6vw, 24px);
+  line-height: 1.55;
+}
+
+.day7-stage {
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  min-height: min(690px, 72dvh);
+  perspective: 1400px;
+}
+
+.day7-pack {
+  position: relative;
+  width: min(320px, 34vw);
+  min-width: 220px;
+  aspect-ratio: 2 / 3;
+}
+
+.day7-pack-card {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(229, 186, 111, 0.38);
+  border-radius: 28px;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.08), transparent 26%),
+    linear-gradient(160deg, #191b1e, #08090b 58%, #1f1b22);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06),
+    0 28px 70px rgba(0, 0, 0, 0.46),
+    0 0 44px rgba(140, 92, 179, 0.2);
+}
+
+.day7-pack-card.card-a {
+  transform: translate(-26px, 24px) rotate(-8deg);
+  opacity: 0.56;
+}
+
+.day7-pack-card.card-b {
+  transform: translate(24px, 18px) rotate(7deg);
+  opacity: 0.62;
+}
+
+.day7-pack-card.card-c {
+  color: #eac17b;
+  transform: translateY(-4px);
+}
+
+.day7-pack-card.card-c span {
+  position: absolute;
+  top: 28px;
+  left: 28px;
+  font-size: clamp(30px, 4vw, 48px);
+  font-family: Georgia, "Times New Roman", serif;
+}
+
+.day7-pack-card.card-c strong {
+  color: rgba(246, 221, 171, 0.9);
+  font-size: clamp(92px, 10vw, 150px);
+  font-weight: 500;
+  text-shadow: 0 0 34px rgba(230, 184, 106, 0.34);
+}
+
+.day7-card-shell {
+  position: relative;
+  width: min(360px, 36vw);
+  min-width: 250px;
+  aspect-ratio: 2 / 3;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+  perspective: 1400px;
+}
+
+.day7-card-shell:disabled {
+  cursor: default;
+}
+
+.day7-card-glow {
+  position: absolute;
+  inset: 8%;
+  border-radius: 34px;
+  background: radial-gradient(ellipse at 50% 48%, rgba(233, 193, 113, 0.24), rgba(123, 79, 171, 0.2) 48%, transparent 70%);
+  filter: blur(22px);
+  transform: translateY(18px);
+}
+
+.day7-card-inner {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  transition: transform 0.72s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.day7-card-shell.is-back .day7-card-inner {
+  transform: rotateY(180deg);
+}
+
+.day7-card-face {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: 28px;
+  backface-visibility: hidden;
+  box-shadow:
+    0 26px 74px rgba(0, 0, 0, 0.48),
+    0 0 0 1px rgba(231, 188, 113, 0.28);
+}
+
+.day7-card-face img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.day7-card-back {
+  transform: rotateY(180deg);
+}
+
+.day7-action-panel {
+  grid-column: 1 / -1;
+  display: grid;
+  justify-items: center;
+  gap: 18px;
+  min-height: 92px;
+}
+
+.day7-action-panel button,
+.day7-end-card button {
+  border: 1px solid rgba(237, 198, 126, 0.64);
+  border-radius: 999px;
+  padding: 14px 24px;
+  color: #1b1410;
+  background:
+    radial-gradient(circle at 30% 18%, #fff4d9 0 16%, transparent 28%),
+    linear-gradient(180deg, #f2cf8f, #c89145);
+  box-shadow:
+    inset 0 -7px 14px rgba(77, 48, 19, 0.18),
+    0 16px 40px rgba(0, 0, 0, 0.28),
+    0 0 28px rgba(213, 159, 86, 0.2);
+  cursor: pointer;
+  font-size: 17px;
+  font-weight: 760;
+}
+
+.day7-action-panel button:disabled {
+  cursor: default;
+  opacity: 0.68;
+}
+
+.day7-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px 14px;
+  color: rgba(238, 215, 181, 0.78);
+}
+
+.day7-card-meta span,
+.day7-card-meta small {
+  color: #eac17b;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 15px;
+}
+
+.day7-card-meta strong {
+  color: #fff4e4;
+  font-size: 16px;
+  font-weight: 640;
+}
+
+.day7-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+}
+
+.day7-card-actions .day7-secondary {
+  color: rgba(249, 226, 190, 0.92);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.day7-collect-message {
+  position: absolute;
+  left: 50%;
+  bottom: clamp(28px, 7vh, 72px);
+  width: min(520px, calc(100vw - 40px));
+  border: 1px solid rgba(235, 196, 122, 0.46);
+  border-radius: 999px;
+  padding: 15px 22px;
+  color: #fff7ed;
+  background: rgba(15, 15, 18, 0.72);
+  box-shadow: 0 0 34px rgba(211, 158, 86, 0.22);
+  text-align: center;
+  transform: translateX(-50%);
+  backdrop-filter: blur(18px);
+}
+
+.day7-end-state {
+  display: grid;
+  place-items: center;
+  width: 100vw;
+  height: 100dvh;
+  padding: 24px;
+  background:
+    radial-gradient(ellipse at 50% 78%, rgba(120, 76, 158, 0.24), transparent 50%),
+    linear-gradient(180deg, #08080a 0%, #121216 100%);
+}
+
+.day7-end-card {
+  display: grid;
+  justify-items: center;
+  width: min(460px, calc(100vw - 40px));
+  padding: 34px 28px 30px;
+  border: 1px solid rgba(229, 186, 111, 0.4);
+  border-radius: 28px;
+  color: #fff7ed;
+  background: rgba(16, 16, 20, 0.78);
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.42);
+  text-align: center;
+  backdrop-filter: blur(20px);
+}
+
+.day7-end-card span {
+  margin-bottom: 16px;
+  color: #eac17b;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 28px;
+}
+
+.day7-end-card h1 {
+  margin: 0;
+  font-size: clamp(30px, 7vw, 48px);
+}
+
+.day7-end-card p {
+  margin: 14px 0 24px;
+  color: rgba(238, 215, 181, 0.78);
+  font-size: 17px;
+  line-height: 1.55;
+}
+
 @keyframes oceanGlow {
   0% {
     opacity: 0.72;
@@ -705,6 +1070,69 @@ button {
 }
 
 @media (max-width: 760px) {
+  .day7-scene {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    gap: 12px;
+    padding: max(18px, calc(env(safe-area-inset-top) + 12px)) 18px max(18px, calc(env(safe-area-inset-bottom) + 14px));
+  }
+
+  .day7-bg::before {
+    inset: 12px;
+    border-radius: 24px;
+  }
+
+  .day7-copy {
+    max-width: none;
+    text-align: center;
+  }
+
+  .day7-copy h1 {
+    margin-top: 12px;
+    font-size: clamp(30px, 9.2vw, 44px);
+  }
+
+  .day7-copy p {
+    margin-top: 8px;
+    font-size: clamp(14px, 4vw, 16px);
+  }
+
+  .day7-stage {
+    min-height: 0;
+    align-self: stretch;
+  }
+
+  .day7-pack,
+  .day7-card-shell {
+    width: min(270px, 70vw, 38dvh);
+    min-width: 0;
+  }
+
+  .day7-action-panel {
+    min-height: 124px;
+    gap: 12px;
+  }
+
+  .day7-card-meta {
+    gap: 5px 10px;
+  }
+
+  .day7-card-actions {
+    gap: 10px;
+  }
+
+  .day7-action-panel button,
+  .day7-end-card button {
+    padding: 12px 18px;
+    font-size: 15px;
+  }
+
+  .day7-collect-message {
+    bottom: calc(18px + env(safe-area-inset-bottom));
+    border-radius: 22px;
+    font-size: 15px;
+  }
+
   .day1-art-layer img {
     object-position: center bottom;
   }

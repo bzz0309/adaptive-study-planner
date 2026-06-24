@@ -648,7 +648,7 @@ RewardScene
 | 奖励节点 | 组件 | 状态 |
 |---|---|---|
 | Day1 | Day1Scene | 已完整实现 |
-| Day7 | Day7Card | 占位 |
+| Day7 | Day7Card | 已实现紫色应援歌词卡 |
 | Day14 | Day14Player | 占位 |
 | Day30 | Day30Ticket | 占位 |
 | Day50 | Day50CheerFlag | 占位 |
@@ -667,12 +667,21 @@ reward-companion-system/src/rewards/rewardStorage.ts
 
 ```text
 purple-cheer-collected-rewards
+purple-cheer-collected-cards
 ```
 
 状态格式：
 
 ```ts
 [1, 7, 14]
+
+[
+  {
+    cardId: "day7_timelapse_timeless",
+    collectedAt: "2026-06-24T00:00:00.000Z",
+    unlockedDay: 7
+  }
+]
 ```
 
 规则：
@@ -688,6 +697,23 @@ purple-cheer-collected-rewards
 ```text
 Day1 / Day7 / Day14 / Day30 / Day50 / Day100 / Day365
 ```
+
+### 8.6 卡片收藏状态
+
+Day7 开始引入卡片收藏数据。
+
+当前首张收藏卡：
+
+```text
+id: day7_timelapse_timeless
+rarity: SSR
+title: Time Lapse, Timeless
+cardNo: 19890309
+unlockedDay: 7
+firstDrop: true
+```
+
+卡片收藏用于后续收藏柜读取，和奖励节点领取状态分开保存。
 
 ## 9. Day1 奖励场景需求
 
@@ -905,13 +931,20 @@ Purple Cheer
 
 ## 12. 后续奖励规划
 
-### 12.1 Day7：一周安可
+### 12.1 Day7：紫色应援歌词卡
 
-方向：
+当前已实现：
 
-- 小卡
-- 一周连续学习纪念
-- 可以考虑「本周没有断掉」概念
+- 第 7 天首次触发必出固定 SSR 卡
+- 卡名：`Time Lapse, Timeless`
+- 编号：`NO. 19890309`
+- 正面展示最终正面卡图
+- 背面展示歌词卡图
+- 点击卡片或按钮可正反面翻转
+- 点击「放进收藏柜」后记录收藏状态
+- 收卡反馈：`有些努力，会留在时间里发光。`
+
+Day7 的定位是「第一次真正收藏」，不是大型舞台动画。
 
 ### 12.2 Day14：双周歌单
 
@@ -1059,8 +1092,8 @@ npm run dev
 - 奖励商城
 - 真实音乐播放版权接入
 - 商业化周边售卖
-- 完整收藏册
-- Day7 之后的完整视觉实现
+- 完整收藏柜
+- Day14 之后的完整视觉实现
 
 ## 16. 验收标准
 
@@ -1071,6 +1104,7 @@ npm run dev
 - 用户可以每日打卡
 - 系统可以基于打卡生成明日重点
 - 首次打卡后可触发 Day1 奖励
+- 第 7 天可触发 Day7 SSR 歌词卡奖励
 
 ### 16.2 Day1 奖励
 
@@ -1086,8 +1120,9 @@ npm run dev
 
 - `rewardConfig.ts` 是奖励内容唯一数据源
 - `RewardScene` 是奖励系统唯一入口
-- Day7 到 Day365 保持占位
+- Day14 到 Day365 保持占位
 - 本地领取状态使用 `purple-cheer-collected-rewards`
+- 卡片收藏状态使用 `purple-cheer-collected-cards`
 - 已领取奖励不会重复弹出
 - localStorage 损坏不会导致页面崩溃
 - 无生产调试面板

@@ -5,6 +5,7 @@ import {
   collectReward,
   getCollectedRewards,
   getNextRewardDay,
+  resetCollectedCards,
   resetCollectedRewards,
 } from "../rewards/rewardStorage";
 
@@ -48,6 +49,7 @@ export function StudyCompleteDemo() {
 
   function handleReset() {
     resetCollectedRewards();
+    resetCollectedCards();
     setCollectedVersion((current) => current + 1);
     setActiveRewardDay(null);
     setStatus("领取记录已重置");
