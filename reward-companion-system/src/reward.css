@@ -635,12 +635,6 @@ button {
 
 .day7-scene {
   isolation: isolate;
-  display: grid;
-  grid-template-columns: minmax(280px, 0.88fr) minmax(320px, 1fr);
-  grid-template-rows: 1fr auto;
-  align-items: center;
-  gap: clamp(20px, 4vw, 72px);
-  padding: clamp(28px, 5vw, 78px);
   color: #fff7ea;
   background:
     radial-gradient(ellipse at 72% 42%, rgba(230, 181, 97, 0.12), transparent 36%),
@@ -658,6 +652,37 @@ button {
     repeating-linear-gradient(90deg, rgba(232, 194, 132, 0.045) 0 1px, transparent 1px 82px);
   opacity: 0.82;
   pointer-events: none;
+}
+
+.day7-media-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.reward-video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center center;
+  opacity: 0.88;
+  filter: saturate(1.05) contrast(1.04);
+}
+
+.day7-ui-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(280px, 0.88fr) minmax(320px, 1fr);
+  grid-template-rows: 1fr auto;
+  align-items: center;
+  gap: clamp(20px, 4vw, 72px);
+  padding: clamp(28px, 5vw, 78px);
+  pointer-events: auto;
 }
 
 .day7-bg {
@@ -717,7 +742,7 @@ button {
 .day7-stage,
 .day7-action-panel {
   position: relative;
-  z-index: 1;
+  z-index: 2;
 }
 
 .day7-copy {
@@ -1221,11 +1246,15 @@ button {
 }
 
 @media (max-width: 760px) {
-  .day7-scene {
+  .day7-ui-layer {
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto minmax(0, 1fr) auto;
     gap: 12px;
     padding: max(18px, calc(env(safe-area-inset-top) + 12px)) 18px max(18px, calc(env(safe-area-inset-bottom) + 14px));
+  }
+
+  .reward-video {
+    object-position: center center;
   }
 
   .day7-bg::before {

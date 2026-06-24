@@ -643,6 +643,32 @@ RewardScene
 - Day 组件只负责渲染对应奖励形态
 - `RewardScene` 负责统一选择奖励场景
 
+### 8.3.1 视频情绪层与 React 交互层
+
+奖励系统升级为三层结构：
+
+```text
+Background / Video Layer
+→ AI 视频、底图、氛围动画
+→ 不包含按钮、主文案、真实交互
+→ pointer-events: none
+
+UI Layer
+→ 标题、副标题、卡片、按钮、状态提示
+→ 翻面按钮、收下按钮、完成态按钮
+→ pointer-events: auto
+
+State Logic Layer
+→ rewardDay、phase 状态机
+→ onCollect / onClose / onComplete
+→ localStorage、卡片收藏
+→ 不依赖视频决定业务状态
+```
+
+视频只负责情绪和动效，不负责业务逻辑。
+
+React 状态机始终是唯一状态源。视频只能通过 `onLoadedData`、`onEnded`、`onError` 通知 UI 层，不直接决定是否领取、是否收藏、是否关闭场景。
+
 ### 8.4 当前实现状态
 
 | 奖励节点 | 组件 | 状态 |
@@ -762,6 +788,51 @@ Day7 完成态不使用 toast 或弹窗。
 ```
 
 其中「重新抽」仅重置当前预览 UI，不清除正式领取状态。
+
+Day7 已预留 AI 视频动效层。
+
+预留素材路径：
+
+```text
+reward-companion-system/src/assets/reward/day7/day7-draw-desktop.mp4
+reward-companion-system/src/assets/reward/day7/day7-draw-mobile.mp4
+```
+
+当前没有视频素材时，自动使用 7 张隐藏属性缩略图组成的 CSS 静态卡池 fallback。
+
+后续只要把对应 mp4 放入上述路径并重新构建部署，Day7 会自动启用视频层；不需要额外修改配置。
+
+Day7 状态流转：
+
+```text
+pool
+→ drawing
+→ front
+→ back
+→ collecting
+→ collected
+```
+
+规则：
+
+- `pool`：展示卡池与「抽一张」按钮
+- `drawing`：如果有视频素材，播放抽卡视频；如果无视频或视频失败，使用 CSS fallback 抽卡动画
+- `front`：展示 SSR 正面卡和「查看背面」
+- `back`：展示背面歌词卡和「收下」
+- `collecting`：写入奖励领取和卡片收藏，播放收进收藏柜动效
+- `collected`：展示完成文案和「重新抽 / 关闭」
+
+如果视频加载失败：
+
+- 标记视频不可用
+- 回退到静态卡池 / CSS 抽卡动画
+- 不影响用户继续完成抽卡和领取
+
+如果用户开启 `prefers-reduced-motion`：
+
+- 不自动播放视频
+- 使用静态 fallback
+- 仍保留完整交互流程
 
 ## 9. Day1 奖励场景需求
 
