@@ -2,7 +2,7 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import type { RewardConfigItem } from "../config/rewardConfig";
 import { day7FirstCard } from "../rewards/rewardCards";
-import { collectCard } from "../rewards/rewardStorage";
+import { collectCard, collectReward } from "../rewards/rewardStorage";
 
 type Day7CardProps = {
   reward: RewardConfigItem;
@@ -61,6 +61,7 @@ export function Day7Card({ onCollect, onClose, onComplete }: Day7CardProps) {
     }
 
     didCollectRef.current = true;
+    collectReward(day7FirstCard.unlockedDay);
     collectCard(day7FirstCard.id, day7FirstCard.unlockedDay);
     setPhase("collecting");
     onCollect?.();
