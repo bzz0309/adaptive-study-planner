@@ -14,7 +14,7 @@ function toRewardDay(day: number): RewardDay {
 }
 
 export function StudyCompleteDemo() {
-  const [studyDays, setStudyDays] = useState(1);
+  const [streakDays, setStreakDays] = useState(1);
   const [activeRewardDay, setActiveRewardDay] = useState<RewardDay | null>(null);
   const [status, setStatus] = useState("还没有完成今天学习");
   const [collectedVersion, setCollectedVersion] = useState(0);
@@ -22,7 +22,7 @@ export function StudyCompleteDemo() {
   const collectedRewards = useMemo(() => getCollectedRewards(), [collectedVersion]);
 
   function handleCompleteStudy() {
-    const nextRewardDay = getNextRewardDay(studyDays);
+    const nextRewardDay = getNextRewardDay(streakDays);
 
     if (nextRewardDay === null) {
       setStatus("今天的学习已完成");
@@ -61,14 +61,15 @@ export function StudyCompleteDemo() {
         <span className="study-demo-eyebrow">开发预览</span>
         <h1>学习完成奖励触发</h1>
         <p>用这里模拟主站完成学习后的奖励判断。生产环境不会显示这个测试入口。</p>
+        <p>把连续学习天数改成 14 / 30 / 50 / 100，可以分别模拟对应节点。</p>
 
         <label className="study-demo-field">
-          <span>当前已学习天数</span>
+          <span>当前连续学习天数</span>
           <input
             min="1"
             type="number"
-            value={studyDays}
-            onChange={(event) => setStudyDays(Math.max(1, Number(event.target.value) || 1))}
+            value={streakDays}
+            onChange={(event) => setStreakDays(Math.max(1, Number(event.target.value) || 1))}
           />
         </label>
 

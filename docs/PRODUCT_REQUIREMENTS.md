@@ -565,7 +565,9 @@ reward-companion-system/
 
 ### 7.2 奖励触发场景
 
-当前讨论过的触发节点包括：
+当前一期奖励按用户连续学习天数 `streakDays` 解锁，不按自然周重置，也不按每周一 00:00 重置。
+
+当前一期触发节点：
 
 - 首次打卡成功
 - 连续 7 天打卡
@@ -573,7 +575,13 @@ reward-companion-system/
 - 连续 30 天打卡
 - 连续 50 天打卡
 - 连续 100 天打卡
+
+远期规划触发节点：
+
 - 连续 365 天打卡
+
+其他可扩展触发场景：
+
 - 错题解决
 - 高难题通过
 - 今日学习完成
@@ -721,8 +729,10 @@ purple-cheer-collected-cards
 当前奖励解锁节点：
 
 ```text
-Day1 / Day7 / Day14 / Day30 / Day50 / Day100 / Day365
+Day1 / Day7 / Day14 / Day30 / Day50 / Day100
 ```
+
+Day365 保留为远期规划占位，不进入当前一期 `getNextRewardDay(streakDays)` 的自动解锁范围。
 
 ### 8.6 卡片收藏状态
 
@@ -1101,6 +1111,11 @@ Day7 的定位是「第一次真正收藏」，不是大型舞台动画。
 
 ### 12.6 Day365：紫色灯海
 
+状态：
+
+- 远期规划
+- 当前一期不进入自动解锁范围
+
 方向：
 
 - 年度灯海
@@ -1113,18 +1128,31 @@ Day7 的定位是「第一次真正收藏」，不是大型舞台动画。
 当前子项目已提供本地最小接入方式：
 
 ```ts
-getNextRewardDay(studyDays)
+getNextRewardDay(streakDays)
 collectReward(rewardDay)
 isRewardCollected(rewardDay)
 resetCollectedRewards()
 ```
 
-其中 `getNextRewardDay(studyDays)` 会根据学习天数和本地领取记录返回下一个应展示的奖励节点；如果没有可领取奖励，返回 `null`。
+其中 `getNextRewardDay(streakDays)` 会根据连续学习天数和本地领取记录返回下一个应展示的奖励节点；如果没有可领取奖励，返回 `null`。
+
+当前一期判断规则：
+
+```text
+streakDays >= 1   → Day1
+streakDays >= 7   → Day7
+streakDays >= 14  → Day14
+streakDays >= 30  → Day30
+streakDays >= 50  → Day50
+streakDays >= 100 → Day100
+```
+
+如果多个奖励同时满足，返回最早未领取的奖励。
 
 示例：
 
 ```tsx
-const rewardDay = getNextRewardDay(studyDays)
+const rewardDay = getNextRewardDay(streakDays)
 
 if (rewardDay !== null) {
   setActiveRewardDay(rewardDay)
@@ -1240,6 +1268,7 @@ npm run dev
 - `rewardConfig.ts` 是奖励内容唯一数据源
 - `RewardScene` 是奖励系统唯一入口
 - Day14 到 Day365 保持占位
+- 当前一期自动解锁只到 Day100，Day365 为远期规划
 - 本地领取状态使用 `purple-cheer-collected-rewards`
 - 卡片收藏状态使用 `purple-cheer-collected-cards`
 - 已领取奖励不会重复弹出

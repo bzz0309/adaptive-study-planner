@@ -1,6 +1,6 @@
 const COLLECTED_REWARDS_KEY = "purple-cheer-collected-rewards";
 const COLLECTED_CARDS_KEY = "purple-cheer-collected-cards";
-const REWARD_DAYS = [1, 7, 14, 30, 50, 100, 365] as const;
+const CURRENT_REWARD_DAYS = [1, 7, 14, 30, 50, 100] as const;
 
 export type CollectedCard = {
   cardId: string;
@@ -142,15 +142,15 @@ export function resetCollectedCards(): void {
   window.localStorage.removeItem(COLLECTED_CARDS_KEY);
 }
 
-export function getNextRewardDay(studyDays: number): number | null {
-  if (!Number.isFinite(studyDays)) {
+export function getNextRewardDay(streakDays: number): number | null {
+  if (!Number.isFinite(streakDays)) {
     return null;
   }
 
-  const normalizedStudyDays = Math.trunc(studyDays);
+  const normalizedStreakDays = Math.trunc(streakDays);
 
-  for (const rewardDay of REWARD_DAYS) {
-    if (normalizedStudyDays >= rewardDay && !isRewardCollected(rewardDay)) {
+  for (const rewardDay of CURRENT_REWARD_DAYS) {
+    if (normalizedStreakDays >= rewardDay && !isRewardCollected(rewardDay)) {
       return rewardDay;
     }
   }
