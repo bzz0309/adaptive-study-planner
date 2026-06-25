@@ -397,6 +397,211 @@ button {
   background: rgba(255, 255, 255, 0.14);
 }
 
+.home-dashboard {
+  position: relative;
+  min-width: 320px;
+  height: 100dvh;
+  min-height: 100dvh;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: max(26px, calc(env(safe-area-inset-top) + 20px)) clamp(18px, 4vw, 56px)
+    max(26px, calc(env(safe-area-inset-bottom) + 20px));
+  color: #fff;
+  background:
+    radial-gradient(circle at 76% 14%, rgba(185, 113, 255, 0.2), transparent 30%),
+    radial-gradient(circle at 16% 28%, rgba(255, 222, 166, 0.1), transparent 24%),
+    linear-gradient(180deg, #080218 0%, #14052f 54%, #05010d 100%);
+}
+
+.home-dashboard::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(circle at 12% 72%, rgba(216, 178, 255, 0.36) 0 1px, transparent 2px),
+    radial-gradient(circle at 82% 34%, rgba(255, 228, 165, 0.36) 0 1px, transparent 2px),
+    radial-gradient(circle at 54% 18%, rgba(231, 207, 255, 0.3) 0 1px, transparent 2px);
+  background-size: 150px 150px, 210px 210px, 180px 180px;
+  opacity: 0.54;
+  pointer-events: none;
+}
+
+.home-dashboard > .reward-shell {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+}
+
+.home-shell {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 22px;
+  width: min(1120px, 100%);
+  margin: 0 auto;
+}
+
+.home-hero {
+  display: grid;
+  gap: 18px;
+  padding: clamp(26px, 5vw, 56px);
+  border: 1px solid rgba(236, 224, 255, 0.18);
+  border-radius: 32px;
+  background:
+    radial-gradient(circle at 80% 18%, rgba(223, 188, 255, 0.18), transparent 28%),
+    linear-gradient(135deg, rgba(30, 15, 69, 0.86), rgba(67, 35, 105, 0.56));
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06),
+    0 32px 90px rgba(0, 0, 0, 0.28),
+    0 0 42px rgba(170, 96, 255, 0.12);
+  backdrop-filter: blur(18px) saturate(1.16);
+}
+
+.home-eyebrow,
+.home-panel > span,
+.home-dev-tools > span {
+  width: fit-content;
+  border: 1px solid rgba(235, 219, 255, 0.24);
+  border-radius: 999px;
+  padding: 7px 12px;
+  color: rgba(234, 218, 255, 0.82);
+  background: rgba(255, 255, 255, 0.07);
+  font-size: 13px;
+  font-weight: 720;
+}
+
+.home-streak-label {
+  margin: 0 0 8px;
+  color: rgba(239, 228, 255, 0.68);
+  font-size: 15px;
+}
+
+.home-hero h1 {
+  margin: 0;
+  color: #fff7ff;
+  font-size: clamp(42px, 8vw, 92px);
+  line-height: 1.04;
+  text-shadow:
+    0 0 24px rgba(255, 236, 255, 0.44),
+    0 0 54px rgba(176, 96, 255, 0.42);
+}
+
+.home-hero p {
+  max-width: 620px;
+  margin: 0;
+  color: rgba(241, 229, 255, 0.76);
+  font-size: clamp(16px, 2vw, 20px);
+  line-height: 1.65;
+}
+
+.home-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(260px, 0.8fr);
+  gap: 18px;
+}
+
+.home-panel {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  min-height: 190px;
+  border: 1px solid rgba(236, 224, 255, 0.16);
+  border-radius: 26px;
+  padding: 24px;
+  background: rgba(18, 10, 43, 0.68);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04),
+    0 18px 50px rgba(0, 0, 0, 0.18);
+  backdrop-filter: blur(16px);
+}
+
+.home-task-card {
+  grid-row: span 2;
+  min-height: 398px;
+}
+
+.home-panel h2 {
+  margin: 0;
+  color: #fff8ff;
+  font-size: clamp(24px, 3.4vw, 42px);
+  line-height: 1.18;
+}
+
+.home-panel p {
+  margin: 0;
+  color: rgba(238, 227, 255, 0.72);
+  font-size: 16px;
+  line-height: 1.62;
+}
+
+.home-panel button,
+.home-dev-tools button {
+  width: fit-content;
+  border: 1px solid rgba(255, 255, 255, 0.62);
+  border-radius: 999px;
+  padding: 13px 18px;
+  color: #44226d;
+  background:
+    radial-gradient(circle at 30% 18%, #fff 0 14%, transparent 27%),
+    linear-gradient(180deg, #f4ddff, #d6b6ff);
+  box-shadow:
+    0 14px 34px rgba(0, 0, 0, 0.24),
+    0 0 22px rgba(203, 166, 255, 0.22);
+  cursor: pointer;
+  font-weight: 760;
+}
+
+.home-task-card button {
+  align-self: end;
+  margin-top: auto;
+  padding: 16px 24px;
+  font-size: 18px;
+}
+
+.cheer-cabinet-card {
+  background:
+    radial-gradient(circle at 82% 24%, rgba(255, 222, 166, 0.12), transparent 24%),
+    rgba(18, 10, 43, 0.68);
+}
+
+.home-status,
+.home-dev-tools {
+  display: grid;
+  gap: 8px;
+  border: 1px solid rgba(236, 224, 255, 0.13);
+  border-radius: 22px;
+  padding: 18px 20px;
+  color: rgba(238, 227, 255, 0.72);
+  background: rgba(12, 6, 29, 0.56);
+}
+
+.home-status strong {
+  color: #fff8ff;
+  font-size: 17px;
+}
+
+.home-status span {
+  font-size: 14px;
+}
+
+.home-dev-tools {
+  border-style: dashed;
+}
+
+.home-dev-tools div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.home-dev-tools button {
+  padding: 10px 13px;
+  color: rgba(247, 238, 255, 0.9);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: none;
+  font-size: 13px;
+}
+
 .day1-scene {
   --reward-glow: #d9c4ff;
   --reward-accent: #f7d7ff;
@@ -942,9 +1147,9 @@ button {
 
 .day7-pack {
   position: relative;
-  width: min(660px, 46vw);
+  width: min(820px, 56vw);
   min-width: 360px;
-  aspect-ratio: 1.56 / 1;
+  aspect-ratio: 1.34 / 1;
 }
 
 .day7-pack-card {
@@ -953,7 +1158,7 @@ button {
   top: 50%;
   display: grid;
   place-items: center;
-  width: min(250px, 38%);
+  width: min(156px, 21%);
   aspect-ratio: 2 / 3;
   border: 1px solid rgba(229, 186, 111, 0.38);
   border-radius: 28px;
@@ -964,8 +1169,8 @@ button {
     linear-gradient(160deg, #191b1e, #08090b 58%, #1f1b22);
   box-shadow:
     inset 0 0 0 1px rgba(255, 255, 255, 0.06),
-    0 28px 70px rgba(0, 0, 0, 0.46),
-    0 0 44px rgba(140, 92, 179, 0.2);
+    0 20px 56px rgba(0, 0, 0, 0.66),
+    0 0 28px rgba(75, 48, 104, 0.1);
   transform-origin: 50% 105%;
   overflow: hidden;
   transition:
@@ -974,15 +1179,25 @@ button {
     transform 0.46s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.day7-pack-card img,
+.day7-pack-card img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.24;
+  filter: blur(18px) brightness(0.14) saturate(0.42);
+  transform: scale(1.28);
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
 .day7-drawn-card img {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
-  filter: blur(5px) brightness(0.42) saturate(0.78);
-  transform: scale(1.1);
   user-select: none;
   -webkit-user-drag: none;
 }
@@ -990,9 +1205,9 @@ button {
 .day7-pack-card::before {
   z-index: 2;
   background:
-    radial-gradient(circle at 50% 42%, rgba(13, 13, 16, 0.12), rgba(7, 7, 9, 0.72) 62%),
-    linear-gradient(180deg, rgba(6, 6, 8, 0.48), rgba(6, 6, 8, 0.82));
-  box-shadow: inset 0 0 0 1px rgba(229, 186, 111, 0.3);
+    radial-gradient(circle at 50% 42%, rgba(10, 10, 13, 0.48), rgba(4, 4, 6, 0.94) 60%),
+    linear-gradient(180deg, rgba(4, 4, 6, 0.78), rgba(3, 3, 5, 0.96));
+  box-shadow: inset 0 0 0 1px rgba(229, 186, 111, 0.12);
 }
 
 .day7-pack-card::after {
@@ -1000,63 +1215,93 @@ button {
 }
 
 .day7-pack-card.card-0 {
-  z-index: 1;
-  transform: translate(-122%, -35%) rotate(-18deg) scale(0.78);
-  opacity: 0.6;
+  z-index: 2;
+  transform: translate(-50%, -50%) translate(-330px, 56px) rotate(-54deg) scale(0.58);
+  opacity: 0.12;
 }
 
 .day7-pack-card.card-1 {
   z-index: 2;
-  transform: translate(-98%, -43%) rotate(-12deg) scale(0.84);
-  opacity: 0.68;
+  transform: translate(-50%, -50%) translate(-310px, -50px) rotate(-47deg) scale(0.62);
+  opacity: 0.14;
 }
 
 .day7-pack-card.card-2 {
   z-index: 3;
-  transform: translate(-74%, -50%) rotate(-6deg) scale(0.92);
-  opacity: 0.78;
+  transform: translate(-50%, -50%) translate(-260px, -142px) rotate(-38deg) scale(0.66);
+  opacity: 0.16;
 }
 
 .day7-pack-card.card-3 {
-  z-index: 5;
-  color: #eac17b;
-  transform: translate(-50%, -55%) rotate(0deg) scale(1);
+  z-index: 4;
+  transform: translate(-50%, -50%) translate(-185px, -214px) rotate(-28deg) scale(0.7);
+  opacity: 0.18;
 }
 
 .day7-pack-card.card-4 {
-  z-index: 3;
-  transform: translate(-26%, -50%) rotate(6deg) scale(0.92);
-  opacity: 0.78;
+  z-index: 5;
+  transform: translate(-50%, -50%) translate(-92px, -257px) rotate(-14deg) scale(0.74);
+  opacity: 0.2;
 }
 
 .day7-pack-card.card-5 {
-  z-index: 2;
-  transform: translate(-2%, -43%) rotate(12deg) scale(0.84);
-  opacity: 0.68;
+  z-index: 6;
+  transform: translate(-50%, -50%) translate(0, -272px) rotate(0deg) scale(0.76);
+  opacity: 0.22;
 }
 
 .day7-pack-card.card-6 {
-  z-index: 1;
-  transform: translate(22%, -35%) rotate(18deg) scale(0.78);
-  opacity: 0.6;
+  z-index: 5;
+  transform: translate(-50%, -50%) translate(92px, -257px) rotate(14deg) scale(0.74);
+  opacity: 0.2;
 }
 
-.day7-pack-card.card-3 span {
-  position: absolute;
+.day7-pack-card.card-7 {
   z-index: 4;
-  top: 28px;
-  left: 28px;
-  font-size: clamp(30px, 4vw, 48px);
-  font-family: Georgia, "Times New Roman", serif;
+  transform: translate(-50%, -50%) translate(185px, -214px) rotate(28deg) scale(0.7);
+  opacity: 0.18;
 }
 
-.day7-pack-card.card-3 strong {
-  position: relative;
+.day7-pack-card.card-8 {
+  z-index: 3;
+  transform: translate(-50%, -50%) translate(260px, -142px) rotate(38deg) scale(0.66);
+  opacity: 0.16;
+}
+
+.day7-pack-card.card-9 {
+  z-index: 2;
+  transform: translate(-50%, -50%) translate(310px, -50px) rotate(47deg) scale(0.62);
+  opacity: 0.14;
+}
+
+.day7-pack-card.card-10 {
+  z-index: 2;
+  transform: translate(-50%, -50%) translate(330px, 56px) rotate(54deg) scale(0.58);
+  opacity: 0.12;
+}
+
+.day7-pack-card.card-11 {
+  z-index: 3;
+  transform: translate(-50%, -50%) translate(250px, 148px) rotate(36deg) scale(0.6);
+  opacity: 0.12;
+}
+
+.day7-pack-card.card-12 {
   z-index: 4;
-  color: rgba(246, 221, 171, 0.9);
-  font-size: clamp(92px, 10vw, 150px);
-  font-weight: 500;
-  text-shadow: 0 0 34px rgba(230, 184, 106, 0.34);
+  transform: translate(-50%, -50%) translate(120px, 198px) rotate(18deg) scale(0.62);
+  opacity: 0.13;
+}
+
+.day7-pack-card.card-13 {
+  z-index: 4;
+  transform: translate(-50%, -50%) translate(-120px, 198px) rotate(-18deg) scale(0.62);
+  opacity: 0.13;
+}
+
+.day7-pack-card.card-14 {
+  z-index: 3;
+  transform: translate(-50%, -50%) translate(-250px, 148px) rotate(-36deg) scale(0.6);
+  opacity: 0.12;
 }
 
 .day7-pack-card::before,
@@ -1082,37 +1327,8 @@ button {
 }
 
 .day7-pack.is-drawing .day7-pack-card {
-  opacity: 0.15;
-  filter: blur(0.8px);
-}
-
-.day7-pack.is-drawing .card-0 {
-  transform: translate(-132%, -24%) rotate(-22deg) scale(0.72);
-}
-
-.day7-pack.is-drawing .card-1 {
-  transform: translate(-108%, -30%) rotate(-15deg) scale(0.78);
-}
-
-.day7-pack.is-drawing .card-2 {
-  transform: translate(-84%, -34%) rotate(-8deg) scale(0.84);
-}
-
-.day7-pack.is-drawing .card-3 {
-  opacity: 0;
-  transform: translate(-50%, -61%) rotate(0deg) scale(1.04);
-}
-
-.day7-pack.is-drawing .card-4 {
-  transform: translate(-16%, -34%) rotate(8deg) scale(0.84);
-}
-
-.day7-pack.is-drawing .card-5 {
-  transform: translate(8%, -30%) rotate(15deg) scale(0.78);
-}
-
-.day7-pack.is-drawing .card-6 {
-  transform: translate(32%, -24%) rotate(22deg) scale(0.72);
+  opacity: 0.035;
+  filter: blur(8px) brightness(0.26);
 }
 
 .day7-drawn-card {
@@ -1414,6 +1630,62 @@ button {
 }
 
 @media (max-width: 760px) {
+  .home-dashboard {
+    padding: max(18px, calc(env(safe-area-inset-top) + 14px)) 16px max(18px, calc(env(safe-area-inset-bottom) + 14px));
+  }
+
+  .home-shell {
+    gap: 16px;
+  }
+
+  .home-hero {
+    gap: 14px;
+    padding: 24px 20px;
+    border-radius: 26px;
+  }
+
+  .home-hero h1 {
+    font-size: clamp(38px, 12vw, 58px);
+  }
+
+  .home-hero p {
+    font-size: 15px;
+  }
+
+  .home-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+  }
+
+  .home-task-card {
+    grid-row: auto;
+    min-height: 280px;
+  }
+
+  .home-panel {
+    min-height: auto;
+    padding: 20px;
+    border-radius: 22px;
+  }
+
+  .home-panel h2 {
+    font-size: clamp(23px, 7vw, 32px);
+  }
+
+  .home-panel button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .home-dev-tools div {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .home-dev-tools button {
+    width: 100%;
+  }
+
   .day7-ui-layer {
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto minmax(0, 1fr) auto;
@@ -1457,11 +1729,11 @@ button {
 
   .day7-pack {
     width: min(94vw, 430px);
-    aspect-ratio: 1.58 / 1;
+    aspect-ratio: 1.06 / 1;
   }
 
   .day7-pack-card {
-    width: min(155px, 35vw);
+    width: min(88px, 21vw);
     border-radius: 20px;
   }
 
@@ -1472,55 +1744,63 @@ button {
   }
 
   .day7-pack-card.card-0 {
-    transform: translate(-112%, -35%) rotate(-18deg) scale(0.78);
+    transform: translate(-50%, -50%) translate(-178px, 30px) rotate(-54deg) scale(0.58);
   }
 
   .day7-pack-card.card-1 {
-    transform: translate(-91%, -43%) rotate(-12deg) scale(0.84);
+    transform: translate(-50%, -50%) translate(-166px, -28px) rotate(-47deg) scale(0.62);
   }
 
   .day7-pack-card.card-2 {
-    transform: translate(-70%, -50%) rotate(-6deg) scale(0.92);
+    transform: translate(-50%, -50%) translate(-138px, -80px) rotate(-38deg) scale(0.66);
   }
 
   .day7-pack-card.card-3 {
-    transform: translate(-50%, -55%) rotate(0deg) scale(1);
+    transform: translate(-50%, -50%) translate(-98px, -120px) rotate(-28deg) scale(0.7);
   }
 
   .day7-pack-card.card-4 {
-    transform: translate(-30%, -50%) rotate(6deg) scale(0.92);
+    transform: translate(-50%, -50%) translate(-48px, -144px) rotate(-14deg) scale(0.74);
   }
 
   .day7-pack-card.card-5 {
-    transform: translate(-9%, -43%) rotate(12deg) scale(0.84);
+    transform: translate(-50%, -50%) translate(0, -152px) rotate(0deg) scale(0.76);
   }
 
   .day7-pack-card.card-6 {
-    transform: translate(12%, -35%) rotate(18deg) scale(0.78);
+    transform: translate(-50%, -50%) translate(48px, -144px) rotate(14deg) scale(0.74);
   }
 
-  .day7-pack.is-drawing .card-0 {
-    transform: translate(-120%, -24%) rotate(-22deg) scale(0.72);
+  .day7-pack-card.card-7 {
+    transform: translate(-50%, -50%) translate(98px, -120px) rotate(28deg) scale(0.7);
   }
 
-  .day7-pack.is-drawing .card-1 {
-    transform: translate(-99%, -30%) rotate(-15deg) scale(0.78);
+  .day7-pack-card.card-8 {
+    transform: translate(-50%, -50%) translate(138px, -80px) rotate(38deg) scale(0.66);
   }
 
-  .day7-pack.is-drawing .card-2 {
-    transform: translate(-78%, -34%) rotate(-8deg) scale(0.84);
+  .day7-pack-card.card-9 {
+    transform: translate(-50%, -50%) translate(166px, -28px) rotate(47deg) scale(0.62);
   }
 
-  .day7-pack.is-drawing .card-4 {
-    transform: translate(-22%, -34%) rotate(8deg) scale(0.84);
+  .day7-pack-card.card-10 {
+    transform: translate(-50%, -50%) translate(178px, 30px) rotate(54deg) scale(0.58);
   }
 
-  .day7-pack.is-drawing .card-5 {
-    transform: translate(-1%, -30%) rotate(15deg) scale(0.78);
+  .day7-pack-card.card-11 {
+    transform: translate(-50%, -50%) translate(132px, 88px) rotate(36deg) scale(0.6);
   }
 
-  .day7-pack.is-drawing .card-6 {
-    transform: translate(20%, -24%) rotate(22deg) scale(0.72);
+  .day7-pack-card.card-12 {
+    transform: translate(-50%, -50%) translate(64px, 114px) rotate(18deg) scale(0.62);
+  }
+
+  .day7-pack-card.card-13 {
+    transform: translate(-50%, -50%) translate(-64px, 114px) rotate(-18deg) scale(0.62);
+  }
+
+  .day7-pack-card.card-14 {
+    transform: translate(-50%, -50%) translate(-132px, 88px) rotate(-36deg) scale(0.6);
   }
 
   .day7-card-shell {
@@ -1529,16 +1809,6 @@ button {
 
   .day7-drawn-card {
     width: min(168px, 38vw);
-  }
-
-  .day7-pack-card.card-3 span {
-    top: 18px;
-    left: 18px;
-    font-size: clamp(22px, 7vw, 34px);
-  }
-
-  .day7-pack-card.card-3 strong {
-    font-size: clamp(62px, 20vw, 104px);
   }
 
   .day7-action-panel {

@@ -40,6 +40,14 @@ const poolCards = [
   { className: "card-4", image: hiddenPool5 },
   { className: "card-5", image: hiddenPool6 },
   { className: "card-6", image: hiddenPool7 },
+  { className: "card-7", image: hiddenPool1 },
+  { className: "card-8", image: hiddenPool2 },
+  { className: "card-9", image: hiddenPool3 },
+  { className: "card-10", image: hiddenPool4 },
+  { className: "card-11", image: hiddenPool5 },
+  { className: "card-12", image: hiddenPool6 },
+  { className: "card-13", image: hiddenPool7 },
+  { className: "card-14", image: hiddenPool1 },
 ];
 
 export function Day7Card({ onCollect, onClose, onComplete }: Day7CardProps) {
@@ -198,15 +206,9 @@ export function Day7Card({ onCollect, onClose, onComplete }: Day7CardProps) {
                 exit={{ opacity: 0, y: -18, scale: 0.96 }}
                 transition={{ duration: shouldReduceMotion ? 0.12 : 0.56, ease: [0.22, 1, 0.36, 1] }}
               >
-                {poolCards.map((card, index) => (
+                {poolCards.map((card) => (
                   <div className={`day7-pack-card ${card.className}`} aria-hidden="true" key={card.className}>
                     <img src={card.image} alt="" />
-                    {index === 3 && (
-                      <>
-                        <span>{day7FirstCard.rarity}</span>
-                        <strong>?</strong>
-                      </>
-                    )}
                   </div>
                 ))}
                 {phase === "drawing" && !canUseVideo && (
