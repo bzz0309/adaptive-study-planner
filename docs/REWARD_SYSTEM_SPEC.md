@@ -4,6 +4,83 @@
 线上预览：https://reward-companion-system.vercel.app  
 子项目路径：`reward-companion-system/`
 
+## 0. Reward Engine 架构冻结
+
+本节为当前 Reward Engine 的冻结设计规范。后续开发不得再重构奖励系统的核心结构，只能在本分层下补全内容、优化表现或扩展具体奖励形态。
+
+### 0.1 五层结构
+
+Reward Companion System 必须严格遵守以下五层结构：
+
+```text
+StudyProgress Layer
+→ streakDays
+→ lastCheckinDate
+→ today status
+
+Reward Engine Core
+→ getNextRewardDay(streakDays)
+→ rewardConfig (1 / 7 / 14 / 30 / 50 / 100)
+→ reward line rules
+
+Reward Scene Layer
+→ RewardScene
+→ RewardVideoLayer
+→ Day1 / Day7 / Day14 / Day30 / Day50 / Day100
+
+Feedback Layer
+→ HighlightFeedback
+→ BreakthroughFeedback
+→ LightFeedbackQueue
+
+UI State Machine Layer
+→ pool
+→ drawing
+→ front
+→ back
+→ collected
+```
+
+### 0.2 唯一职责
+
+- `StudyProgress Layer` 只负责学习进度事实：连续天数、最近打卡日期、今日完成状态。
+- `Reward Engine Core` 是唯一奖励决策中心，只能由这里判断是否解锁 Day1 / Day7 / Day14 / Day30 / Day50 / Day100。
+- `Reward Scene Layer` 只负责展示全屏奖励，不直接写业务判断。
+- `Feedback Layer` 只负责展示轻反馈，不抢占全屏奖励。
+- `UI State Machine Layer` 只负责当前奖励内部交互状态，不重新计算奖励规则。
+
+### 0.3 禁止事项
+
+后续开发不允许：
+
+- UI 自己计算奖励节点
+- 视频控制业务状态
+- Day 组件独立实现 reward 判断逻辑
+- `RewardScene` 直接写 streak / reward line 业务判断
+- 多套 state system 并存
+- fallback UI 另起一套状态机
+
+### 0.4 唯一规则
+
+```text
+Reward Engine Core 是唯一决策中心
+UI 只负责展示 state
+Video 只负责表现，不参与逻辑
+```
+
+视频可以通过 `onEnded` / `onError` 发出事件，但不能直接决定领取、收藏、关闭、奖励解锁或最终卡面结果。
+
+### 0.5 允许扩展范围
+
+可以继续做：
+
+- Day14 / Day30 / Day50 / Day100 内容补全
+- 收藏柜 `Collected Cards UI`
+- `HomeDashboard` 体验优化
+- 轻反馈动画优化
+
+以上扩展必须遵守本节冻结分层结构。
+
 ## 1. 定位
 
 奖励系统不是弹窗，不是普通「恭喜完成」提示，而是学习完成后的情绪回应。
@@ -181,17 +258,17 @@ Day7 是轻量抽卡奖励，定位为「第一次真正收藏」。
 
 ```text
 进入 Day7
-→ 看到 7 张隐藏属性缩略卡组成的扇形卡池
+→ pool：看到 idle / 卡池待机视频或静态卡池
 → 点击「抽一张」
-→ 中间卡从卡池中抽出并放大
-→ 固定获得 SSR 卡 Time Lapse, Timeless
-→ 查看正面
-→ 点击卡片或按钮翻到背面
+→ drawing：播放 draw / reveal 视频或 CSS fallback 抽卡动画
+→ front：展示 SSR 正面卡 Time Lapse, Timeless
+→ 点击「查看背面」
+→ back：展示背面歌词
+→ 点击「查看正面」可返回 front
 → 点击「收下」
 → 记录奖励节点和卡片收藏
-→ 卡片收进收藏柜
-→ 页面内显示完成轻提示
-→ 可选择「重新抽」或「关闭」
+→ collected：显示完成态和轻反馈
+→ 可选择「重新抽一次」回到 pool
 ```
 
 卡片信息：
@@ -225,30 +302,43 @@ Day7 状态流转：
 pool
 → drawing
 → front
-→ back
-→ collecting
+↔ back
 → collected
 ```
 
-## 10. Day7 视频层预留
+Day7 只允许以上 5 个状态。不得新增 `collecting`、`revealing`、`videoEnded` 等临时业务状态。
 
-Day7 已预留 AI 视频动效层。
+## 10. Day7 视频层
 
-预留素材路径：
+Day7 视频层分为两个表现阶段，但状态仍由 React `phase` 状态机唯一控制。
+
+素材路径：
 
 ```text
+src/assets/reward/day7/day7-idle-desktop.mp4
+src/assets/reward/day7/day7-idle-mobile.mp4
 src/assets/reward/day7/day7-draw-desktop.mp4
 src/assets/reward/day7/day7-draw-mobile.mp4
 ```
 
-当前没有视频素材时，自动使用 7 张隐藏属性缩略图组成的 CSS 静态卡池 fallback。
+视频职责：
 
-后续只要把对应 mp4 放入上述路径并重新构建部署，Day7 会自动启用视频层；不需要额外修改配置。
+- `phase=pool`：播放 `day7-idle-*`，循环播放，只表现卡池待机
+- `phase=drawing`：播放 `day7-draw-*`，只播放一次，只表现选中 / 抽出 / reveal
+- `phase=front`：展示正式 SSR 正面卡图，最终结果不依赖视频画面
+- `phase=back`：展示正式背面卡图
+- `phase=collected`：展示完成态和轻反馈
+
+如果 `day7-draw-*` 视频不存在或加载失败：
+
+- 使用现有 CSS fallback 抽卡动画
+- 不白屏
+- 仍由 Day7 状态机进入 `front`
 
 如果视频加载失败：
 
 - 标记视频不可用
-- 回退到静态卡池 / CSS 抽卡动画
+- 回退到静态卡池或 CSS 抽卡动画
 - 不影响用户继续完成抽卡和领取
 
 如果用户开启 `prefers-reduced-motion`：
@@ -256,6 +346,8 @@ src/assets/reward/day7/day7-draw-mobile.mp4
 - 不自动播放视频
 - 使用静态 fallback
 - 仍保留完整交互流程
+
+视频只能通过 `onEnded` / `onError` 通知状态机事件。视频不得直接决定 `phase`、领取状态、收藏状态或奖励结果。
 
 ## 11. 轻反馈组件
 

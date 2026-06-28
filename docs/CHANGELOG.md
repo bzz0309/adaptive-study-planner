@@ -1,5 +1,21 @@
 # 变更记录
 
+## 2026-06-28
+
+### Reward Engine 架构冻结
+
+- 将 Reward Engine 架构冻结为五层结构：
+  - `StudyProgress Layer`
+  - `Reward Engine Core`
+  - `Reward Scene Layer`
+  - `Feedback Layer`
+  - `UI State Machine Layer`
+- 明确 `Reward Engine Core` 是唯一奖励决策中心
+- 明确 UI 只负责展示 state，不自行计算 reward
+- 明确视频只负责表现，只能通过事件通知状态机
+- 明确 Day7 只允许 `pool / drawing / front / back / collected` 五个状态
+- 禁止 Day 组件独立实现 reward logic、禁止多套 state system 并存
+
 ## 2026-06-25
 
 ### 轻反馈组件版本
