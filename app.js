@@ -368,6 +368,12 @@ const placeParticleQuestions = [
   { stem: "아침마다 공원___ 운동해요.", options: ["에", "에서", "의", "도"], answer: 1, explanation: "운동하다 是在公园发生的动作，动作场所用 에서。" }
 ];
 
+const examLabelMap = {
+  TOPIK: "TOPIK",
+  IELTS: "IELTS",
+  OTHER: "自定义学习"
+};
+
 let activeTaskId = null;
 let activePractice = particleQuestions.slice(0, 5);
 let questionIndex = 0;
@@ -733,15 +739,23 @@ function openTask(id) {
   activeTaskId = id;
   const task = tasks.find(item => item.id === id);
   const meta = categoryMeta[task.category];
+  const total = Number(task.checkin?.total || 0);
+  const correct = Number(task.checkin?.correct || 0);
+  const rate = total ? Math.round(correct / total * 100) : null;
+  const hasLearningRecord = total > 0;
   $("#taskModalCategory").textContent = meta.label;
   $("#taskModalCategory").className = `modal-category legend-${meta.className === "vocab" ? "vocab" : meta.className}`;
   $("#taskModalTitle").textContent = task.title;
   $("#taskModalMeta").textContent = `${days.find(day => day.key === task.day).name} · ${task.start}–${task.end} · ${minutesBetween(task.start, task.end)}分钟`;
   $("#taskStandards").innerHTML = task.standards.map(item => `<li>${item}</li>`).join("");
-  $("#taskStatus").value = task.status;
-  $("#correctCount").value = task.checkin?.correct ?? "";
-  $("#totalCount").value = task.checkin?.total ?? "";
-  $("#taskNote").value = task.checkin?.note || "";
+  $("#taskAutoRecord").innerHTML = total
+    ? `<span>系统已记录</span><strong>${correct} / ${total} 题正确 · ${rate}%</strong><p>${task.checkin?.source || "系统练习自动统计"} · ${task.checkin?.updatedAt ? new Date(task.checkin.updatedAt).toLocaleString("zh-CN", { hour12: false }) : "刚刚"}</p>`
+    : `<span>等待学习行为</span><strong>开始系统练习后，会自动统计正确率、错题和用时。</strong>`;
+  $("#reflectionField").classList.toggle("is-disabled", !hasLearningRecord);
+  $("#taskNote").disabled = !hasLearningRecord;
+  $("#taskNote").value = hasLearningRecord ? (task.checkin?.reflection || "") : "";
+  $("#saveReflection").disabled = !hasLearningRecord;
+  $("#saveReflection").textContent = hasLearningRecord ? "保存反思" : "完成学习后可写反思";
   openModal("taskModal");
 }
 
@@ -755,6 +769,73 @@ function defaultTomorrowFocus() {
   if (settings.exam === "IELTS") return "先做一组 Listening 精听，再完成一组 Reading 同义替换题。";
   if (settings.exam === "OTHER") return "先完成一个核心知识模块，再用练习题检验理解。";
   return "先解决「否定表达漏听」：复听 5 题，再做 5 道变式题。";
+}
+
+function readStudySettings() {
+  return JSON.parse(localStorage.getItem("topikPrototypeSettings") || "null") || {
+    exam: "TOPIK",
+    level: "I",
+    targetGrade: "2",
+    weak: ["语法"],
+    studyContent: ""
+  };
+}
+
+function getExamPracticeLabel(settings) {
+  if (settings.exam === "TOPIK") return `TOPIK ${settings.level || "I"} · 目标${settings.targetGrade || (settings.level === "II" ? "4" : "2")}级`;
+  if (settings.exam === "IELTS") return `IELTS ${settings.level === "II" ? "General Training" : "Academic"}`;
+  return settings.customExamName || settings.studyContent || examLabelMap[settings.exam] || "当前学习目标";
+}
+
+function fallbackPracticeQuestions(errorId) {
+  if (errorId === "imported-1") return placeParticleQuestions;
+  if (errorId === "e1") return particleQuestions.slice(0, 5);
+  return particleQuestions.slice(5, 10);
+}
+
+function normalizePracticeQuestions(items) {
+  return (items || []).map((item, index) => {
+    const options = Array.isArray(item.options) ? item.options.map(String).slice(0, 4) : [];
+    const answer = Number(item.answer);
+    return {
+      stem: String(item.stem || item.question || "").trim(),
+      options,
+      answer: Number.isInteger(answer) ? answer : 0,
+      explanation: String(item.explanation || item.reason || "系统会根据答案依据继续调整后续练习。").trim(),
+      source: item.source ? String(item.source).slice(0, 120) : ""
+    };
+  }).filter(item => item.stem && item.options.length >= 2 && item.answer >= 0 && item.answer < item.options.length).slice(0, 8);
+}
+
+function getPracticeContext(errorId, linkedTaskId) {
+  const settings = readStudySettings();
+  const task = linkedTaskId ? tasks.find(item => item.id === linkedTaskId) : null;
+  const examLabel = getExamPracticeLabel(settings);
+  const category = task?.category || (errorId === "imported-1" ? "review" : "vocab");
+  const title = task?.title || (errorId === "imported-1" ? "导入错题诊断" : "错题变式复习");
+  return { settings, task, examLabel, category, title };
+}
+
+async function loadExamDrivenPractice(errorId, linkedTaskId) {
+  const context = getPracticeContext(errorId, linkedTaskId);
+  if (location.protocol === "file:") return [];
+  const result = await callStudyAssistant("practice", {
+    ...context.settings,
+    practiceRequest: {
+      exam: context.settings.exam,
+      level: context.settings.level,
+      targetGrade: context.settings.targetGrade,
+      category: context.category,
+      taskTitle: context.title,
+      taskNote: context.task?.note || "",
+      standards: context.task?.standards || [],
+      weak: context.settings.weak || [],
+      studyContent: context.settings.studyContent || "",
+      requestedQuestionCount: 5,
+      sourcePolicy: "优先参考官方公开样题、公开真题题型和用户资料；生成同型练习题，不直接复刻受版权限制的整套真题。"
+    }
+  });
+  return normalizePracticeQuestions(result?.questions || result?.practice?.questions);
 }
 
 function beijingDateKey(date = new Date()) {
@@ -852,7 +933,7 @@ function scheduleDailyReminder() {
 }
 
 const rewardCatalog = {
-  "first-checkin": { badge: "IN", visual: "taegg-lamp", title: "给今天也在学习的你", text: "第一条记录已经留下，先陪你开始。", note: "DAY 1 · 首日点亮 ✦" },
+  "first-checkin": { badge: "DAY 1", visual: "taegg-lamp", title: "第一盏应援灯亮了", text: "给今天也在坚持学习的你亮一下", note: "今天的灯亮起来了。第一条记录已经留下，先陪你开始。" },
   "checkin-7": { badge: "7", visual: "support-card", title: "一周安可", text: "你已经留下 7 天记录了。这周不一定每天都顺，但你还是把学习接住了。", note: "收下一张「本周没有断掉」应援小卡。" },
   "checkin-14": { badge: "14", visual: "lyric-card", title: "慢慢有节奏", text: "这两周不是突然变厉害，是一点点把节奏找回来了。", note: "这一段节奏，先替你收好。" },
   "checkin-30": { badge: "30", visual: "ticket", title: "一个月巡演站", text: "你已经陪自己走过一个月。回头看，这些记录都是你一点点做过来的痕迹。", note: "收下一张「一个月站」纪念票根。" },
@@ -1045,52 +1126,67 @@ function recordSolvedErrorReward(rate) {
   unlockRewards(["first-error-solved", ...(rate === 100 ? ["perfect-practice"] : [])]);
 }
 
-async function saveCheckin() {
+async function saveReflection() {
   const task = tasks.find(item => item.id === activeTaskId);
-  task.status = $("#taskStatus").value;
-  const correct = Number($("#correctCount").value);
-  const total = Number($("#totalCount").value);
+  if (!task?.checkin?.total) {
+    showToast("先完成系统练习，再写反思");
+    return;
+  }
   const note = $("#taskNote").value.trim();
   task.checkin = {
-    correct: total ? correct : null,
-    total: total || null,
-    note,
-    source: task.checkin?.source || "手动打卡",
+    ...(task.checkin || {}),
+    reflection: note,
+    note: task.checkin?.note || "",
+    source: task.checkin?.source || "用户反思",
     updatedAt: new Date().toISOString()
   };
   localStorage.setItem("topikPrototypeTasks", JSON.stringify(tasks));
   renderCalendar();
   closeModal("taskModal");
-  if (total && correct / total < .8) {
-    updateTomorrowFocus(`重做「${task.title}」中的错题，先说出判断依据，再完成5道同类变式题。`);
-    showToast(`已记录：正确率${Math.round(correct / total * 100)}%，错题已加入复习队列`);
-  } else if (note) {
+  if (note) {
     updateTomorrowFocus(`复习「${task.title}」：重点处理“${note.slice(0, 30)}”。`);
-    showToast("打卡已保存，明日重点会根据反馈调整");
+    showToast("反思已保存，明日重点会参考这条记录");
   } else {
-    updateTomorrowFocus(defaultTomorrowFocus());
-    showToast("打卡已保存");
+    showToast("没有补充内容，学习完成会由系统练习自动记录");
   }
-  if (task.status !== "planned" || note || total) recordCheckinReward(task);
   renderReminderUI();
   await saveCloudState(false);
 }
 
-function startPractice(errorId = "e1", linkedTaskId = null, isSample = false) {
+async function startPractice(errorId = "e1", linkedTaskId = null, isSample = false) {
   resetPracticeControls();
   practiceTaskId = linkedTaskId;
   practiceErrorId = linkedTaskId ? null : errorId;
   practiceIsSample = isSample;
   practiceWrongNotes = [];
-  activePractice = errorId === "imported-1" ? placeParticleQuestions : (errorId === "e1" ? particleQuestions.slice(0, 5) : particleQuestions.slice(5, 10));
+  const context = getPracticeContext(errorId, linkedTaskId);
+  activePractice = fallbackPracticeQuestions(errorId);
   questionIndex = 0;
   selectedAnswer = null;
   questionGraded = false;
   practiceCorrect = 0;
-  $("#practiceEyebrow").textContent = errorId === "imported-1" ? "导入错题诊断 · 5题" : (errorId === "e1" ? "AI生成练习题 · 第1组 / 共3组" : "到期复习 · 5道变式题");
-  $("#practiceTitle").textContent = errorId === "imported-1" ? "场所助词 에 / 에서" : (errorId === "e1" ? "助词强化练习" : "错题变式复习");
-  renderQuestion();
+  $("#practiceEyebrow").textContent = errorId === "imported-1" ? "导入错题诊断 · 5题" : `${context.examLabel} · 系统出题`;
+  $("#practiceTitle").textContent = context.title;
+  $("#questionProgress").textContent = "生成中";
+  $("#questionArea").innerHTML = `<div class="standard-box"><p class="section-kicker">正在按考试与计划出题</p><h2>${context.examLabel}</h2><p>系统会优先参考当前考试类型、目标等级、任务目标和公开样题/真题题型，生成本组练习。</p></div>`;
+  $("#practiceFeedback").className = "practice-feedback hidden";
+  $("#prevQuestion").disabled = true;
+  $("#nextQuestion").disabled = true;
   openModal("practiceModal");
+  try {
+    const generated = await loadExamDrivenPractice(errorId, linkedTaskId);
+    if (generated.length) activePractice = generated;
+    else if (linkedTaskId) showToast("暂未生成新题，已使用本地兜底练习");
+  } catch {
+    if (linkedTaskId) showToast("在线出题暂不可用，已使用本地兜底练习");
+  }
+  questionIndex = 0;
+  selectedAnswer = null;
+  questionGraded = false;
+  practiceCorrect = 0;
+  practiceWrongNotes = [];
+  $("#nextQuestion").disabled = false;
+  renderQuestion();
 }
 
 function renderQuestion() {
@@ -1134,7 +1230,7 @@ function advanceQuestion() {
     renderQuestion();
   } else {
     const rate = Math.round(practiceCorrect / activePractice.length * 100);
-    $("#questionArea").innerHTML = `<div class="standard-box"><p class="section-kicker">本组完成 · 将自动写入打卡</p><h2>${practiceCorrect} / ${activePractice.length} 题正确</h2><p>薄弱点：${practiceWrongNotes.length ? practiceWrongNotes[0].explanation : "本组暂未发现明显薄弱点"}。<br><strong>下一步：${rate >= 80 ? "进入第二组语境变式题" : "先看一条短规则，再做5道基础题"}</strong></p></div>`;
+    $("#questionArea").innerHTML = `<div class="standard-box"><p class="section-kicker">本组完成 · 系统自动记录</p><h2>${practiceCorrect} / ${activePractice.length} 题正确</h2><p>薄弱点：${practiceWrongNotes.length ? practiceWrongNotes[0].explanation : "本组暂未发现明显薄弱点"}。<br><strong>下一步：${rate >= 80 ? "进入第二组语境变式题" : "先看一条短规则，再做5道基础题"}</strong></p></div>`;
     $("#practiceFeedback").className = "practice-feedback hidden";
     $("#prevQuestion").style.display = "none";
     $("#nextQuestion").textContent = "完成本组";
@@ -1153,7 +1249,7 @@ function completePracticeSession() {
         ? `AI自动记录：错${wrongCount}题；${practiceWrongNotes.slice(0, 2).map(item => item.explanation).join("；")}`
         : "AI自动记录：本组全部正确，建议按计划进行延迟复习。";
       task.status = "completed";
-      task.checkin = { correct: practiceCorrect, total, note: autoNote, source: "网页内练习自动记录", updatedAt: new Date().toISOString() };
+      task.checkin = { correct: practiceCorrect, total, note: autoNote, reflection: task.checkin?.reflection || "", source: "系统练习自动统计", updatedAt: new Date().toISOString() };
       localStorage.setItem("topikPrototypeTasks", JSON.stringify(tasks));
       renderCalendar();
       updateTomorrowFocus(rate >= 80
@@ -1174,7 +1270,7 @@ function completePracticeSession() {
     scheduleCloudSave();
   }
   closeModal("practiceModal");
-  showToast(practiceIsSample ? "示例练习已完成，不会写入你的错题集" : (practiceTaskId ? "练习结果已自动写入学习打卡" : "练习结果已更新到错题集"));
+  showToast(practiceIsSample ? "示例练习已完成，不会写入你的错题集" : (practiceTaskId ? "学习行为已自动记录" : "练习结果已更新到错题集"));
   practiceTaskId = null;
   practiceErrorId = null;
   practiceIsSample = false;
@@ -1414,7 +1510,7 @@ function initializeEvents() {
     applyErrorFilter(filter);
     $("#errorList").scrollIntoView({ behavior: "smooth", block: "start" });
   }));
-  $("#saveCheckin").addEventListener("click", saveCheckin);
+  $("#saveReflection").addEventListener("click", saveReflection);
   $("#openPractice").addEventListener("click", () => { const linkedTaskId = activeTaskId; closeModal("taskModal"); startPractice("e1", linkedTaskId); });
   $("#startDueReview").addEventListener("click", () => {
     const dueItem = errorItems.find(item => item.due && !item.mastered);

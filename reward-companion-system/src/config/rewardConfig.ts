@@ -1,3 +1,5 @@
+import { getRewardEmotion, type RewardEmotion, type StreakLevel } from "../rewards/rewardTypes";
+
 export type RewardDay = 1 | 7 | 14 | 30 | 50 | 100 | 365;
 
 export type RewardSceneType =
@@ -28,17 +30,58 @@ export type RewardVisual = {
   card: string;
 };
 
+export type GrowthStageSemantic = {
+  streakLevel: StreakLevel;
+  emotion: RewardEmotion;
+  stageName: string;
+  meaning: string;
+  cheerBoxLabel: string;
+  cheerBoxLine: string;
+  cheerBoxDetail: string;
+  cheerBoxTone: "start" | "climax" | "stable" | "identity" | "reinforcement" | "memory";
+};
+
+export type CheerBoxNodeStatus = "unlocked" | "current" | "locked";
+
+export type CheerBoxNode = {
+  day: RewardDay;
+  status: CheerBoxNodeStatus;
+};
+
 export type RewardConfigItem = {
   day: RewardDay;
   sceneType: RewardSceneType;
+  growth: GrowthStageSemantic;
   copy: RewardCopy;
   visual: RewardVisual;
 };
+
+export const streakLevelSceneMap = {
+  start: "Day1Scene",
+  stable: "Day7Card",
+  rhythm: "Day14Player",
+  identity_forming: "Day30Ticket",
+  memory_anchor: "Day100Poster",
+} as const satisfies Record<StreakLevel, RewardSceneType>;
+
+export function getRewardScene(streakLevel: StreakLevel): RewardSceneType {
+  return streakLevelSceneMap[streakLevel];
+}
 
 export const rewardConfig: Record<RewardDay, RewardConfigItem> = {
   1: {
     day: 1,
     sceneType: "Day1Scene",
+    growth: {
+      streakLevel: "start",
+      emotion: getRewardEmotion("start"),
+      stageName: "启动",
+      meaning: "第一条学习记录被系统看见。",
+      cheerBoxLabel: "Day1",
+      cheerBoxLine: "一切从这里开始",
+      cheerBoxDetail: "第一条记录被看见",
+      cheerBoxTone: "start",
+    },
     copy: {
       eyebrow: "FIRST CHEER LIGHT",
       title: "第一盏应援灯亮了",
@@ -60,6 +103,16 @@ export const rewardConfig: Record<RewardDay, RewardConfigItem> = {
   7: {
     day: 7,
     sceneType: "Day7Card",
+    growth: {
+      streakLevel: "stable",
+      emotion: getRewardEmotion("stable"),
+      stageName: "觉醒",
+      meaning: "连续七天开始形成可回看的成长记录。",
+      cheerBoxLabel: "Day7",
+      cheerBoxLine: "节奏开始形成",
+      cheerBoxDetail: "第一次仪式",
+      cheerBoxTone: "climax",
+    },
     copy: {
       eyebrow: "ENCORE CARD",
       title: "一周安可",
@@ -77,6 +130,16 @@ export const rewardConfig: Record<RewardDay, RewardConfigItem> = {
   14: {
     day: 14,
     sceneType: "Day14Player",
+    growth: {
+      streakLevel: "rhythm",
+      emotion: getRewardEmotion("rhythm"),
+      stageName: "稳定阶段",
+      meaning: "学习进入稳定阶段，节奏正在持续。",
+      cheerBoxLabel: "Day14",
+      cheerBoxLine: "学习步入稳定",
+      cheerBoxDetail: "节奏正在持续",
+      cheerBoxTone: "stable",
+    },
     copy: {
       eyebrow: "TWO WEEK PLAYER",
       title: "双周歌单",
@@ -94,6 +157,16 @@ export const rewardConfig: Record<RewardDay, RewardConfigItem> = {
   30: {
     day: 30,
     sceneType: "Day30Ticket",
+    growth: {
+      streakLevel: "identity_forming",
+      emotion: getRewardEmotion("identity_forming"),
+      stageName: "习惯形成",
+      meaning: "你已经形成习惯，节奏开始稳定存在。",
+      cheerBoxLabel: "Day30",
+      cheerBoxLine: "成为你的习惯",
+      cheerBoxDetail: "节奏开始稳定存在",
+      cheerBoxTone: "identity",
+    },
     copy: {
       eyebrow: "TOUR TICKET",
       title: "一个月巡演站",
@@ -111,6 +184,16 @@ export const rewardConfig: Record<RewardDay, RewardConfigItem> = {
   50: {
     day: 50,
     sceneType: "Day50CheerFlag",
+    growth: {
+      streakLevel: "identity_forming",
+      emotion: getRewardEmotion("identity_forming"),
+      stageName: "稳定确认",
+      meaning: "你一直在持续，节奏还在这里。",
+      cheerBoxLabel: "Day50",
+      cheerBoxLine: "你一直在持续",
+      cheerBoxDetail: "稳定确认点",
+      cheerBoxTone: "reinforcement",
+    },
     copy: {
       eyebrow: "CHEER FLAG",
       title: "应援旗",
@@ -128,6 +211,16 @@ export const rewardConfig: Record<RewardDay, RewardConfigItem> = {
   100: {
     day: 100,
     sceneType: "Day100Poster",
+    growth: {
+      streakLevel: "memory_anchor",
+      emotion: getRewardEmotion("memory_anchor"),
+      stageName: "生活融合",
+      meaning: "它已经成为你的日常，安静地留在生活里。",
+      cheerBoxLabel: "Day100",
+      cheerBoxLine: "它已经成为你的日常",
+      cheerBoxDetail: "长期沉淀",
+      cheerBoxTone: "memory",
+    },
     copy: {
       eyebrow: "MEMORIAL POSTER",
       title: "纪念海报",
@@ -145,6 +238,16 @@ export const rewardConfig: Record<RewardDay, RewardConfigItem> = {
   365: {
     day: 365,
     sceneType: "Day365Ocean",
+    growth: {
+      streakLevel: "memory_anchor",
+      emotion: getRewardEmotion("memory_anchor"),
+      stageName: "年度记忆",
+      meaning: "一整年的学习轨迹汇成长期记忆。",
+      cheerBoxLabel: "Day365：年度灯海",
+      cheerBoxLine: "走进一整年的灯海",
+      cheerBoxDetail: "年度记忆",
+      cheerBoxTone: "memory",
+    },
     copy: {
       eyebrow: "PURPLE OCEAN",
       title: "紫色灯海",
@@ -162,7 +265,49 @@ export const rewardConfig: Record<RewardDay, RewardConfigItem> = {
 };
 
 export const rewardDays = Object.keys(rewardConfig).map(Number) as RewardDay[];
+export const cheerBoxDays = [1, 7, 14, 30, 50, 100] as const satisfies readonly RewardDay[];
 
 export function getRewardByDay(day: RewardDay) {
   return rewardConfig[day];
+}
+
+function normalizeStreakDays(streakDays: number) {
+  if (!Number.isFinite(streakDays)) {
+    return 0;
+  }
+
+  return Math.max(0, Math.trunc(streakDays));
+}
+
+export function getCurrentCheerBoxDay(streakDays: number): RewardDay {
+  const normalizedStreakDays = normalizeStreakDays(streakDays);
+  const unlockedDays = cheerBoxDays.filter((day) => normalizedStreakDays >= day);
+
+  if (unlockedDays.length > 0) {
+    return unlockedDays[unlockedDays.length - 1];
+  }
+
+  return 1;
+}
+
+export function getCheerBoxNodeStatus(day: RewardDay, streakDays: number): CheerBoxNodeStatus {
+  const normalizedStreakDays = normalizeStreakDays(streakDays);
+  const currentDay = getCurrentCheerBoxDay(normalizedStreakDays);
+
+  if (day === currentDay) {
+    return "current";
+  }
+
+  if (normalizedStreakDays >= day) {
+    return "unlocked";
+  }
+
+  return "locked";
+}
+
+export function getCheerBoxNodes(streakDays: number): CheerBoxNode[] {
+  return cheerBoxDays.map((day) => ({
+    day,
+    status: getCheerBoxNodeStatus(day, streakDays),
+  }));
 }

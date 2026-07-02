@@ -96,7 +96,7 @@ function Day7VideoLayer({
           loop
           muted
           playsInline
-          preload="auto"
+          preload="metadata"
           onError={onIdleError}
         >
           {day7IdleVideoSources.mobile ? (
@@ -164,7 +164,13 @@ export function Day7Card({ onCollect, onClose, onComplete }: Day7CardProps) {
 
   function finishDrawing() {
     clearTimers();
-    setPhase((currentPhase) => (currentPhase === "drawing" ? "front" : currentPhase));
+    const frontTimer = window.setTimeout(
+      () => {
+        setPhase((currentPhase) => (currentPhase === "drawing" ? "front" : currentPhase));
+      },
+      shouldReduceMotion ? 0 : 260,
+    );
+    timersRef.current.push(frontTimer);
   }
 
   function handleDraw() {
@@ -209,6 +215,10 @@ export function Day7Card({ onCollect, onClose, onComplete }: Day7CardProps) {
     setPhase("pool");
   }
 
+  function handleReviewGrowth() {
+    onComplete?.();
+  }
+
   function handleIdleVideoError() {
     setIdleVideoFailed(true);
   }
@@ -241,12 +251,12 @@ export function Day7Card({ onCollect, onClose, onComplete }: Day7CardProps) {
           transition={{ duration: shouldReduceMotion ? 0.12 : 0.54, ease: [0.22, 1, 0.36, 1] }}
         >
           <span>DAY 7</span>
-          <h1>抽取本周应援卡</h1>
+          <h1>本周应援卡</h1>
           <p>第七天，抽一张属于这一周的卡</p>
         </motion.header>
 
         <div className="day7-stage">
-          <AnimatePresence mode="wait">
+          <AnimatePresence>
             {phase === "collected" ? (
               <motion.div
                 className="day7-collected-state"
@@ -265,8 +275,8 @@ export function Day7Card({ onCollect, onClose, onComplete }: Day7CardProps) {
                 key="day7-pack"
                 initial={{ opacity: 0, y: 34, scale: 0.94 }}
                 animate={{ opacity: canUseActiveVideo ? 0 : 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -18, scale: 0.96 }}
-                transition={{ duration: shouldReduceMotion ? 0.12 : 0.56, ease: [0.22, 1, 0.36, 1] }}
+                exit={{ opacity: 0, y: -10, scale: 0.98 }}
+                transition={{ duration: shouldReduceMotion ? 0.12 : 0.28, ease: [0.22, 1, 0.36, 1] }}
               >
                 {poolCards.map((card) => (
                   <div className={`day7-pack-card ${card.className}`} aria-hidden="true" key={card.className}>
@@ -295,7 +305,7 @@ export function Day7Card({ onCollect, onClose, onComplete }: Day7CardProps) {
               <motion.div
                 className={`day7-card-shell ${phase === "back" ? "is-back" : ""}`}
                 key="day7-card"
-                initial={{ opacity: 0, y: 48, scale: 0.88, rotateY: shouldReduceMotion ? 0 : 180 }}
+                initial={{ opacity: 0, y: 24, scale: 0.96, rotateY: shouldReduceMotion ? 0 : 12 }}
                 animate={{
                   opacity: 1,
                   x: 0,
@@ -304,7 +314,7 @@ export function Day7Card({ onCollect, onClose, onComplete }: Day7CardProps) {
                   rotate: 0,
                   rotateY: 0,
                 }}
-                transition={{ duration: shouldReduceMotion ? 0.12 : 0.78, ease: [0.16, 1, 0.3, 1] }}
+                transition={{ duration: shouldReduceMotion ? 0.12 : 0.34, ease: [0.16, 1, 0.3, 1] }}
               >
                 <span className="day7-card-glow" aria-hidden="true" />
                 <span className="day7-card-inner">
@@ -334,13 +344,20 @@ export function Day7Card({ onCollect, onClose, onComplete }: Day7CardProps) {
               抽一张
             </button>
           ) : phase === "drawing" ? (
-            <div className="day7-drawing-label">正在抽取</div>
+            <button type="button" disabled>
+              抽一张
+            </button>
           ) : phase === "collected" ? (
             <div className="day7-end-actions">
               <HighlightFeedback autoDismissMs={3600000} onClose={() => undefined} />
-              <button type="button" onClick={handleReplay}>
-                重新抽一次
+              <button type="button" onClick={handleReviewGrowth}>
+                查看成长回顾
               </button>
+              {import.meta.env.DEV ? (
+                <button type="button" className="day7-secondary" onClick={handleReplay}>
+                  重新预览
+                </button>
+              ) : null}
             </div>
           ) : phase === "front" ? (
             <>

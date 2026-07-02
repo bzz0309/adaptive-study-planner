@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#f6f5ef" />
   <title>TOPIK 学习计划</title>
-  <link rel="stylesheet" href="styles.css?v=20260623-reward-card-copy" />
+  <link rel="stylesheet" href="styles.css?v=20260702-behavior-flow" />
 </head>
 <body>
   <div class="app-shell">
@@ -165,24 +165,16 @@
         <ul id="taskStandards"></ul>
       </div>
       <div class="checkin-form">
-        <h3>学习打卡</h3>
-        <label>完成情况
-          <select id="taskStatus">
-            <option value="planned">未开始</option>
-            <option value="progress">进行中</option>
-            <option value="completed">已完成</option>
-            <option value="rescheduled">改期</option>
-          </select>
-        </label>
-        <div class="form-split">
-          <label>正确题数<input id="correctCount" type="number" min="0" placeholder="12" /></label>
-          <label>总题数<input id="totalCount" type="number" min="1" placeholder="15" /></label>
+        <h3>学习记录</h3>
+        <div class="auto-record-box" id="taskAutoRecord">
+          <span>等待学习行为</span>
+          <strong>开始系统练习后，会自动统计正确率、错题和用时。</strong>
         </div>
-        <label>哪里最难？<textarea id="taskNote" rows="2" placeholder="例如：否定词没听到"></textarea></label>
+        <label id="reflectionField">完成后反思<textarea id="taskNote" rows="2" placeholder="完成答题后，可以补一句哪里卡住了"></textarea></label>
       </div>
       <div class="modal-actions">
-        <button class="secondary-button" id="openPractice">开始练习</button>
-        <button class="primary-button" id="saveCheckin">保存打卡</button>
+        <button class="primary-button" id="openPractice">开始学习</button>
+        <button class="secondary-button" id="saveReflection" disabled>完成学习后可写反思</button>
       </div>
     </div>
   </div>
@@ -192,7 +184,7 @@
       <button class="modal-close" data-close="practiceModal">×</button>
       <div class="practice-head">
         <div>
-          <p class="section-kicker" id="practiceEyebrow">AI生成练习题 · 第1组 / 共3组</p>
+          <p class="section-kicker" id="practiceEyebrow">系统生成练习题 · 第1组 / 共3组</p>
           <h2 id="practiceTitle">助词强化练习</h2>
         </div>
         <span class="question-progress" id="questionProgress">1 / 5</span>
@@ -224,9 +216,9 @@
       <button class="modal-close" data-close="rewardModal">×</button>
       <div class="reward-visual" id="rewardVisual"><div class="reward-badge" id="rewardBadge">★</div></div>
       <div class="reward-copy-card">
-        <div class="reward-note" id="rewardNote">今天的应援灯为你亮一下。</div>
-        <h2 id="rewardTitle">今日入场券已盖章</h2>
-        <p id="rewardText">你已经开始了。今天不用完美，只要留下第一条记录，就已经在靠近目标。</p>
+        <div class="reward-note" id="rewardNote">今天的灯亮起来了。第一条记录已经留下，先陪你开始。</div>
+        <h2 id="rewardTitle">第一盏应援灯亮了</h2>
+        <p id="rewardText">给今天也在坚持学习的你亮一下</p>
         <div class="modal-actions"><button class="primary-button" data-close="rewardModal">收下</button></div>
       </div>
     </div>
@@ -363,6 +355,6 @@
   </div>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="app.js?v=20260623-reward-card-copy"></script>
+  <script src="app.js?v=20260702-behavior-flow"></script>
 </body>
 </html>

@@ -1,10 +1,10 @@
-import { useMemo, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { LightFeedbackQueue, type QueuedLightFeedback } from "./LightFeedback";
+import { MyCheerBox } from "./MyCheerBox";
 import { RewardScene } from "./RewardScene";
 import type { RewardDay } from "../config/rewardConfig";
 import {
   collectReward,
-  getCollectedRewards,
   getNextRewardDay,
   resetCollectedCards,
   resetCollectedRewards,
@@ -26,11 +26,9 @@ export function HomeDashboard() {
   const [checkedInToday, setCheckedInToday] = useState(() => isTodayCheckedIn());
   const [activeRewardDay, setActiveRewardDay] = useState<RewardDay | null>(null);
   const [feedbackItems, setFeedbackItems] = useState<QueuedLightFeedback[]>([]);
-  const [status, setStatus] = useState("完成今天学习后，会生成明日重点。");
-  const [version, setVersion] = useState(0);
+  const [showCheerBox, setShowCheerBox] = useState(false);
+  const [status, setStatus] = useState("选择今天的任务，完成后记录学习行为。");
   const didCollectActiveRewardRef = useRef(false);
-
-  const collectedRewards = useMemo(() => getCollectedRewards(), [version]);
 
   function enqueueHighlightFeedback() {
     setFeedbackItems((current) => [
@@ -64,7 +62,7 @@ export function HomeDashboard() {
     const nextRewardDay = getNextRewardDay(result.streakDays);
 
     if (nextRewardDay !== null) {
-      setStatus(`连续学习第 ${result.streakDays} 天，解锁 Day${nextRewardDay} 应援奖励。`);
+      setStatus(`连续学习第 ${result.streakDays} 天，学习反馈已准备好。`);
       openRewardScene(toRewardDay(nextRewardDay));
       return;
     }
@@ -80,13 +78,23 @@ export function HomeDashboard() {
 
     didCollectActiveRewardRef.current = true;
     collectReward(activeRewardDay);
-    setVersion((current) => current + 1);
-    setStatus(`Day${activeRewardDay} 奖励已收下。`);
+    setStatus(`Day${activeRewardDay} 学习反馈已收下。`);
   }
 
   function handleCloseReward() {
     setActiveRewardDay(null);
     didCollectActiveRewardRef.current = false;
+  }
+
+  function handleCompleteReward() {
+    const completedRewardDay = activeRewardDay;
+
+    setActiveRewardDay(null);
+    didCollectActiveRewardRef.current = false;
+
+    if (completedRewardDay === 7) {
+      setShowCheerBox(true);
+    }
   }
 
   function resetAllProgress() {
@@ -97,57 +105,47 @@ export function HomeDashboard() {
     setCheckedInToday(false);
     setActiveRewardDay(null);
     setFeedbackItems([]);
-    setVersion((current) => current + 1);
-    setStatus("本地学习进度和奖励领取记录已重置。");
+    setStatus("本地学习进度和反馈记录已重置。");
   }
 
   function simulateStreakDays(nextStreakDays: number) {
     const normalizedStreakDays = setStreakDaysForDevelopment(nextStreakDays);
     setStreakDays(normalizedStreakDays);
     setCheckedInToday(isTodayCheckedIn());
-    setStatus(`已准备到连续学习第 ${normalizedStreakDays} 天。点击完成今天学习可验证下一个奖励节点。`);
+    setStatus(`已准备到连续学习第 ${normalizedStreakDays} 天。点击完成今天学习可验证下一个反馈节点。`);
+  }
+
+  if (showCheerBox) {
+    return <MyCheerBox streakDays={streakDays} onContinue={() => setShowCheerBox(false)} />;
   }
 
   return (
     <main className="home-dashboard">
       <section className="home-shell" aria-label="学习陪伴首页">
         <header className="home-hero">
-          <span className="home-eyebrow">Purple Cheer Companion</span>
+          <span className="home-eyebrow">Study Planner</span>
           <div>
-            <p className="home-streak-label">当前连续学习天数</p>
-            <h1>连续学习第 {streakDays} 天</h1>
+            <p className="home-streak-label">今日学习闭环</p>
+            <h1>计划、执行、完成</h1>
           </div>
-          <p>{checkedInToday ? "今天已经留下记录了。" : "完成今天学习后，会为你判断是否点亮新的应援奖励。"}</p>
+          <p>{checkedInToday ? `今天已完成学习，连续学习第 ${streakDays} 天。` : `当前连续学习第 ${streakDays} 天，完成今天任务后会继续记录。`}</p>
         </header>
 
         <section className="home-grid">
           <article className="home-panel home-task-card">
-            <span>今日学习任务</span>
-            <h2>完成一组练习 / 复习错题 / 查看明日重点</h2>
-            <p>先把今天这一小段走完，系统会根据结果更新连续天数和奖励状态。</p>
+            <span>学习任务流</span>
+            <h2>开始 → 完成 → 记录</h2>
+            <p>{status}</p>
             <button type="button" onClick={completeTodayStudy}>
               完成今天学习
             </button>
           </article>
 
           <article className="home-panel">
-            <span>明日重点</span>
-            <p>明日重点将在你完成今天学习后生成。</p>
+            <span>今日状态</span>
+            <h2>{checkedInToday ? "今天已完成" : "等待完成记录"}</h2>
+            <p>Reward Engine 只在学习完成后提供情绪反馈；成长回顾会在关键节点后出现。</p>
           </article>
-
-          <article className="home-panel cheer-cabinet-card">
-            <span>收藏入口</span>
-            <h2>我的应援柜</h2>
-            <p>之后会在这里整理已收下的小卡、票根、海报和应援记录。</p>
-            <button type="button" aria-label="打开我的应援柜">
-              我的应援柜
-            </button>
-          </article>
-        </section>
-
-        <section className="home-status" aria-live="polite">
-          <strong>{status}</strong>
-          <span>已领取奖励：{collectedRewards.length > 0 ? collectedRewards.join("、") : "暂无"}</span>
         </section>
 
         {import.meta.env.DEV ? (
@@ -174,7 +172,7 @@ export function HomeDashboard() {
           rewardDay={activeRewardDay}
           onCollect={handleCollectReward}
           onClose={handleCloseReward}
-          onComplete={handleCloseReward}
+          onComplete={handleCompleteReward}
         />
       ) : null}
     </main>

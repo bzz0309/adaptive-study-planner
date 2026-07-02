@@ -1,6 +1,6 @@
 # 主站功能需求
 
-更新时间：2026-06-25
+更新时间：2026-07-02
 
 ## 1. 范围
 
@@ -88,25 +88,54 @@
 - IELTS：Listening、Reading、Writing、Speaking
 - 其他考试 / 项目：根据用户填写内容、上传资料和 AI 搜索结果生成模块化计划
 
-## 6. 每日打卡
+## 6. 学习行为记录
 
-用户完成当天学习后可以打卡。
+学习记录必须由系统从学习行为中生成，不要求用户手动填写完成状态、正确题数或总题数。
 
-打卡不是为了制造压力，而是用于记录：
+系统自动记录：
 
-- 今天完成了什么
-- 哪些内容卡住了
-- 哪些错题解决了
-- 明天应该优先看什么
+- startedAt / completedAt
+- 任务是否完成
+- 系统练习总题数
+- 系统判断的正确题数和正确率
+- 错题列表与错因
+- 学习用时
+
+用户只在完成学习答题后补充可选反思：
+
+- 今天哪里卡住了
+- 哪个知识点不确定
+- 是否希望明天继续练同类题
+- 一句话备注
+
+禁止把以下内容交给用户手填：
+
+- 是否完成
+- 正确题数
+- 总题数
+- 是否打卡
+
+学习完成逻辑：
+
+```text
+开始学习
+→ 系统出题 / 执行任务
+→ 用户作答或完成步骤
+→ 系统统计结果
+→ 自动写入学习记录
+→ 用户可选补充反思
+→ 更新今日状态与 streakDays
+→ 必要时触发 Reward 反馈层
+```
 
 ## 7. 明日重点
 
-系统根据当天打卡结果生成明日重点。
+系统根据当天学习行为记录生成明日重点。
 
 核心任务流：
 
 ```text
-每天根据打卡自动生成明日重点
+每天根据系统记录自动生成明日重点
 ```
 
 明日重点应综合：
@@ -116,6 +145,49 @@
 - 错题复习队列
 - 到期变式练习
 - 用户薄弱项
+
+### 7.1 系统出题机制
+
+开始学习后，系统出题必须来自任务上下文和错题上下文，而不是让用户手填结果。
+
+当前机制：
+
+- 计划生成时优先调用 `/api/study-assistant` 生成学习任务
+- 如果 AI 计划不可用，则使用本地模板 `generatePlanFromSettings(settings)` 生成任务
+- 进入练习时，系统先根据用户填写的考试类型、级别、目标等级、当前任务和薄弱项请求出题
+- 出题请求必须优先参考官方公开样题、公开真题题型和用户资料，生成同型练习题
+- 不直接复刻受版权限制的整套真题，不把来源不明题目作为官方题
+- `/api/study-assistant` 已支持 `practice` action；如果配置了 `OPENAI_API_KEY`，会尝试在线生成同型题；如果未配置或调用失败，则使用结构化兜底题
+- 支持 OpenAI-compatible 服务：
+  - `OPENAI_API_KEY`：服务端 API key，不得写入代码或提交到 GitHub
+  - `OPENAI_BASE_URL`：可选；配置后走 `/chat/completions` 兼容接口，例如第三方转发服务
+  - `OPENAI_MODEL`：可选；必须使用服务商后台提供的精确模型 ID
+- AI 生成题必须经过质量审查层：检查题干、4个选项、唯一答案、解析长度、题型来源和当前 UI 适配性
+- 未通过质检的题不得进入练习；题量不足时使用结构化兜底题补齐
+- 如果在线出题不可用，才使用本地题库数组作为兜底：
+  - `particleQuestions`：TOPIK 助词强化题
+  - `placeParticleQuestions`：导入错题后的场所助词诊断题
+- 系统根据用户选择自动判断答案、统计正确题数、总题数、正确率和错题解释
+
+目标机制：
+
+```text
+任务上下文 / 错题上下文
+→ 生成练习题
+→ 用户作答
+→ 系统判题
+→ 自动写入学习记录和错题系统
+```
+
+题目来源优先级：
+
+1. 用户填写的考试类型、级别和目标等级，例如 TOPIK II 目标4级
+2. 官方公开样题、公开真题题型和考试说明
+3. 用户导入的资料 / 错题
+4. 当前任务的学习目标和完成标准
+5. 错题系统中的到期复习队列
+6. 考试类型与薄弱项模板
+7. 本地兜底题库
 
 ## 8. 学习提醒
 
@@ -231,17 +303,68 @@
 - 云同步保存学习状态，不应在未说明的情况下长期保存原始本地文件
 - AI 搜索和资料核验需要展示来源，避免用户误以为所有内容都已被官方确认
 
-## 12. 主站如何触发奖励系统
+## 12. 最终产品主线与反馈层关系
 
-主站在用户完成学习行为后，判断是否触发奖励。
+主站是 Study Planner 的核心入口，负责学习任务流：
 
-连续学习里程碑使用全屏 RewardScene：
+```text
+plan → execute → complete → record
+```
+
+Reward Engine 只作为学习完成后的情绪反馈层，不承担主导航、学习计划或错题复习职责。
+
+最终产品架构冻结为：
+
+```text
+学习行为（主）
+→ 错题强化（学习能力增强）
+→ Reward 反馈（情绪反馈层）
+→ Cheer Box（成长回顾层）
+```
+
+用户唯一主路径：
+
+```text
+HomeDashboard
+→ 学习执行
+→ 错题系统（可选强化）
+→ Reward Engine（反馈）
+→ My Cheer Box（回顾）
+```
+
+连续学习里程碑仍由 Reward Engine Core 判断：
 
 ```ts
 const rewardDay = getNextRewardDay(streakDays)
 ```
 
-如果返回 Day1 / Day7 / Day14 / Day30 / Day50 / Day100，则打开 RewardScene。
+如果返回 Day1 / Day7 / Day14 / Day30 / Day50 / Day100，则打开反馈场景；如果没有关键节点，则只展示轻反馈或回到主站学习流。
+
+当前已进入产品基线 / 成长展示的连续节点：
+
+| 节点 | 触发 | v2 成长语义 | RewardScene 表现 |
+|---|---|---|---|
+| Day1 | `streakDays >= 1` | `start / calm / 被看见` | 第一盏应援灯亮起，用户收下首日成长标记 |
+| Day7 | `streakDays >= 7` | `stable / excitement / 被记录` | 卡池待机视频、抽卡视频、SSR 正反面小卡和完成态 |
+| Day14 | `streakDays >= 14` | `rhythm / stability / 稳定反馈` | 不新增 RewardScene 流程，仅在 My Cheer Box v2 表达稳定阶段 |
+| Day30 | `streakDays >= 30` | `identity_forming / pride / 习惯确认` | 不新增 RewardScene 流程，仅在 My Cheer Box v2 表达习惯形成 |
+
+主站只负责学习行为闭环和调用 Reward Engine Core 获取反馈节点，不直接写 Day 节点展示逻辑。具体视觉、状态机和素材规则由 `reward-companion-system` 负责。
+
+系统重心收口后的结构：
+
+```text
+Study Planner → Reward Engine feedback → My Cheer Box review
+```
+
+主站继续承担学习入口、任务完成、学习记录、错题复习和明日重点；Reward Engine 只在学习完成后作为情绪反馈出现。My Cheer Box v2 只作为成长回顾查看页，不作为主导航入口，不参与 reward logic。
+
+冻结规则：
+
+- `HomeDashboard` 不包含 reward / growth / video 逻辑
+- 错题系统不参与 reward logic
+- Reward Engine 不新增 reward 类型、DayX 逻辑、video flow 或 state machine
+- My Cheer Box 不参与 reward 计算，不升级为交互核心
 
 答题全对和错题解决不进入全屏 RewardScene，而是进入轻反馈队列：
 
@@ -266,15 +389,15 @@ const rewardDay = getNextRewardDay(streakDays)
 - 7 天打卡奖励
 - 14 天打卡奖励
 - 30 天打卡奖励
-- 首次错题解决奖励
+- 首次错题解决反馈
 - AI 视频形式的泰蛋亮灯素材
 - 小卡、歌词卡、票根等奖励探索
 
 这些是早期探索版本，视觉和架构上与新的 `reward-companion-system` 不完全一致。
 
-后续方向：
+冻结后的方向：
 
-- 主站继续负责学习流程、打卡和奖励触发判断
-- `reward-companion-system` 逐步成为统一奖励表现层
-- 旧的 modal 奖励原型应逐步迁移为全屏 RewardScene 或轻反馈
-- 奖励文案和奖励类型最终应统一由配置管理
+- 主站继续负责学习流程、打卡和反馈触发
+- `reward-companion-system` 只作为反馈表现层存在
+- 旧的 modal 奖励原型只允许迁移为轻反馈或现有 Day1 / Day7 反馈，不新增 reward flow
+- 反馈文案最终应统一由配置管理，禁止新增奖励类型

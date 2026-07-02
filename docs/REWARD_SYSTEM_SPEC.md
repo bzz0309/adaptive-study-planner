@@ -1,14 +1,53 @@
 # Reward Companion System 规格
 
-更新时间：2026-06-25  
+更新时间：2026-07-01
 线上预览：https://reward-companion-system.vercel.app  
 子项目路径：`reward-companion-system/`
 
-## 0. Reward Engine 架构冻结
+## 0. Product Architecture Freeze
+
+最终产品架构冻结为 Learning Behavior Driven Study System（学习行为驱动系统）。
+
+唯一允许的系统主线：
+
+```text
+HomeDashboard
+→ 学习执行
+→ 错题系统（可选强化）
+→ Reward Engine（反馈）
+→ My Cheer Box（回顾）
+```
+
+模块职责冻结：
+
+- `HomeDashboard` 是学习行为入口，只负责学习任务展示与开始学习，不承载 reward / growth / video 逻辑。
+- 错题系统是学习能力增强层，只负责错题记录、归因、复习和掌握状态，不参与 reward logic。
+- `Reward Engine` 是情绪反馈层，只负责学习完成后的 Day1 / Day7 / Day14-100 反馈，不作为核心产品。
+- `My Cheer Box` 是成长回顾层，只展示成长时间轴，不参与 reward 计算，不作为主入口。
+
+最终收敛目标：
+
+```text
+Home = 学习行为入口
+错题 = 学习强化
+Reward = 情绪反馈
+Cheer Box = 成长回顾
+```
+
+强约束：
+
+- 不允许 Reward Engine 扩展为主系统
+- 不允许 Cheer Box 升级为交互核心
+- 不允许新增 state machine
+- 不允许新增 reward flow
+- 不允许 video 控制系统逻辑
+- 不允许 UI 自行计算 reward
+
+## 0.1 Reward Engine 架构冻结
 
 本节为当前 Reward Engine 的冻结设计规范。后续开发不得再重构奖励系统的核心结构，只能在本分层下补全内容、优化表现或扩展具体奖励形态。
 
-### 0.1 五层结构
+### 0.1.1 五层结构
 
 Reward Companion System 必须严格遵守以下五层结构：
 
@@ -41,7 +80,7 @@ UI State Machine Layer
 → collected
 ```
 
-### 0.2 唯一职责
+### 0.1.2 唯一职责
 
 - `StudyProgress Layer` 只负责学习进度事实：连续天数、最近打卡日期、今日完成状态。
 - `Reward Engine Core` 是唯一奖励决策中心，只能由这里判断是否解锁 Day1 / Day7 / Day14 / Day30 / Day50 / Day100。
@@ -49,7 +88,7 @@ UI State Machine Layer
 - `Feedback Layer` 只负责展示轻反馈，不抢占全屏奖励。
 - `UI State Machine Layer` 只负责当前奖励内部交互状态，不重新计算奖励规则。
 
-### 0.3 禁止事项
+### 0.1.3 禁止事项
 
 后续开发不允许：
 
@@ -60,7 +99,7 @@ UI State Machine Layer
 - 多套 state system 并存
 - fallback UI 另起一套状态机
 
-### 0.4 唯一规则
+### 0.1.4 唯一规则
 
 ```text
 Reward Engine Core 是唯一决策中心
@@ -70,22 +109,333 @@ Video 只负责表现，不参与逻辑
 
 视频可以通过 `onEnded` / `onError` 发出事件，但不能直接决定领取、收藏、关闭、奖励解锁或最终卡面结果。
 
-### 0.5 允许扩展范围
+### 0.1.5 冻结后的允许范围
 
-可以继续做：
+Product Architecture Freeze 后，只允许做：
 
-- Day14 / Day30 / Day50 / Day100 内容补全
-- 收藏柜 `Collected Cards UI`
-- `HomeDashboard` 体验优化
-- 轻反馈动画优化
+- bug fix
+- 文案一致性修正
+- 视觉稳定性优化
+- 无逻辑扩展的轻反馈动效优化
+- 不改变主路径的体验收口
 
-以上扩展必须遵守本节冻结分层结构。
+禁止继续新增 DayX 逻辑、reward 类型、video flow、state machine 或 Cheer Box 主入口。
 
 ## 1. 定位
 
 奖励系统不是弹窗，不是普通「恭喜完成」提示，而是学习完成后的情绪回应。
 
 连续学习里程碑进入全屏紫色演唱会应援舞台；答题全对、错题解决等单点高光使用轻反馈，不打断学习流程。
+
+## 1.1 Reward Engine v2：Growth System 设计层
+
+v2 将 Reward Engine 从“奖励系统”升级为“学习成长系统”。
+
+v1 流程：
+
+```text
+学习 → 打卡 → 奖励 → 完成
+```
+
+v2 目标：
+
+```text
+学习 → 连续成长 → 情绪反馈 → 身份变化 → 长期沉淀
+```
+
+核心定义：
+
+```text
+Reward 不再只是奖励，而是成长标记。
+```
+
+本轮 v2 只作为扩展层存在，不替换 v1 的 `getNextRewardDay(streakDays)`，不重写 `RewardScene`，不修改 Day7 状态机，不强制替换视频系统。
+
+### 1.2 streakLevel
+
+`streakLevel` 是 `streakDays` 之上的成长分层。
+
+| streakDays | streakLevel | 语义 |
+|---|---|---|
+| 1 day | `start` | 被看见 |
+| 7 days | `stable` | 被记录 |
+| 14 days | `rhythm` | 形成节奏 |
+| 30 days | `identity_forming` | 成为习惯 |
+| 100 days | `memory_anchor` | 进入长期记忆 |
+
+新增核心函数：
+
+```ts
+getStreakLevel(streakDays)
+```
+
+### 1.3 rewardEmotion
+
+`rewardEmotion` 是成长阶段对应的情绪表达层。
+
+| streakLevel | rewardEmotion | 当前节点 |
+|---|---|---|
+| `start` | `calm` | Day1 |
+| `stable` | `excitement` | Day7 |
+| `rhythm` | `stability` | Day14 |
+| `identity_forming` | `pride` | Day30 |
+| `memory_anchor` | `memory` | Day100 |
+
+新增核心函数：
+
+```ts
+getRewardEmotion(streakLevel)
+getRewardScene(streakLevel)
+```
+
+### 1.4 成长阶段语义
+
+Day 节点语义从“奖励”升级为“成长阶段”：
+
+| Day | v2 语义 | My Cheer Box v2 语义 |
+|---|---|---|
+| Day1 | 被看见 | 第一条记录 |
+| Day7 | 被记录 | 第一次被记录 |
+| Day14 | 形成节奏 | 节奏形成 |
+| Day30 | 成为习惯 | 习惯稳定 |
+| Day100 | 进入长期记忆 | 长期沉淀 |
+
+`rewardConfig` 可以携带 `growth` 字段，用于渐进式支持 My Cheer Box v2、成长轨迹、身份阶段文案和长期沉淀视图。
+
+### 1.5 Emotion Layer 设计层
+
+Video Layer 在 v2 中升级为 Emotion Layer 的设计概念：
+
+```text
+idle → calm
+draw → excitement
+reveal → pride
+```
+
+注意：本轮只定义设计语义，不强制实现新的 video 系统。视频仍然只能表现情绪，不参与业务逻辑，不控制 state。
+
+### 1.6 v2 兼容原则
+
+- v1 所有功能继续可用
+- `getNextRewardDay(streakDays)` 保留兼容
+- `RewardScene` 结构保留
+- Day7 仍只允许 `pool / drawing / front / back / collected`
+- Day7 不新增独立 reward logic
+- 不修改 PWA、build、deploy 流程
+- v2 概念只能作为扩展层渐进接入
+
+## 1.7 Reward Engine v2.1：成长模型定义层
+
+v2.1 不是功能实现，不替代 v1 runtime，也不要求重构代码。v2.1 是 Reward Engine 的成长模型定义层，用于统一指导 Day1 ~ Day100 的语义、情绪系统、视频系统和 UI 展示逻辑。
+
+### 1.7.1 成长曲线
+
+| Day | 成长阶段 | 语义 |
+|---|---|---|
+| Day1 | 启动 | 被记录 |
+| Day7 | 觉醒 | 第一次仪式 |
+| Day14 | 稳定 | 节奏形成 |
+| Day30 | 身份 | 学习者 |
+| Day50 | 强化 | 留存锚点 |
+| Day100 | 长期记忆 | 人格固化 |
+
+### 1.7.2 情绪系统
+
+| Day | emotion |
+|---|---|
+| Day1 | `calm` |
+| Day7 | `excitement` |
+| Day14 | `stability` |
+| Day30 | `pride` |
+| Day50 | `reinforcement` |
+| Day100 | `memory_identity` |
+
+### 1.7.3 视觉强度
+
+| Day | visual intensity |
+|---|---|
+| Day1 | minimal glow |
+| Day7 | cinematic reward |
+| Day14 | soft reward |
+| Day30 | identity glow |
+| Day50 | pulse reinforcement |
+| Day100 | cinematic memory scene |
+
+### 1.7.4 Reward 类型映射
+
+| Day | Reward 类型 |
+|---|---|
+| Day1 | LightFeedback |
+| Day7 | Full Reward Scene |
+| Day14 | Soft Reward |
+| Day30 | Identity Reward |
+| Day50 | Reinforcement Reward |
+| Day100 | Memory Reward |
+
+说明：这里的 Reward 类型是产品语义层定义，不要求立即改变当前组件名称或 runtime 结构。
+
+### 1.7.5 UI State Machine 约束
+
+Day7 UI State Machine 继续保持：
+
+```text
+pool → drawing → front → back → collected
+```
+
+v2.1 不得新增 state，不得拆分 `drawing`，不得新增 `reveal` phase，不得影响现有 Day7 状态机。
+
+### 1.7.6 Video Layer 规则
+
+Video Layer 仅作为情绪表达层：
+
+- Day1：system boot
+- Day7：draw + reveal
+- Day14+：soft emotional transitions
+
+视频不得控制 state，不得决定奖励是否领取、是否收藏、是否关闭，也不得承载 Reward Engine Core 的业务判断。
+
+### 1.7.7 My Cheer Box v2
+
+My Cheer Box v2 定义为成长时间轴系统，而不是简单卡片集合。
+
+Day 节点用于表达成长阶段，不作为普通 UI reward list。未来实现时应围绕成长轨迹、阶段沉淀和身份变化组织，而不是只按卡片列表陈列。
+
+### 1.7.8 v2.1 强约束
+
+不允许：
+
+- 用 v2.1 替代 v1 runtime
+- UI 自行计算 reward
+- video 控制 state
+- reward 逻辑散落在组件中
+
+v2.1 只能作为统一规则标准和渐进实现依据。
+
+## 1.8 UX Freeze：体验收口
+
+当前 Reward Engine v1 + v2 进入 UX Freeze。冻结目标不是继续扩展奖励系统，而是统一用户心智路径。本节为 Reward 反馈层内部体验收口，最终产品主线以 `Product Architecture Freeze` 为准。
+
+唯一主线：
+
+```text
+HomeDashboard
+→ Day7 Reward Scene
+→ My Cheer Box v2
+```
+
+系统角色固定：
+
+- `HomeDashboard`：学习行为入口，不承载 reward / growth / video 逻辑
+- `Day7 Reward Scene`：唯一情绪奖励节点
+- `My Cheer Box v2`：成长回顾工具，不作为主入口
+
+目标状态：
+
+```text
+一个学习入口（Home）
+一个奖励节点（Day7）
+一个成长回顾（My Cheer Box）
+```
+
+UX Freeze 强约束：
+
+- 不再新增 reward 类型
+- 不再新增 state machine
+- 不修改 Reward Engine Core 结构
+- 不让 video 控制业务逻辑
+- 不让 Cheer Box 接 reward logic
+- 不继续扩展 Day7 phase
+- 不再引入新的 UI flow
+- 不再拆分 reward 逻辑
+- 不再扩展 DayX 结构
+
+Video 系统冻结为情绪表达层：
+
+- `idle`：氛围
+- `draw`：行为
+- `front`：展示
+
+video 不参与任何 state 决策。
+
+### 1.8.1 v1 polish 体验规则
+
+v1 polish 只允许体验、交互细节和视觉稳定性优化，不允许修改 Reward Engine 架构。
+
+- Day7 `drawing` 阶段按钮必须禁用，文案保持「抽一张」
+- Day7 `drawing → front` 必须保留 200~400ms 平滑过渡
+- Day7 完成态主动作统一为「查看成长回顾」
+- Day7 idle video 只在 pool 中作为氛围播放，使用延迟加载策略
+- My Cheer Box v2 current 节点可以轻微呼吸，但不得游戏化
+- HomeDashboard 主按钮统一为「继续学习」
+- HomeDashboard 只保留 `streakDays` 和一句当前状态文案
+
+### 1.8.2 System Re-balance：系统重心收口
+
+系统重心固定为：
+
+```text
+Study Planner（核心）
+→ Reward Engine（反馈层）
+→ My Cheer Box（回顾层）
+```
+
+执行原则：
+
+- Study Planner 是主产品，负责计划生成、任务执行、完成记录、错题复习和明日重点
+- Reward Engine 降级为学习完成后的情绪反馈层，只在关键节点提供 Day1 / Day7 / Day14-100 反馈
+- My Cheer Box 降级为成长回顾查看页，不作为主导航入口，不参与 reward logic
+- 不新增 reward 类型、video flow、state machine 或 Day7 phase
+- Reward Engine Core 继续只负责奖励节点判断，不扩大为主产品逻辑
+
+### 1.8.3 Day14 / Day30 成长内容扩展
+
+Day14 / Day30 只允许作为 My Cheer Box v2 内的成长内容扩展，不新增 reward flow，不新增 state machine，不引入 drawing / reveal，也不改变 Reward Engine Core。
+
+强度曲线固定为：
+
+```text
+Day7 > Day14 > Day30
+```
+
+节点定位：
+
+| Day | 产品语义 | 主文案 | 副文案 | 表现方式 |
+|---|---|---|---|---|
+| Day14 | 学习进入稳定状态 | 学习进入稳定阶段 | 节奏正在持续 | stable purple / slow breath / soft reward |
+| Day30 | 从学习行为进入习惯形成 | 你已经形成习惯 | 节奏开始稳定存在 | lower saturation purple / stable halo / identity confirmation |
+
+执行规则：
+
+- Day7 仍是唯一情绪高潮节点
+- Day14 是稳定反馈节点，不是抽卡或强揭示奖励
+- Day30 是习惯确认节点，不是抽卡或 reveal 奖励
+- Day14 / Day30 只能复用 My Cheer Box v2 展示
+- Day14 / Day30 不得创建新页面、新视频流或新状态
+- `rewardConfig.growth` 可以承载对应展示文案和视觉 tone，但不得承载新的奖励判断逻辑
+
+### 1.8.4 Day50 / Day100 Endgame UX
+
+Day50 / Day100 是长期留存情绪锚点（Retention Anchor），不是奖励、功能节点或新流程。
+
+完整强度递减曲线固定为：
+
+```text
+Day7 > Day14 > Day30 > Day50 > Day100
+```
+
+节点定位：
+
+| Day | 产品语义 | 主文案 | 表现方式 |
+|---|---|---|---|
+| Day50 | 稳定确认点 | 你一直在持续 | low saturation glow / soft presence / minimal breath |
+| Day100 | 长期沉淀 / 生活融合 | 它已经成为你的日常 | memory tone / steady glow / near-static state |
+
+执行规则：
+
+- Day50 只能表达“你还在持续”的稳定确认，不得做成奖励事件
+- Day100 只能表达“生活化沉淀”，不得做成强仪式或强揭示
+- Day50 / Day100 只能在 My Cheer Box v2 节点中展示
+- Day50 / Day100 不得新增 video、state、reward type 或 RewardScene flow
 
 ## 2. 技术栈
 
@@ -164,7 +514,7 @@ React 状态机始终是唯一状态源。视频只能通过 `onLoadedData`、`o
 
 365 天奖励保留为远期规划，不进入当前一期自动解锁。
 
-### 5.2 breakthrough_feedback：错题解决奖励
+### 5.2 breakthrough_feedback：错题解决反馈
 
 定位：突破卡点。
 
@@ -215,6 +565,22 @@ React 状态机始终是唯一状态源。视频只能通过 `onLoadedData`、`o
 | Day50 | Day50CheerFlag | 占位 |
 | Day100 | Day100Poster | 占位 |
 | Day365 | Day365Ocean | 远期规划占位 |
+
+### 7.1 Day1 / Day7 产品基线
+
+Day1 和 Day7 是当前已经进入产品级基线的两个成长节点。
+
+| 节点 | streakLevel | rewardEmotion | 成长语义 | 当前产品状态 |
+|---|---|---|---|---|
+| Day1 | `start` | `calm` | 被看见 | 已完整实现并冻结 |
+| Day7 | `stable` | `excitement` | 被记录 | 已实现五状态抽卡流程和 idle / drawing 视频 |
+
+统一原则：
+
+- Day1 不再随意修改视觉、动画、底图和文案
+- Day7 不新增状态，不拆分 `drawing`，不新增 `reveal` phase
+- Day1 / Day7 都由 `RewardScene` 统一承载
+- Day1 / Day7 都是成长标记，不是孤立弹窗奖励
 
 ## 8. Day1 奖励场景
 
@@ -268,7 +634,7 @@ Day7 是轻量抽卡奖励，定位为「第一次真正收藏」。
 → 点击「收下」
 → 记录奖励节点和卡片收藏
 → collected：显示完成态和轻反馈
-→ 可选择「重新抽一次」回到 pool
+→ 查看成长回顾，进入 My Cheer Box v2
 ```
 
 卡片信息：

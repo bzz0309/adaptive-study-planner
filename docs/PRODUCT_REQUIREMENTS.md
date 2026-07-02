@@ -1,6 +1,6 @@
 # 产品文档索引
 
-更新时间：2026-06-25  
+更新时间：2026-07-01
 项目仓库：https://github.com/bzz0309/adaptive-study-planner  
 线上奖励系统预览：https://reward-companion-system.vercel.app
 
@@ -31,10 +31,12 @@
 - 明日重点
 - 资料上传与 AI 核验
 - 账号与云同步
-- 主站如何触发奖励系统
+- 主站如何触发反馈层
+- Product Architecture Freeze：Learning Behavior Driven Study System
+- System Re-balance：Study Planner 为核心，Reward Engine 为反馈层，My Cheer Box 为回顾层
 - 当前主站旧奖励原型边界
 
-## 3. 奖励系统规格
+## 3. Reward 反馈层规格
 
 阅读：[REWARD_SYSTEM_SPEC.md](./REWARD_SYSTEM_SPEC.md)
 
@@ -44,7 +46,18 @@
 - 视频情绪层 + React 交互层
 - 连续打卡奖励 `streak_reward`
 - Day1 / Day7 / Day14 / Day30 / Day50 / Day100
-- Day365 远期规划
+- Reward Engine v2：Growth System 设计层
+- Reward Engine v2.1：完整成长曲线 + 视觉映射设计层
+- Product Architecture Freeze：`HomeDashboard → 学习执行 → 错题系统 → Reward Engine → My Cheer Box`
+- System Re-balance：`Study Planner → Reward Engine feedback → My Cheer Box review`
+- Day1：`start / calm / 被看见`
+- Day7：`stable / excitement / 被记录`
+- Day14：稳定反馈节点，仅在 My Cheer Box v2 展示
+- Day30：习惯确认节点，仅在 My Cheer Box v2 展示
+- Day50：稳定确认点，仅在 My Cheer Box v2 展示
+- Day100：生活化沉淀节点，仅在 My Cheer Box v2 展示
+- Day7 idle / drawing 视频阶段
+- Day365 远期规划，不进入当前自动解锁
 - 三条奖励线
 - HighlightFeedback / BreakthroughFeedback 轻反馈
 - localStorage keys
@@ -79,6 +92,10 @@
 - Day1 冻结版
 - Day7 歌词卡版本
 - Day7 视频层架构版本
+- Reward Engine v2 设计层
+- Reward Engine v2.1 成长模型定义层
+- Reward Engine UX Freeze
+- Day1 / Day7 产品文档统一
 - PWA 版本
 - `streakDays` 奖励规则版本
 - 三条奖励线版本
