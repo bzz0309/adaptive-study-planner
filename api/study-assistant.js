@@ -1,15 +1,51 @@
 const JSON_HEADERS = { "Content-Type": "application/json; charset=utf-8" };
 
 const TOPIK_SOURCES = [
-  "TOPIK official public sample questions and test information",
-  "National Institute for International Education TOPIK guide",
-  "Publicly available TOPIK I / TOPIK II question-type descriptions"
+  {
+    title: "TOPIK 官方网站",
+    url: "https://www.topik.go.kr/",
+    type: "官方入口",
+    note: "用于核对考试公告、等级说明和公开样题入口。"
+  },
+  {
+    title: "国立国际教育院 NIIED · TOPIK 主管机构",
+    url: "https://www.niied.go.kr/",
+    type: "官方机构",
+    note: "用于确认 TOPIK 主管机构与考试定位。"
+  },
+  {
+    title: "公开样题 / 用户自有材料",
+    url: "",
+    type: "校准材料",
+    note: "用于校准题型、难度和错题复盘；日常练习生成原创同型题。"
+  },
+  {
+    title: "TOPIK II 同型练习生成规则",
+    url: "",
+    type: "同型题参考",
+    note: "按公开题型结构生成原创练习，不把 AI 题冒充真题。"
+  }
 ];
 
 const IELTS_SOURCES = [
-  "IELTS official sample questions and test format",
-  "British Council / IELTS public preparation materials",
-  "Public IELTS Academic and General Training task descriptions"
+  {
+    title: "IELTS 官方考试类型与结构",
+    url: "https://ielts.org/take-a-test/test-types",
+    type: "官方入口",
+    note: "用于核对 Academic / General Training 的考试结构。"
+  },
+  {
+    title: "IELTS 官方样题与备考资源",
+    url: "https://ielts.org/take-a-test/preparation-resources",
+    type: "公开样题",
+    note: "用于校准题型和评分方向。"
+  },
+  {
+    title: "用户自有材料 / 错题记录",
+    url: "",
+    type: "校准材料",
+    note: "用于定位弱项并生成原创同型练习。"
+  }
 ];
 
 function send(res, status, payload) {
@@ -37,7 +73,37 @@ function getExamLabel(settings = {}) {
 function sourceList(settings = {}) {
   if (settings.exam === "IELTS") return IELTS_SOURCES;
   if (settings.exam === "TOPIK") return TOPIK_SOURCES;
-  return ["User-provided study content", "Public source descriptions for the selected study goal"];
+  return [
+    {
+      title: "用户提供的学习资料",
+      url: "",
+      type: "用户材料",
+      note: "用于确认学习范围和练习方向。"
+    },
+    {
+      title: "公开考试说明 / 课程说明",
+      url: "",
+      type: "题型参考",
+      note: "用于生成原创同型练习，不替代官方材料。"
+    }
+  ];
+}
+
+function normalizeSource(source = {}, index = 0) {
+  if (typeof source === "string") {
+    return {
+      title: source,
+      url: "",
+      type: index === 0 ? "官方入口" : "题型参考",
+      note: "用于校准题型方向，生成原创同型练习。"
+    };
+  }
+  return {
+    title: compact(source.title, "题型参考来源"),
+    url: compact(source.url),
+    type: compact(source.type, index === 0 ? "官方入口" : "题型参考"),
+    note: compact(source.note || source.reason || source.detail, "用于校准题型方向，生成原创同型练习。")
+  };
 }
 
 function normalizeQuestion(item = {}) {
@@ -372,8 +438,8 @@ async function handlePlan(settings = {}) {
 
 async function handleResearch(settings = {}) {
   return {
-    summary: `${getExamLabel(settings)} will use public sample-question types, user materials, and weak-area priorities as planning inputs.`,
-    sources: sourceList(settings).map((title, index) => ({ title, url: "", note: index === 0 ? "Primary reference category" : "Reference category" }))
+    summary: `${getExamLabel(settings)} 将用官方入口、公开样题或用户自有材料校准题型；日常练习会生成原创同型题，不把 AI 题冒充真题。`,
+    sources: sourceList(settings).map(normalizeSource)
   };
 }
 

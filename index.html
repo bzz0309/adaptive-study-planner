@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#f6f5ef" />
   <title>TOPIK 学习计划</title>
-  <link rel="stylesheet" href="styles.css?v=20260703-question-count" />
+  <link rel="stylesheet" href="styles.css?v=20260703-source-calibration" />
 </head>
 <body>
   <div class="app-shell">
@@ -269,12 +269,12 @@
         <div><span>目标</span><strong id="confirmExamGoal"></strong></div>
         <div class="wide"><span>学习范围</span><p id="confirmStudyScope"></p></div>
         <div class="wide"><span>学习安排</span><p id="confirmStudySchedule"></p></div>
-        <div class="wide"><span>资料来源</span><div id="confirmResourceSources"></div></div>
+        <div class="wide"><span>题型参考来源</span><div id="confirmResourceSources"></div></div>
       </div>
       <div class="research-note" id="researchNote">
-        <div class="research-status-head"><span class="research-spinner" id="researchStatusIcon" aria-hidden="true"></span><strong>AI搜索结果预览</strong><span class="research-status-chip" id="researchStatusChip">准备中</span></div>
-        <p id="researchNoteText" aria-live="polite">优先查找官方考试说明、科目范围、题型、评分标准，再列出来源供你确认。</p>
-        <div class="research-progress" id="researchProgress" aria-hidden="true"><span>连接AI</span><span>核对官方资料</span><span>整理结果</span></div>
+        <div class="research-status-head"><span class="research-spinner" id="researchStatusIcon" aria-hidden="true"></span><strong>资料核验预览</strong><span class="research-status-chip" id="researchStatusChip">准备中</span></div>
+        <p id="researchNoteText" aria-live="polite">优先用官方入口、公开样题和你的自有材料校准题型，再生成原创同型练习。</p>
+        <div class="research-progress" id="researchProgress" aria-hidden="true"><span>连接AI</span><span>核对官方入口</span><span>整理同型题参考</span></div>
       </div>
       <div class="uncertainty-note">
         <div class="uncertainty-head"><b>!</b><span>生成前请确认</span><em>必选</em></div>
@@ -363,6 +363,6 @@
   </div>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="app.js?v=20260703-question-count"></script>
+  <script src="app.js?v=20260703-source-calibration"></script>
 </body>
 </html>

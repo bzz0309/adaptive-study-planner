@@ -1376,11 +1376,14 @@ function suggestedSourcesFor(settings) {
   const localSources = (settings.materialFiles || []).map(file => ({ title: file.name, detail: file.sizeLabel, type: "本地文件" }));
   if (!settings.autoResearch) return [...userSources, ...localSources];
   const searched = settings.exam === "TOPIK" ? [
-    { title: "TOPIK 官方网站", detail: "https://www.topik.go.kr/", type: "官方" },
-    { title: "考试公告、题型与等级说明", detail: "将从TOPIK官网实时核验最新页面", type: "官方待核验" }
+    { title: "TOPIK 官方网站", detail: "https://www.topik.go.kr/", type: "官方入口" },
+    { title: "国立国际教育院 NIIED · TOPIK 主管机构", detail: "https://www.niied.go.kr/", type: "官方机构" },
+    { title: "公开样题 / 用户自有材料", detail: "用于校准题型、难度和错题复盘", type: "校准材料" },
+    { title: "TOPIK II 同型练习生成规则", detail: "按公开题型结构生成原创练习，不冒充真题", type: "同型题参考" }
   ] : settings.exam === "IELTS" ? [
-    { title: "IELTS 官方考试类型与结构", detail: "https://ielts.org/take-a-test/test-types", type: "官方" },
-    { title: "IELTS 官方样题与备考资源", detail: "https://ielts.org/take-a-test/preparation-resources", type: "官方" }
+    { title: "IELTS 官方考试类型与结构", detail: "https://ielts.org/take-a-test/test-types", type: "官方入口" },
+    { title: "IELTS 官方样题与备考资源", detail: "https://ielts.org/take-a-test/preparation-resources", type: "公开样题" },
+    { title: "用户自有材料 / 错题记录", detail: "用于定位弱项并生成原创同型练习", type: "校准材料" }
   ] : [
     { title: `${settings.customExamName}官方考试说明`, detail: "将搜索考试主管机构或课程官方文档", type: "待搜索核验" },
     { title: "考试大纲、题型与评分标准", detail: "仅采用能确认发布机构和更新时间的来源", type: "待搜索核验" }
@@ -1432,7 +1435,7 @@ async function showResourceConfirmation(settings) {
     $("#researchNoteText").textContent = "";
     updatePlanConfirmationState();
   }
-  $("#confirmUncertainty").textContent = "请核对前面填写或选择的关键信息：考试类型、目标、时间安排、资料来源等是否正确。";
+  $("#confirmUncertainty").textContent = "请核对前面填写或选择的关键信息：考试类型、目标、时间安排、题型参考来源等是否正确。";
   pendingSettings.suggestedSources = sources;
   closeModal("settingsModal");
   openModal("resourceConfirmModal");
@@ -1443,12 +1446,16 @@ async function showResourceConfirmation(settings) {
       if (result?.uncertainties?.length) $("#confirmUncertainty").textContent = `请核对前面填写或选择的关键信息，尤其是：${result.uncertainties.slice(0, 3).join("；")}`;
       if (result?.sources?.length) {
         const suppliedSources = sources.filter(source => source.type === "用户提供" || source.type === "本地文件");
-        const researchedSources = result.sources.map(source => ({ title: source.title || "AI检索来源", detail: source.url || source.reason || "", type: source.type || "AI检索" }));
+        const researchedSources = result.sources.map(source => ({
+          title: source.title || "题型参考来源",
+          detail: source.url || source.note || source.reason || source.detail || "",
+          type: source.type || "题型参考"
+        }));
         const mergedSources = [...suppliedSources, ...researchedSources];
         pendingSettings.suggestedSources = mergedSources;
         renderSourceChoices(mergedSources);
       }
-      setResearchState("success", result?.summary || "AI已完成资料核验，请检查来源后再确认。");
+      setResearchState("success", result?.summary || "已整理官方入口、公开样题和同型题参考，请检查后再确认。");
     } catch {
       setResearchState("error", "实时核验暂不可用，当前显示内置官方来源；你仍可检查后继续生成计划。");
     }
