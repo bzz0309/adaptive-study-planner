@@ -748,14 +748,16 @@ function openTask(id) {
   $("#taskModalTitle").textContent = task.title;
   $("#taskModalMeta").textContent = `${days.find(day => day.key === task.day).name} · ${task.start}–${task.end} · ${minutesBetween(task.start, task.end)}分钟`;
   $("#taskStandards").innerHTML = task.standards.map(item => `<li>${item}</li>`).join("");
+  $("#taskRecordTitle").textContent = hasLearningRecord ? "答题结果" : "开始前确认";
   $("#taskAutoRecord").innerHTML = total
     ? `<span>系统已记录</span><strong>${correct} / ${total} 题正确 · ${rate}%</strong><p>${task.checkin?.source || "系统练习自动统计"} · ${task.checkin?.updatedAt ? new Date(task.checkin.updatedAt).toLocaleString("zh-CN", { hour12: false }) : "刚刚"}</p>`
-    : `<span>等待学习行为</span><strong>开始系统练习后，会自动统计正确率、错题和用时。</strong>`;
-  $("#reflectionField").classList.toggle("is-disabled", !hasLearningRecord);
+    : `<span>系统自动记录</span><strong>选择题数后开始练习，系统会自动统计正确率、错题和用时。</strong>`;
+  $("#reflectionField").classList.toggle("hidden", !hasLearningRecord);
   $("#taskNote").disabled = !hasLearningRecord;
   $("#taskNote").value = hasLearningRecord ? (task.checkin?.reflection || "") : "";
+  $("#saveReflection").classList.toggle("hidden", !hasLearningRecord);
   $("#saveReflection").disabled = !hasLearningRecord;
-  $("#saveReflection").textContent = hasLearningRecord ? "保存反思" : "完成学习后可写反思";
+  $("#saveReflection").textContent = "保存反思";
   openModal("taskModal");
 }
 

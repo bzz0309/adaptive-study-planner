@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#f6f5ef" />
   <title>TOPIK 学习计划</title>
-  <link rel="stylesheet" href="styles.css?v=20260703-source-calibration" />
+  <link rel="stylesheet" href="styles.css?v=20260703-task-flow" />
 </head>
 <body>
   <div class="app-shell">
@@ -161,14 +161,14 @@
       <h2 id="taskModalTitle">听力短对话</h2>
       <p class="modal-meta" id="taskModalMeta"></p>
       <div class="standard-box">
-        <h3>完成标准</h3>
+        <h3>本组流程</h3>
         <ul id="taskStandards"></ul>
       </div>
       <div class="checkin-form">
-        <h3>学习记录</h3>
+        <h3 id="taskRecordTitle">开始前确认</h3>
         <div class="auto-record-box" id="taskAutoRecord">
-          <span>等待学习行为</span>
-          <strong>开始系统练习后，会自动统计正确率、错题和用时。</strong>
+          <span>系统自动记录</span>
+          <strong>选择题数后开始练习，系统会自动统计正确率、错题和用时。</strong>
         </div>
         <label>本组题数
           <select id="practiceQuestionCount">
@@ -178,11 +178,11 @@
             <option value="20">20题 · 深度练习</option>
           </select>
         </label>
-        <label id="reflectionField">完成后反思<textarea id="taskNote" rows="2" placeholder="完成答题后，可以补一句哪里卡住了"></textarea></label>
+        <label id="reflectionField" class="hidden">完成后反思 <small>可选</small><textarea id="taskNote" rows="2" placeholder="完成答题后，可以补一句哪里卡住了"></textarea></label>
       </div>
       <div class="modal-actions">
         <button class="primary-button" id="openPractice">开始学习</button>
-        <button class="secondary-button" id="saveReflection" disabled>完成学习后可写反思</button>
+        <button class="secondary-button hidden" id="saveReflection">保存反思</button>
       </div>
     </div>
   </div>
@@ -363,6 +363,6 @@
   </div>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="app.js?v=20260703-source-calibration"></script>
+  <script src="app.js?v=20260703-task-flow"></script>
 </body>
 </html>
