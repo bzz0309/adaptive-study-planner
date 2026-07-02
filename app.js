@@ -27,7 +27,7 @@ const defaultTasks = [
   { id: 6, day: "wed", start: "19:30", end: "20:10", category: "reading", title: "短文信息定位", note: "公告、广告、便条", status: "planned", standards: ["30分钟完成4篇短文共16题", "标出每题答案依据", "正确率达到80%", "每篇用一句中文概括主旨"] },
   { id: 7, day: "thu", start: "11:00", end: "11:40", category: "vocab", title: "动词与形容词变形", note: "现在、过去、将来", status: "planned", standards: ["完成24道变形题", "限时25分钟", "正确率达到85%", "错题各造一个新句子"] },
   { id: 8, day: "thu", start: "20:00", end: "20:35", category: "review", title: "词汇隔日回忆", note: "不看词表主动回忆", status: "planned", standards: ["无提示回忆周一30词", "回忆率达到85%", "未记住的词放入新语境", "3天后再次检查"] },
-  { id: 9, day: "fri", start: "11:00", end: "11:45", category: "listening", title: "意图与后续行动", note: "接下来要做什么", status: "planned", standards: ["完成15题，首遍不暂停", "写下决定答案的动词", "正确率达到80%", "错题完成近义变式"] },
+  { id: 9, day: "fri", start: "11:00", end: "11:45", category: "listening", title: "听懂说话目的", note: "为什么这样说、接下来做什么", status: "planned", standards: ["完成15题，首遍不暂停", "写下决定答案的动词", "正确率达到80%", "错题完成近义变式"] },
   { id: 10, day: "fri", start: "19:30", end: "20:15", category: "reading", title: "句子排序与衔接", note: "连接词、指代关系", status: "planned", standards: ["35分钟完成15题", "圈出连接词和指代词", "正确率达到80%", "错题复述排序依据"] },
   { id: 11, day: "sat", start: "14:00", end: "15:40", category: "mock", title: "半套限时模拟", note: "听力15题＋阅读20题", status: "planned", standards: ["全程不中断、不查词", "按规定时间完成35题", "分别记录听力和阅读正确率", "归类全部错题"] },
   { id: 12, day: "sat", start: "20:00", end: "20:35", category: "review", title: "模拟题错因分析", note: "只处理最高频两类", status: "planned", standards: ["归纳最高频两类错误", "每类写出正确思路", "为每类生成3道诊断题", "安排下周强化任务"] },
@@ -636,9 +636,9 @@ function taskDisplayTitle(task = {}, index = 0) {
     ? "IELTS"
     : (settings.exam === "TOPIK" ? `TOPIK ${settings.level === "II" ? "II" : "I"}` : (settings.customExamName || "学习"));
   const titleMap = {
-    listening: ["听力：意图与后续行动", "听力：细节定位", "听力：关键词捕捉"],
-    writing: ["写作：图表结构", "写作：观点展开", "写作：连接表达"],
-    reading: ["阅读：主旨与标题", "阅读：句子排序与衔接", "阅读：信息定位"],
+    listening: ["听力：听懂说话目的", "听力：抓时间地点人物", "听力：听关键词"],
+    writing: ["写作：写图表趋势", "写作：写观点理由", "写作：连接句子"],
+    reading: ["阅读：找文章中心句", "阅读：排句子顺序", "阅读：找答案依据"],
     vocab: ["词汇语法：助词与语尾", "词汇语法：高频表达", "词汇语法：语境填空"],
     grammar: ["词汇语法：助词与语尾", "词汇语法：连接语尾", "词汇语法：句子结构"],
     review: ["错题复盘：同类变式题", "错题复盘：到期题重做", "错题复盘：判断路径"],
