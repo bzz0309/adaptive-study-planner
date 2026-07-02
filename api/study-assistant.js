@@ -58,6 +58,12 @@ function hasDuplicateOptions(options = []) {
   return new Set(options.map(option => option.toLowerCase())).size !== options.length;
 }
 
+function requestedQuestionCount(settings = {}) {
+  const count = Number(settings.practiceRequest?.requestedQuestionCount || 5);
+  if ([5, 10, 15, 20].includes(count)) return count;
+  return Math.min(20, Math.max(5, count || 5));
+}
+
 function inferQuestionType(question = {}, settings = {}) {
   const text = `${question.stem} ${question.explanation} ${question.source}`.toLowerCase();
   const category = settings.practiceRequest?.category;
@@ -110,6 +116,7 @@ function reviewQuestion(item = {}, settings = {}) {
 }
 
 function reviewPracticeSet(practice = {}, settings = {}, source = "generated") {
+  const targetCount = requestedQuestionCount(settings);
   const fallback = fallbackPractice(settings);
   const reviewed = (practice.questions || []).map(question => reviewQuestion(question, settings));
   const passed = reviewed.filter(question => question.reviewStatus === "passed");
@@ -118,13 +125,14 @@ function reviewPracticeSet(practice = {}, settings = {}, source = "generated") {
     reviewStatus: "fallback_passed",
     reviewIssues: []
   }));
-  const merged = source === "fallback" ? fallbackReviewed.slice(0, 5) : [...passed, ...fallbackReviewed].slice(0, 5);
+  const merged = source === "fallback" ? fallbackReviewed.slice(0, targetCount) : [...passed, ...fallbackReviewed].slice(0, targetCount);
   return {
     ...fallback,
     ...practice,
     questions: merged,
     quality: {
       totalGenerated: reviewed.length,
+      requested: targetCount,
       passed: passed.length,
       rejected: reviewed.length - passed.length,
       fallbackUsed: source === "fallback" || merged.some(question => question.reviewStatus === "fallback_passed")
@@ -275,6 +283,7 @@ function fallbackPlan(settings = {}) {
 
 function buildPracticePrompt(settings = {}) {
   const request = settings.practiceRequest || {};
+  const count = requestedQuestionCount(settings);
   return [
     "You are a careful exam practice generator for a study planner.",
     "Generate original practice questions that follow public official sample-question types and user-provided context.",
@@ -287,7 +296,7 @@ function buildPracticePrompt(settings = {}) {
     `Task note: ${request.taskNote || ""}.`,
     `Weak areas: ${(settings.weak || request.weak || []).join(", ") || "unknown"}.`,
     `Standards: ${(request.standards || []).join(" / ") || "complete the set and review errors"}.`,
-    "Generate 5 questions."
+    `Generate exactly ${count} questions.`
   ].join("\n");
 }
 

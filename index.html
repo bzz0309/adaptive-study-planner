@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#f6f5ef" />
   <title>TOPIK 学习计划</title>
-  <link rel="stylesheet" href="styles.css?v=20260702-behavior-flow" />
+  <link rel="stylesheet" href="styles.css?v=20260703-question-count" />
 </head>
 <body>
   <div class="app-shell">
@@ -170,6 +170,14 @@
           <span>等待学习行为</span>
           <strong>开始系统练习后，会自动统计正确率、错题和用时。</strong>
         </div>
+        <label>本组题数
+          <select id="practiceQuestionCount">
+            <option value="5" selected>5题 · 快速完成</option>
+            <option value="10">10题 · 标准练习</option>
+            <option value="15">15题 · 强化练习</option>
+            <option value="20">20题 · 深度练习</option>
+          </select>
+        </label>
         <label id="reflectionField">完成后反思<textarea id="taskNote" rows="2" placeholder="完成答题后，可以补一句哪里卡住了"></textarea></label>
       </div>
       <div class="modal-actions">
@@ -355,6 +363,6 @@
   </div>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="app.js?v=20260702-behavior-flow"></script>
+  <script src="app.js?v=20260703-question-count"></script>
 </body>
 </html>

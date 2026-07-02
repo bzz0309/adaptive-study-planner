@@ -793,7 +793,12 @@ function fallbackPracticeQuestions(errorId) {
   return particleQuestions.slice(5, 10);
 }
 
-function normalizePracticeQuestions(items) {
+function readPracticeQuestionCount() {
+  const selected = Number($("#practiceQuestionCount")?.value || 5);
+  return [5, 10, 15, 20].includes(selected) ? selected : 5;
+}
+
+function normalizePracticeQuestions(items, limit = 5) {
   return (items || []).map((item, index) => {
     const options = Array.isArray(item.options) ? item.options.map(String).slice(0, 4) : [];
     const answer = Number(item.answer);
@@ -804,7 +809,7 @@ function normalizePracticeQuestions(items) {
       explanation: String(item.explanation || item.reason || "系统会根据答案依据继续调整后续练习。").trim(),
       source: item.source ? String(item.source).slice(0, 120) : ""
     };
-  }).filter(item => item.stem && item.options.length >= 2 && item.answer >= 0 && item.answer < item.options.length).slice(0, 8);
+  }).filter(item => item.stem && item.options.length >= 2 && item.answer >= 0 && item.answer < item.options.length).slice(0, limit);
 }
 
 function getPracticeContext(errorId, linkedTaskId) {
@@ -816,7 +821,7 @@ function getPracticeContext(errorId, linkedTaskId) {
   return { settings, task, examLabel, category, title };
 }
 
-async function loadExamDrivenPractice(errorId, linkedTaskId) {
+async function loadExamDrivenPractice(errorId, linkedTaskId, questionCount = 5) {
   const context = getPracticeContext(errorId, linkedTaskId);
   if (location.protocol === "file:") return [];
   const result = await callStudyAssistant("practice", {
@@ -831,11 +836,11 @@ async function loadExamDrivenPractice(errorId, linkedTaskId) {
       standards: context.task?.standards || [],
       weak: context.settings.weak || [],
       studyContent: context.settings.studyContent || "",
-      requestedQuestionCount: 5,
+      requestedQuestionCount: questionCount,
       sourcePolicy: "优先参考官方公开样题、公开真题题型和用户资料；生成同型练习题，不直接复刻受版权限制的整套真题。"
     }
   });
-  return normalizePracticeQuestions(result?.questions || result?.practice?.questions);
+  return normalizePracticeQuestions(result?.questions || result?.practice?.questions, questionCount);
 }
 
 function beijingDateKey(date = new Date()) {
@@ -1160,6 +1165,7 @@ async function startPractice(errorId = "e1", linkedTaskId = null, isSample = fal
   practiceIsSample = isSample;
   practiceWrongNotes = [];
   const context = getPracticeContext(errorId, linkedTaskId);
+  const questionCount = linkedTaskId ? readPracticeQuestionCount() : 5;
   activePractice = fallbackPracticeQuestions(errorId);
   questionIndex = 0;
   selectedAnswer = null;
@@ -1168,13 +1174,13 @@ async function startPractice(errorId = "e1", linkedTaskId = null, isSample = fal
   $("#practiceEyebrow").textContent = errorId === "imported-1" ? "导入错题诊断 · 5题" : `${context.examLabel} · 系统出题`;
   $("#practiceTitle").textContent = context.title;
   $("#questionProgress").textContent = "生成中";
-  $("#questionArea").innerHTML = `<div class="standard-box"><p class="section-kicker">正在按考试与计划出题</p><h2>${context.examLabel}</h2><p>系统会优先参考当前考试类型、目标等级、任务目标和公开样题/真题题型，生成本组练习。</p></div>`;
+  $("#questionArea").innerHTML = `<div class="standard-box"><p class="section-kicker">正在按考试与计划出题</p><h2>${context.examLabel}</h2><p>系统会优先参考当前考试类型、目标等级、任务目标和公开样题/真题题型，生成本组 ${questionCount} 道练习。</p></div>`;
   $("#practiceFeedback").className = "practice-feedback hidden";
   $("#prevQuestion").disabled = true;
   $("#nextQuestion").disabled = true;
   openModal("practiceModal");
   try {
-    const generated = await loadExamDrivenPractice(errorId, linkedTaskId);
+    const generated = await loadExamDrivenPractice(errorId, linkedTaskId, questionCount);
     if (generated.length) activePractice = generated;
     else if (linkedTaskId) showToast("暂未生成新题，已使用本地兜底练习");
   } catch {
