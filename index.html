@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#f6f5ef" />
   <title>TOPIK 学习计划</title>
-  <link rel="stylesheet" href="styles.css?v=20260703-task-title-cn" />
+  <link rel="stylesheet" href="styles.css?v=20260703-task-flow-once" />
 </head>
 <body>
   <div class="app-shell">
@@ -160,9 +160,14 @@
       <div class="modal-category" id="taskModalCategory">听力</div>
       <h2 id="taskModalTitle">听力短对话</h2>
       <p class="modal-meta" id="taskModalMeta"></p>
-      <div class="standard-box">
-        <h3>本组流程</h3>
-        <ul id="taskStandards"></ul>
+      <div class="standard-box" id="taskFlowIntro">
+        <h3>答题流程</h3>
+        <ul>
+          <li>选择本组题数</li>
+          <li>开始系统出题并答题</li>
+          <li>系统自动记录正确率、错题和用时</li>
+          <li>答完后可选写一句反思</li>
+        </ul>
       </div>
       <div class="checkin-form">
         <h3 id="taskRecordTitle">开始前确认</h3>
@@ -363,6 +368,6 @@
   </div>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="app.js?v=20260703-task-title-cn"></script>
+  <script src="app.js?v=20260703-task-flow-once"></script>
 </body>
 </html>

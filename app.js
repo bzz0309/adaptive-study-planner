@@ -768,7 +768,9 @@ function openTask(id) {
   $("#taskModalCategory").className = `modal-category legend-${meta.className === "vocab" ? "vocab" : meta.className}`;
   $("#taskModalTitle").textContent = taskDisplayTitle(task, tasks.indexOf(task));
   $("#taskModalMeta").textContent = `${days.find(day => day.key === task.day).name} · ${task.start}–${task.end} · ${minutesBetween(task.start, task.end)}分钟`;
-  $("#taskStandards").innerHTML = task.standards.map(item => `<li>${item}</li>`).join("");
+  const hasSeenTaskFlow = localStorage.getItem("topikPrototypeTaskFlowSeen") === "yes";
+  $("#taskFlowIntro").classList.toggle("hidden", hasSeenTaskFlow);
+  if (!hasSeenTaskFlow) localStorage.setItem("topikPrototypeTaskFlowSeen", "yes");
   $("#taskRecordTitle").textContent = hasLearningRecord ? "答题结果" : "开始前确认";
   $("#taskAutoRecord").innerHTML = total
     ? `<span>系统已记录</span><strong>${correct} / ${total} 题正确 · ${rate}%</strong><p>${task.checkin?.source || "系统练习自动统计"} · ${task.checkin?.updatedAt ? new Date(task.checkin.updatedAt).toLocaleString("zh-CN", { hour12: false }) : "刚刚"}</p>`
