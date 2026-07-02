@@ -60,7 +60,12 @@ function hasDuplicateOptions(options = []) {
 
 function inferQuestionType(question = {}, settings = {}) {
   const text = `${question.stem} ${question.explanation} ${question.source}`.toLowerCase();
+  const category = settings.practiceRequest?.category;
   if (settings.exam === "IELTS") {
+    if (category === "listening") return "ielts_listening";
+    if (category === "reading") return "ielts_reading";
+    if (category === "writing") return "ielts_writing";
+    if (category === "speaking") return "ielts_speaking";
     if (/listening|audio|speaker|form completion/.test(text)) return "ielts_listening";
     if (/reading|passage|paragraph|synonym|detail/.test(text)) return "ielts_reading";
     if (/writing|task 1|task 2|thesis|letter/.test(text)) return "ielts_writing";
@@ -68,6 +73,10 @@ function inferQuestionType(question = {}, settings = {}) {
     return "ielts_general";
   }
   if (settings.exam === "TOPIK" && settings.level === "II") {
+    if (category === "listening") return "topik2_listening";
+    if (category === "reading") return "topik2_reading";
+    if (category === "writing") return "topik2_writing";
+    if (category === "vocab" || category === "grammar") return "topik2_grammar";
     if (/듣기|listening|화자|의도|말투|audio/.test(text)) return "topik2_listening";
     if (/문법|grammar|어미|지만|으니까|도록|거나/.test(text)) return "topik2_grammar";
     if (/쓰기|writing|그래프|자료|개요/.test(text)) return "topik2_writing";
