@@ -628,6 +628,26 @@ function minutesBetween(start, end) {
   return (eh * 60 + em) - (sh * 60 + sm);
 }
 
+function taskDisplayTitle(task = {}, index = 0) {
+  const rawTitle = String(task.title || "");
+  if (!/target grade|listening|reading|writing|speaking|vocab|grammar|review/i.test(rawTitle)) return rawTitle || "学习任务";
+  const settings = JSON.parse(localStorage.getItem("topikPrototypeSettings") || "null") || {};
+  const examPrefix = settings.exam === "IELTS"
+    ? "IELTS"
+    : (settings.exam === "TOPIK" ? `TOPIK ${settings.level === "II" ? "II" : "I"}` : (settings.customExamName || "学习"));
+  const titleMap = {
+    listening: ["听力：意图与后续行动", "听力：细节定位", "听力：关键词捕捉"],
+    writing: ["写作：图表结构", "写作：观点展开", "写作：连接表达"],
+    reading: ["阅读：主旨与标题", "阅读：句子排序与衔接", "阅读：信息定位"],
+    vocab: ["词汇语法：助词与语尾", "词汇语法：高频表达", "词汇语法：语境填空"],
+    grammar: ["词汇语法：助词与语尾", "词汇语法：连接语尾", "词汇语法：句子结构"],
+    review: ["错题复盘：同类变式题", "错题复盘：到期题重做", "错题复盘：判断路径"],
+    mock: ["阶段模拟：限时综合练习"]
+  };
+  const options = titleMap[task.category] || ["学习任务"];
+  return `${examPrefix} ${options[index % options.length]}`;
+}
+
 function renderCalendar() {
   const calendar = $("#weekCalendar");
   calendar.innerHTML = days.map(day => {
@@ -642,9 +662,10 @@ function renderCalendar() {
       ${dayTasks.map(task => {
         const meta = categoryMeta[task.category];
         const duration = minutesBetween(task.start, task.end);
+        const title = taskDisplayTitle(task, tasks.indexOf(task));
         return `<div class="task-card ${meta.className} ${task.status}" data-task-id="${task.id}" tabindex="0" role="button">
           <div class="task-time"><span>◷ ${task.start}–${task.end}</span><span>${meta.label}</span></div>
-          <h4>${task.title}</h4>
+          <h4>${title}</h4>
           <p>${task.note}</p>
           <span class="task-duration">${duration}分钟</span>
         </div>`;
@@ -745,7 +766,7 @@ function openTask(id) {
   const hasLearningRecord = total > 0;
   $("#taskModalCategory").textContent = meta.label;
   $("#taskModalCategory").className = `modal-category legend-${meta.className === "vocab" ? "vocab" : meta.className}`;
-  $("#taskModalTitle").textContent = task.title;
+  $("#taskModalTitle").textContent = taskDisplayTitle(task, tasks.indexOf(task));
   $("#taskModalMeta").textContent = `${days.find(day => day.key === task.day).name} · ${task.start}–${task.end} · ${minutesBetween(task.start, task.end)}分钟`;
   $("#taskStandards").innerHTML = task.standards.map(item => `<li>${item}</li>`).join("");
   $("#taskRecordTitle").textContent = hasLearningRecord ? "答题结果" : "开始前确认";
@@ -1322,17 +1343,21 @@ function normalizeAiTasks(aiTasks, settings) {
     ? ["listening", "reading", "vocab", "mock", "review", ...(settings.level === "II" ? ["writing"] : [])]
     : Object.keys(categoryMeta);
   const allowedCategories = new Set(allowed);
-  return (aiTasks || []).filter(task => allowedDays.has(task.day) && allowedCategories.has(task.category) && /^\d{2}:\d{2}$/.test(task.start || "") && /^\d{2}:\d{2}$/.test(task.end || "") && task.start >= availableStart && task.end <= availableEnd && task.start < task.end).map((task, index) => ({
-    id: 3000 + index,
-    day: task.day,
-    start: task.start,
-    end: task.end,
-    category: task.category,
-    title: String(task.title || "学习任务").slice(0, 40),
-    note: String(task.note || "").slice(0, 100),
-    status: "planned",
-    standards: Array.isArray(task.standards) ? task.standards.slice(0, 5).map(String) : completionStandards[task.category]
-  }));
+  return (aiTasks || []).filter(task => allowedDays.has(task.day) && allowedCategories.has(task.category) && /^\d{2}:\d{2}$/.test(task.start || "") && /^\d{2}:\d{2}$/.test(task.end || "") && task.start >= availableStart && task.end <= availableEnd && task.start < task.end).map((task, index) => {
+    const normalized = {
+      id: 3000 + index,
+      day: task.day,
+      start: task.start,
+      end: task.end,
+      category: task.category,
+      title: String(task.title || "学习任务").slice(0, 40),
+      note: String(task.note || "").slice(0, 100),
+      status: "planned",
+      standards: Array.isArray(task.standards) ? task.standards.slice(0, 5).map(String) : completionStandards[task.category]
+    };
+    normalized.title = taskDisplayTitle(normalized, index);
+    return normalized;
+  });
 }
 
 async function commitPlanSettings(settings) {

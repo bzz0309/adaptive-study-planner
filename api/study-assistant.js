@@ -332,19 +332,85 @@ function fallbackPlan(settings = {}) {
     : settings.exam === "IELTS"
       ? ["listening", "reading", "writing", "speaking", "review"]
       : ["reading", "vocab", "review"];
-  const tasks = days.flatMap((day, dayIndex) => categories.slice(0, 2).map((category, index) => ({
-    day,
-    start: index ? "19:30" : "11:00",
-    end: index ? "20:10" : "11:40",
-    category,
-    title: `${getExamLabel(settings)} ${category} 练习`,
-    note: "按当前目标生成同型训练，完成后由系统记录正确率。",
-    standards: ["完成本组系统题", "记录正确率", "错题写入复习队列", "完成后可补一句反思"]
-  })));
+  const copy = productTaskCopy(settings);
+  const tasks = days.flatMap((day, dayIndex) => categories.slice(0, 2).map((category, index) => {
+    const item = copy[category]?.[(dayIndex + index) % copy[category].length] || copy.review[0];
+    return {
+      day,
+      start: index ? "19:30" : "11:00",
+      end: index ? "20:10" : "11:40",
+      category,
+      title: item.title,
+      note: item.note,
+      standards: item.standards
+    };
+  }));
   return {
     tasks: tasks.slice(0, 14),
     tomorrowFocus: "先完成一组按考试目标生成的同型题，再根据错题安排明日复习。"
   };
+}
+
+function productTaskCopy(settings = {}) {
+  const topikLevel = settings.level === "II" ? "TOPIK II" : "TOPIK I";
+  const target = settings.targetGrade ? `目标${settings.targetGrade}级` : "目标等级";
+  if (settings.exam === "IELTS") {
+    return {
+      listening: [
+        taskCopy("IELTS 听力：日常对话定位", "练表格填空、数字信息和同义替换", ["完成本组听力题", "系统统计正确率", "错题进入复习队列", "完成后可补一句反思"]),
+        taskCopy("IELTS 听力：地图与路线题", "练方位词、路线变化和地标定位", ["完成本组地图题", "系统记录错题", "复盘干扰信息", "完成后可补一句反思"])
+      ],
+      reading: [
+        taskCopy("IELTS 阅读：判断题定位", "练 True / False / Not Given 的依据判断", ["完成本组阅读题", "标记答案依据", "系统记录正确率", "错题进入复习队列"]),
+        taskCopy("IELTS 阅读：段落信息匹配", "练主旨句、关键词和同义改写", ["完成限时阅读", "系统统计正确率", "错题归类", "完成后可补一句反思"])
+      ],
+      writing: [
+        taskCopy("IELTS 写作：Task 1 结构", "练概括、比较和数据表达", ["完成结构练习", "检查主题句和连接", "记录可复用表达", "完成后可补一句反思"]),
+        taskCopy("IELTS 写作：Task 2 提纲", "练观点、理由、例证和让步", ["完成提纲练习", "检查论点完整度", "记录薄弱表达", "完成后可补一句反思"])
+      ],
+      speaking: [
+        taskCopy("IELTS 口语：Part 1 快答", "练日常话题的自然回答", ["完成本组口语题", "记录卡顿点", "复盘表达替换", "完成后可补一句反思"]),
+        taskCopy("IELTS 口语：Part 2 陈述", "练1分钟准备和2分钟展开", ["完成陈述练习", "系统记录本组表现", "整理可复用表达", "完成后可补一句反思"])
+      ],
+      review: [
+        taskCopy("错题复盘：到期题重做", "按错因重新完成一组变式题", ["完成到期错题", "系统统计正确率", "仍错题继续复习", "完成后可补一句反思"])
+      ]
+    };
+  }
+  if (settings.exam === "TOPIK" && settings.level === "II") {
+    return {
+      listening: [
+        taskCopy(`${topikLevel} 听力：意图与后续行动`, `围绕${target}练说话人目的、建议和下一步`, ["完成本组听力同型题", "系统统计正确率", "错题进入复习队列", "完成后可补一句反思"]),
+        taskCopy(`${topikLevel} 听力：细节定位`, `围绕${target}练时间、地点、人物关系和原因`, ["完成本组听力同型题", "系统记录错题", "复盘干扰信息", "完成后可补一句反思"])
+      ],
+      writing: [
+        taskCopy(`${topikLevel} 写作：图表结构`, `围绕${target}练趋势概括、比较和总结`, ["完成本组写作结构题", "系统记录完成情况", "整理可复用句式", "完成后可补一句反思"]),
+        taskCopy(`${topikLevel} 写作：观点展开`, `围绕${target}练观点、理由和例子`, ["完成本组写作结构题", "检查逻辑连接", "记录薄弱表达", "完成后可补一句反思"])
+      ],
+      reading: [
+        taskCopy(`${topikLevel} 阅读：主旨与标题`, `围绕${target}练中心句、重复词和段落目的`, ["完成本组阅读同型题", "系统统计正确率", "标出答案依据", "错题进入复习队列"]),
+        taskCopy(`${topikLevel} 阅读：句子插入与排序`, `围绕${target}练连接词、指代和前后逻辑`, ["完成本组阅读同型题", "系统记录错题", "复述判断路径", "完成后可补一句反思"])
+      ],
+      review: [
+        taskCopy("错题复盘：同类变式题", "根据最近错题重做一组同型练习", ["完成到期错题", "系统统计正确率", "仍错题继续复习", "完成后可补一句反思"])
+      ]
+    };
+  }
+  return {
+    reading: [
+      taskCopy(`${topikLevel} 阅读：信息定位`, `围绕${target}练公告、广告和短文信息`, ["完成本组阅读同型题", "系统统计正确率", "标出答案依据", "错题进入复习队列"])
+    ],
+    vocab: [
+      taskCopy(`${topikLevel} 词汇语法：助词与语尾`, `围绕${target}练基础句型和高频表达`, ["完成本组词汇语法题", "系统统计正确率", "错题进入复习队列", "完成后可补一句反思"])
+    ],
+    review: [
+      taskCopy("错题复盘：基础题重做", "按错因重新完成一组变式题", ["完成到期错题", "系统统计正确率", "仍错题继续复习", "完成后可补一句反思"])
+    ]
+  };
+}
+
+function taskCopy(title, note, standards) {
+  return { title, note, standards };
 }
 
 function buildPracticePrompt(settings = {}) {
