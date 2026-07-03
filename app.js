@@ -227,9 +227,6 @@ function applyExamBrand(exam, level, targetGrade = "") {
   $("#brandMark").textContent = isIELTS ? "英" : (isOther ? "自" : "한");
   $("#profileAvatar").textContent = isIELTS ? "A" : (isOther ? "学" : "유");
   $("#plannerTitle").textContent = isIELTS ? "雅思备考周计划" : (isOther ? `${customName}周计划` : "韩语备考周计划");
-  $("#tomorrowFocus").textContent = isIELTS
-    ? "先做一组 Listening 精听，再完成一组 Reading 同义替换题。"
-    : (isOther ? "先完成一个核心知识模块，再用练习题检验理解。" : "先解决「否定表达漏听」：复听 5 题，再做 5 道变式题。");
   const selectedTarget = targetGrade || $('input[name="targetGrade"]:checked')?.value || (level === "II" ? "4" : "2");
   $("#examEyebrow").textContent = isIELTS
     ? `IELTS ${level === "II" ? "培训类" : "学术类"}`
@@ -922,16 +919,57 @@ function openTask(id) {
   openModal("taskModal");
 }
 
-function updateTomorrowFocus(text) {
-  $("#tomorrowFocus").textContent = text;
-  localStorage.setItem("topikPrototypeTomorrowFocus", text);
-}
-
 function defaultTomorrowFocus() {
   const settings = JSON.parse(localStorage.getItem("topikPrototypeSettings") || "null") || {};
   if (settings.exam === "IELTS") return "先做一组 Listening 精听，再完成一组 Reading 同义替换题。";
   if (settings.exam === "OTHER") return "先完成一个核心知识模块，再用练习题检验理解。";
-  return "先解决「否定表达漏听」：复听 5 题，再做 5 道变式题。";
+  return "明天按学习计划完成第一组系统练习，系统会根据答题结果整理错题。";
+}
+
+function nextStudyDayKey(fromKey = beijingDayKey()) {
+  const selected = days.filter(day => tasks.some(task => task.day === day.key));
+  if (!selected.length) return days[(days.findIndex(day => day.key === fromKey) + 1 + days.length) % days.length].key;
+  const currentIndex = selected.findIndex(day => day.key === fromKey);
+  return selected[(currentIndex + 1 + selected.length) % selected.length].key;
+}
+
+function taskFocusLabel(task) {
+  return task ? `「${taskDisplayTitle(task, tasks.indexOf(task))}」` : "";
+}
+
+function tomorrowPlanFocus() {
+  const tomorrowKey = nextStudyDayKey();
+  const tomorrowTasks = tasks.filter(task => task.day === tomorrowKey);
+  if (!tomorrowTasks.length) return defaultTomorrowFocus();
+  const priority = tomorrowTasks.find(task => task.category === "review") || tomorrowTasks[0];
+  const moreCount = Math.max(0, tomorrowTasks.length - 1);
+  return moreCount
+    ? `明天按计划先做${taskFocusLabel(priority)}，再完成另外 ${moreCount} 组学习任务。`
+    : `明天按计划完成${taskFocusLabel(priority)}。`;
+}
+
+function todayWrongFocus() {
+  const today = beijingDateKey();
+  const todayTasks = tasks.filter(task => hasPracticeRecord(task) && beijingDateKey(task.checkin?.updatedAt ? new Date(task.checkin.updatedAt) : new Date()) === today);
+  const wrongTask = todayTasks.find(task => Number(task.checkin.correct || 0) < Number(task.checkin.total || 0));
+  if (!wrongTask) return "";
+  const wrongCount = Number(wrongTask.checkin.total || 0) - Number(wrongTask.checkin.correct || 0);
+  const note = String(wrongTask.checkin.note || wrongTask.checkin.reflection || "").replace(/^AI自动记录：/, "").slice(0, 36);
+  return note
+    ? `先复盘今天${taskFocusLabel(wrongTask)}的 ${wrongCount} 道错题：${note}。`
+    : `先复盘今天${taskFocusLabel(wrongTask)}的 ${wrongCount} 道错题。`;
+}
+
+function buildTomorrowFocus() {
+  const wrongFocus = todayWrongFocus();
+  const planFocus = tomorrowPlanFocus();
+  return wrongFocus ? `${wrongFocus}${planFocus}` : planFocus;
+}
+
+function updateTomorrowFocus(text = "") {
+  const focus = text || buildTomorrowFocus();
+  $("#tomorrowFocus").textContent = focus;
+  localStorage.setItem("topikPrototypeTomorrowFocus", focus);
 }
 
 function readStudySettings() {
@@ -1078,24 +1116,17 @@ function minutesNowInBeijing(date = new Date()) {
 }
 
 function dailyReviewSummary() {
-  const todayKey = beijingDayKey();
-  const todayTasks = tasks.filter(task => task.day === todayKey);
+  const today = beijingDateKey();
+  const todayTasks = tasks.filter(task => task.checkin?.updatedAt && beijingDateKey(new Date(task.checkin.updatedAt)) === today);
   const checkedTasks = todayTasks.filter(task => task.status === "completed" || task.checkin?.note || task.checkin?.total);
   if (!checkedTasks.length) {
     return {
       hasCheckin: false,
-      focus: localStorage.getItem("topikPrototypeTomorrowFocus") || defaultTomorrowFocus(),
-      message: "今天还没有打卡，补一下我才能给你明天重点。"
+      focus: buildTomorrowFocus(),
+      message: "今天还没有完成系统练习，明日重点先按 T+1 学习计划生成。"
     };
   }
-  const weakTask = checkedTasks.find(task => task.checkin?.total && task.checkin.correct / task.checkin.total < .8);
-  const noteTask = [...checkedTasks].reverse().find(task => task.checkin?.note);
-  const source = weakTask || noteTask || checkedTasks[checkedTasks.length - 1];
-  const focus = weakTask
-    ? `明天先重做「${source.title}」错题：说出判断依据，再完成5道同类变式题。`
-    : noteTask
-      ? `明天先复盘「${source.title}」：重点处理“${source.checkin.note.slice(0, 28)}”。`
-      : `明天先复习「${source.title}」，再做一组同类练习确认掌握。`;
+  const focus = buildTomorrowFocus();
   return {
     hasCheckin: true,
     focus,
@@ -1133,7 +1164,7 @@ async function runDailyReminder(manual = false) {
   const today = beijingDateKey();
   if (!manual && settings.lastNotifiedDate === today) return;
   const summary = dailyReviewSummary();
-  if (summary.hasCheckin) updateTomorrowFocus(summary.focus);
+  updateTomorrowFocus(summary.focus);
   writeReminderSettings({ lastNotifiedDate: today });
   showToast(summary.message);
   sendDailyNotification(summary.message);
@@ -1363,7 +1394,7 @@ async function saveReflection() {
   renderCalendar();
   closeModal("taskModal");
   if (note) {
-    updateTomorrowFocus(`复习「${task.title}」：重点处理“${note.slice(0, 30)}”。`);
+    updateTomorrowFocus();
     showToast("反思已保存，明日重点会参考这条记录");
   } else {
     showToast("没有补充内容，学习完成会由系统练习自动记录");
@@ -1484,9 +1515,7 @@ function completePracticeSession() {
       task.checkin = { correct: practiceCorrect, total, note: autoNote, reflection: task.checkin?.reflection || "", source: "系统练习自动统计", updatedAt: new Date().toISOString() };
       localStorage.setItem("topikPrototypeTasks", JSON.stringify(tasks));
       renderCalendar();
-      updateTomorrowFocus(rate >= 80
-        ? `延迟复习「${task.title}」：明天完成5道变式题，并口头说明判断思路。`
-        : `优先重学「${task.title}」：先复习错题规则，再完成5道基础变式题。`);
+      updateTomorrowFocus();
       recordCheckinReward(task);
       scheduleCloudSave();
     }
@@ -1584,7 +1613,6 @@ async function commitPlanSettings(settings) {
     if (generatedTasks.length) {
       tasks = generatedTasks;
       aiGenerated = true;
-      if (result.tomorrowFocus) $("#tomorrowFocus").textContent = result.tomorrowFocus;
     } else {
       tasks = generatePlanFromSettings(settings);
     }
@@ -1594,6 +1622,7 @@ async function commitPlanSettings(settings) {
   localStorage.setItem("topikPrototypeTasks", JSON.stringify(tasks));
   localStorage.setItem("topikPrototypePlanVersion", "6");
   renderCalendar();
+  updateTomorrowFocus();
   $("#profileIntensity").textContent = settings.intensityLabel;
   updateExamOptions(settings.exam, settings.level);
   localStorage.setItem("topikPrototypeOnboarded", "yes");
@@ -1974,8 +2003,7 @@ initializeCloud().finally(() => {
   if (cloud.session?.access_token) openModal("settingsModal");
   else openModal("accountModal");
 });
-const savedTomorrowFocus = localStorage.getItem("topikPrototypeTomorrowFocus");
-if (savedTomorrowFocus) $("#tomorrowFocus").textContent = savedTomorrowFocus;
+updateTomorrowFocus();
 renderReminderUI();
 scheduleDailyReminder();
 if (previewRewardId && rewardCatalog[previewRewardId]) setTimeout(() => {
