@@ -108,6 +108,73 @@ function minutesToClock(total) {
   return `${String(Math.floor(normalized / 60)).padStart(2, "0")}:${String(normalized % 60).padStart(2, "0")}`;
 }
 
+function clockToMinutes(value, fallback) {
+  if (!/^\d{2}:\d{2}$/.test(value || "")) return fallback;
+  const [hours, minutes] = value.split(":").map(Number);
+  return hours * 60 + minutes;
+}
+
+function dailyTargetMinutes(settings = {}) {
+  if (settings.intensity === "轻量") return 45;
+  if (settings.intensity === "中等") return 90;
+  if (settings.intensity === "高强度") return 240;
+  const min = Number(settings.minHours || 1);
+  const max = Number(settings.maxHours || min);
+  return Math.round(((min + max) / 2) * 60 / 5) * 5;
+}
+
+function blockSizeForIntensity(settings = {}) {
+  if (settings.intensity === "高强度") return 60;
+  if (settings.intensity === "中等") return 45;
+  return 40;
+}
+
+function preferredStudyWindows(settings = {}, blockMinutes = 45) {
+  const selected = settings.times?.length ? settings.times : ["下午", "晚上"];
+  const availableStart = clockToMinutes(settings.availableStart, 8 * 60);
+  const availableEnd = clockToMinutes(settings.availableEnd, 22 * 60);
+  const ranges = {
+    "上午": [8 * 60, 12 * 60],
+    "下午": [13 * 60, 17 * 60 + 30],
+    "晚上": [18 * 60, 22 * 60],
+    "不固定": [availableStart, availableEnd]
+  };
+  const windows = selected.map(label => ranges[label]).filter(Boolean).map(([start, end]) => ({
+    start: Math.max(start, availableStart),
+    end: Math.min(end, availableEnd)
+  })).filter(window => window.end - window.start >= blockMinutes);
+  return windows.length ? windows : [{ start: availableStart, end: availableEnd }];
+}
+
+function dailyStudyStarts(settings = {}, blocksPerDay = 1, blockMinutes = 45) {
+  const availableStart = clockToMinutes(settings.availableStart, 8 * 60);
+  const availableEnd = clockToMinutes(settings.availableEnd, 22 * 60);
+  const windows = preferredStudyWindows(settings, blockMinutes);
+  const gap = settings.intensity === "高强度" ? 15 : 20;
+  const candidates = [];
+  const windowSlots = windows.map(window => {
+    const slots = [];
+    for (let start = window.start; start + blockMinutes <= window.end; start += blockMinutes + gap) slots.push(start);
+    return slots;
+  });
+  const longest = Math.max(...windowSlots.map(slots => slots.length), 0);
+  for (let round = 0; round < longest; round += 1) {
+    windowSlots.forEach(slots => {
+      if (Number.isFinite(slots[round])) candidates.push(slots[round]);
+    });
+  }
+  for (let start = availableStart; start + blockMinutes <= availableEnd; start += blockMinutes + gap) {
+    candidates.push(start);
+  }
+  const unique = [...new Set(candidates)];
+  const starts = [];
+  unique.forEach(start => {
+    const overlaps = starts.some(existing => Math.abs(existing - start) < blockMinutes + 5);
+    if (!overlaps && starts.length < blocksPerDay) starts.push(start);
+  });
+  return starts.sort((a, b) => a - b);
+}
+
 function updateTargetGradeOptions(level = "I", selectedGrade = "") {
   const grades = level === "II" ? ["3", "4", "5", "6"] : ["1", "2"];
   const fallback = level === "II" ? "4" : "2";
@@ -173,35 +240,24 @@ function applyExamBrand(exam, level, targetGrade = "") {
 function generatePlanFromSettings(settings) {
   const exam = settings.exam || "TOPIK";
   const level = settings.level || "I";
-  const targetHours = settings.intensity === "轻量" ? 0.75 : settings.intensity === "中等" ? 1.5 : settings.intensity === "高强度" ? 4 : (settings.minHours + settings.maxHours) / 2;
-  const targetMinutes = Math.round(targetHours * 60 / 5) * 5;
-  const blocksPerDay = Math.min(6, Math.max(1, Math.ceil(targetMinutes / 60)));
-  const blockMinutes = Math.max(30, Math.round(targetMinutes / blocksPerDay / 5) * 5);
-  const selectedWindows = settings.times?.length ? settings.times : ["下午", "晚上"];
-  const windowBases = { "上午": 8 * 60, "下午": 13 * 60, "晚上": 18 * 60, "不固定": 11 * 60 };
-  const availableStart = /^\d{2}:\d{2}$/.test(settings.availableStart || "") ? settings.availableStart.split(":").reduce((hours, value, index) => index ? hours + Number(value) : Number(value) * 60, 0) : 8 * 60;
-  const availableEnd = /^\d{2}:\d{2}$/.test(settings.availableEnd || "") ? settings.availableEnd.split(":").reduce((hours, value, index) => index ? hours + Number(value) : Number(value) * 60, 0) : 22 * 60;
-  const preferredBases = selectedWindows.map(time => windowBases[time]).filter(base => Number.isFinite(base) && base >= availableStart && base + blockMinutes <= availableEnd).sort((a, b) => a - b);
-  const bases = preferredBases.length ? preferredBases : [availableStart];
-  const weakTokens = (settings.weak || []).map(item => weakTokenMap[item]).filter(Boolean);
+  const targetMinutes = dailyTargetMinutes(settings);
+  const blockMinutes = blockSizeForIntensity(settings);
+  const blocksPerDay = Math.max(1, Math.ceil(targetMinutes / blockMinutes));
+  const weakTokens = [...new Set((settings.weak || []).map(item => weakTokenMap[item]).filter(Boolean))];
   const coreTokens = exam === "IELTS"
     ? ["listening", "reading", "writing", "speaking"]
     : exam === "OTHER"
       ? (weakTokens.length ? [...new Set(weakTokens)] : ["reading", "vocab", "writing"])
       : ["listening", "reading", "vocab", "grammar", ...(level === "II" ? ["writing"] : [])];
   const templateSource = exam === "IELTS" ? ieltsTemplates : (exam === "OTHER" ? genericTemplates : studyTemplates);
-  const rotation = [...weakTokens, ...weakTokens, ...coreTokens, "review"];
+  const rotation = [...weakTokens, ...coreTokens, "review", ...(settings.intensity === "高强度" ? ["mock"] : [])];
   const foundationOffset = { "入门": 0, "一般": 1, "较好": 2, "不确定": 0 }[settings.foundation] || 0;
   let sequence = 0;
   const generated = [];
 
   const selectedDayKeys = settings.studyDays?.length ? new Set(settings.studyDays) : new Set(days.map(day => day.key));
   days.filter(day => selectedDayKeys.has(day.key)).forEach((day, dayIndex) => {
-    const starts = Array.from({ length: blocksPerDay }, (_, index) => {
-      const baseIndex = index % bases.length;
-      const round = Math.floor(index / bases.length);
-      return Math.min(bases[baseIndex] + round * (blockMinutes + 15), Math.max(availableStart, availableEnd - blockMinutes));
-    }).sort((a, b) => a - b);
+    const starts = dailyStudyStarts(settings, blocksPerDay, blockMinutes);
     starts.forEach((start, blockIndex) => {
       let token = rotation[(dayIndex * blocksPerDay + blockIndex) % rotation.length];
       if (day.key === "sat" && blockIndex === blocksPerDay - 1) token = "mock";
@@ -1464,7 +1520,7 @@ async function commitPlanSettings(settings) {
     tasks = generatePlanFromSettings(settings);
   }
   localStorage.setItem("topikPrototypeTasks", JSON.stringify(tasks));
-  localStorage.setItem("topikPrototypePlanVersion", "5");
+  localStorage.setItem("topikPrototypePlanVersion", "6");
   renderCalendar();
   $("#profileIntensity").textContent = settings.intensityLabel;
   updateExamOptions(settings.exam, settings.level);
@@ -1829,11 +1885,11 @@ if (savedSettings) {
   updateExamOptions(savedSettings.exam || "TOPIK", savedSettings.level || "I");
   updateTargetGradeOptions(savedSettings.level || "I", savedSettings.targetGrade || (savedSettings.level === "II" ? "4" : "2"));
   applyExamBrand(savedSettings.exam || "TOPIK", savedSettings.level || "I", savedSettings.targetGrade);
-  if (localStorage.getItem("topikPrototypePlanVersion") !== "5") {
+  if (localStorage.getItem("topikPrototypePlanVersion") !== "6") {
     const upgradedSettings = { exam: savedSettings.exam || "TOPIK", level: savedSettings.level || "I", foundation: savedSettings.foundation || "一般", weak: savedSettings.weak || ["听力", "阅读"], times: savedSettings.times || ["下午", "晚上"], ...savedSettings };
     tasks = generatePlanFromSettings(upgradedSettings);
     localStorage.setItem("topikPrototypeTasks", JSON.stringify(tasks));
-    localStorage.setItem("topikPrototypePlanVersion", "5");
+    localStorage.setItem("topikPrototypePlanVersion", "6");
     renderCalendar();
   }
 } else {

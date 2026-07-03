@@ -54,10 +54,25 @@ function send(res, status, payload) {
   res.end(JSON.stringify(payload));
 }
 
-function parseBody(req) {
-  if (req.body && typeof req.body === "object") return req.body;
-  if (typeof req.body === "string") return JSON.parse(req.body || "{}");
-  return {};
+async function parseBody(req) {
+  if (req.body && typeof req.body === "object" && !Buffer.isBuffer(req.body)) return req.body;
+  const parseText = (text = "") => {
+    const raw = String(text || "").trim();
+    if (!raw) return {};
+    try { return JSON.parse(raw); } catch {}
+    try { return JSON.parse(Buffer.from(raw, "base64").toString("utf8")); } catch {}
+    return {};
+  };
+  if (Buffer.isBuffer(req.body)) return parseText(req.body.toString("utf8"));
+  if (typeof req.body === "string") return parseText(req.body);
+  if (typeof req.on !== "function") return {};
+  const chunks = [];
+  await new Promise((resolve, reject) => {
+    req.on("data", chunk => chunks.push(Buffer.from(chunk)));
+    req.on("end", resolve);
+    req.on("error", reject);
+  });
+  return parseText(Buffer.concat(chunks).toString("utf8"));
 }
 
 function compact(value, fallback = "") {
@@ -386,20 +401,92 @@ function fallbackPractice(settings = {}) {
   };
 }
 
+function clockToMinutes(value, fallback) {
+  if (!/^\d{2}:\d{2}$/.test(value || "")) return fallback;
+  const [hours, minutes] = value.split(":").map(Number);
+  return hours * 60 + minutes;
+}
+
+function minutesToClock(total) {
+  const normalized = Math.max(0, total);
+  return `${String(Math.floor(normalized / 60)).padStart(2, "0")}:${String(normalized % 60).padStart(2, "0")}`;
+}
+
+function dailyTargetMinutes(settings = {}) {
+  if (settings.intensity === "轻量") return 45;
+  if (settings.intensity === "中等") return 90;
+  if (settings.intensity === "高强度") return 240;
+  const min = Number(settings.minHours || 1);
+  const max = Number(settings.maxHours || min);
+  return Math.round(((min + max) / 2) * 60 / 5) * 5;
+}
+
+function blockSizeForIntensity(settings = {}) {
+  if (settings.intensity === "高强度") return 60;
+  if (settings.intensity === "中等") return 45;
+  return 40;
+}
+
+function dailyStudyStarts(settings = {}, blocksPerDay = 1, blockMinutes = 45) {
+  const availableStart = clockToMinutes(settings.availableStart, 8 * 60);
+  const availableEnd = clockToMinutes(settings.availableEnd, 22 * 60);
+  const selected = settings.times?.length ? settings.times : ["下午", "晚上"];
+  const ranges = {
+    "上午": [8 * 60, 12 * 60],
+    "下午": [13 * 60, 17 * 60 + 30],
+    "晚上": [18 * 60, 22 * 60],
+    "不固定": [availableStart, availableEnd]
+  };
+  const windows = selected.map(label => ranges[label]).filter(Boolean).map(([start, end]) => ({
+    start: Math.max(start, availableStart),
+    end: Math.min(end, availableEnd)
+  })).filter(window => window.end - window.start >= blockMinutes);
+  const sourceWindows = windows.length ? windows : [{ start: availableStart, end: availableEnd }];
+  const gap = settings.intensity === "高强度" ? 15 : 20;
+  const candidates = [];
+  const windowSlots = sourceWindows.map(window => {
+    const slots = [];
+    for (let start = window.start; start + blockMinutes <= window.end; start += blockMinutes + gap) slots.push(start);
+    return slots;
+  });
+  const longest = Math.max(...windowSlots.map(slots => slots.length), 0);
+  for (let round = 0; round < longest; round += 1) {
+    windowSlots.forEach(slots => {
+      if (Number.isFinite(slots[round])) candidates.push(slots[round]);
+    });
+  }
+  for (let start = availableStart; start + blockMinutes <= availableEnd; start += blockMinutes + gap) candidates.push(start);
+  const starts = [];
+  [...new Set(candidates)].forEach(start => {
+    const overlaps = starts.some(existing => Math.abs(existing - start) < blockMinutes + 5);
+    if (!overlaps && starts.length < blocksPerDay) starts.push(start);
+  });
+  return starts.sort((a, b) => a - b);
+}
+
 function fallbackPlan(settings = {}) {
   const days = settings.studyDays?.length ? settings.studyDays : ["mon", "tue", "wed", "thu", "fri"];
-  const categories = settings.exam === "TOPIK" && settings.level === "II"
-    ? ["listening", "writing", "reading", "review"]
+  const weakMap = { "听力": "listening", "阅读": "reading", "词汇": "vocab", "语法": "vocab", "写作": "writing", "口语": "speaking" };
+  const weakCategories = [...new Set((settings.weak || []).map(item => weakMap[item]).filter(Boolean))];
+  const baseCategories = settings.exam === "TOPIK" && settings.level === "II"
+    ? ["listening", "writing", "reading", "vocab", "review"]
     : settings.exam === "IELTS"
       ? ["listening", "reading", "writing", "speaking", "review"]
       : ["reading", "vocab", "review"];
+  const categories = [...new Set([...weakCategories, ...baseCategories, ...(settings.intensity === "高强度" ? ["mock"] : [])])];
   const copy = productTaskCopy(settings);
-  const tasks = days.flatMap((day, dayIndex) => categories.slice(0, 2).map((category, index) => {
+  const targetMinutes = dailyTargetMinutes(settings);
+  const blockMinutes = blockSizeForIntensity(settings);
+  const blocksPerDay = Math.max(1, Math.ceil(targetMinutes / blockMinutes));
+  const tasks = days.flatMap((day, dayIndex) => dailyStudyStarts(settings, blocksPerDay, blockMinutes).map((start, index) => {
+    let category = categories[(dayIndex + index) % categories.length];
+    if (day === "sat" && index === blocksPerDay - 1 && categories.includes("mock")) category = "mock";
+    if (day === "sun" && index === blocksPerDay - 1) category = "review";
     const item = copy[category]?.[(dayIndex + index) % copy[category].length] || copy.review[0];
     return {
       day,
-      start: index ? "19:30" : "11:00",
-      end: index ? "20:10" : "11:40",
+      start: minutesToClock(start),
+      end: minutesToClock(start + blockMinutes),
       category,
       title: item.title,
       note: item.note,
@@ -407,7 +494,7 @@ function fallbackPlan(settings = {}) {
     };
   }));
   return {
-    tasks: tasks.slice(0, 14),
+    tasks,
     tomorrowFocus: "先完成一组按考试目标生成的同型题，再根据错题安排明日复习。"
   };
 }
@@ -451,6 +538,13 @@ function productTaskCopy(settings = {}) {
       reading: [
         taskCopy(`${topikLevel} 阅读：找文章中心句`, `围绕${target}练中心句、重复词和段落目的`, ["完成本组阅读同型题", "系统统计正确率", "标出答案依据", "错题进入复习队列"]),
         taskCopy(`${topikLevel} 阅读：排句子顺序`, `围绕${target}练连接词、指代和前后逻辑`, ["完成本组阅读同型题", "系统记录错题", "复述判断路径", "完成后可补一句反思"])
+      ],
+      vocab: [
+        taskCopy(`${topikLevel} 词汇语法：助词与语尾`, `围绕${target}练助词、连接语尾和高频表达`, ["完成本组词汇语法题", "系统统计正确率", "错题进入复习队列", "完成后可补一句反思"]),
+        taskCopy(`${topikLevel} 词汇语法：语境填空`, `围绕${target}练句子结构、固定搭配和语境判断`, ["完成本组词汇语法题", "系统记录错题", "整理易混表达", "完成后可补一句反思"])
+      ],
+      mock: [
+        taskCopy(`${topikLevel} 阶段模拟：限时综合练习`, `围绕${target}串联听力、写作、阅读和错题复盘`, ["按时间完成本组综合练习", "系统统计正确率", "归类全部错题", "完成后可补一句反思"])
       ],
       review: [
         taskCopy("错题复盘：同类变式题", "根据最近错题重做一组同型练习", ["完成到期错题", "系统统计正确率", "仍错题继续复习", "完成后可补一句反思"])
@@ -588,7 +682,7 @@ async function handleVision() {
 module.exports = async function studyAssistant(req, res) {
   if (req.method !== "POST") return send(res, 405, { error: "Method not allowed" });
   try {
-    const body = parseBody(req);
+    const body = await parseBody(req);
     const action = body.action || "practice";
     const settings = body.settings || {};
     if (action === "practice") return send(res, 200, await handlePractice(settings));
