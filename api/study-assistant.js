@@ -469,10 +469,10 @@ function fallbackPlan(settings = {}) {
   const weakMap = { "听力": "listening", "阅读": "reading", "词汇": "vocab", "语法": "vocab", "写作": "writing", "口语": "speaking" };
   const weakCategories = [...new Set((settings.weak || []).map(item => weakMap[item]).filter(Boolean))];
   const baseCategories = settings.exam === "TOPIK" && settings.level === "II"
-    ? ["listening", "writing", "reading", "vocab", "review"]
+    ? ["listening", "writing", "reading", "vocab", "consolidation"]
     : settings.exam === "IELTS"
-      ? ["listening", "reading", "writing", "speaking", "review"]
-      : ["reading", "vocab", "review"];
+      ? ["listening", "reading", "writing", "speaking", "consolidation"]
+      : ["reading", "vocab", "consolidation"];
   const categories = [...new Set([...weakCategories, ...baseCategories, ...(settings.intensity === "高强度" ? ["mock"] : [])])];
   const copy = productTaskCopy(settings);
   const targetMinutes = dailyTargetMinutes(settings);
@@ -481,8 +481,8 @@ function fallbackPlan(settings = {}) {
   const tasks = days.flatMap((day, dayIndex) => dailyStudyStarts(settings, blocksPerDay, blockMinutes).map((start, index) => {
     let category = categories[(dayIndex + index) % categories.length];
     if (day === "sat" && index === blocksPerDay - 1 && categories.includes("mock")) category = "mock";
-    if (day === "sun" && index === blocksPerDay - 1) category = "review";
-    const item = copy[category]?.[(dayIndex + index) % copy[category].length] || copy.review[0];
+    if (day === "sun" && index === blocksPerDay - 1) category = "consolidation";
+    const item = copy[category]?.[(dayIndex + index) % copy[category].length] || copy.consolidation?.[0] || copy.review[0];
     return {
       day,
       start: minutesToClock(start),
@@ -520,6 +520,9 @@ function productTaskCopy(settings = {}) {
         taskCopy("IELTS 口语：Part 1 快答", "练日常话题的自然回答", ["完成本组口语题", "记录卡顿点", "复盘表达替换", "完成后可补一句反思"]),
         taskCopy("IELTS 口语：Part 2 陈述", "练1分钟准备和2分钟展开", ["完成陈述练习", "系统记录本组表现", "整理可复用表达", "完成后可补一句反思"])
       ],
+      consolidation: [
+        taskCopy("IELTS 巩固练习：阶段检验", "用本周内容完成一组综合题", ["完成本组系统练习", "系统统计正确率", "错题产生后进入错题集", "完成后可补一句反思"])
+      ],
       review: [
         taskCopy("错题复盘：到期题重做", "按错因重新完成一组变式题", ["完成到期错题", "系统统计正确率", "仍错题继续复习", "完成后可补一句反思"])
       ]
@@ -544,7 +547,10 @@ function productTaskCopy(settings = {}) {
         taskCopy(`${topikLevel} 词汇语法：语境填空`, `围绕${target}练句子结构、固定搭配和语境判断`, ["完成本组词汇语法题", "系统记录错题", "整理易混表达", "完成后可补一句反思"])
       ],
       mock: [
-        taskCopy(`${topikLevel} 阶段模拟：限时综合练习`, `围绕${target}串联听力、写作、阅读和错题复盘`, ["按时间完成本组综合练习", "系统统计正确率", "归类全部错题", "完成后可补一句反思"])
+        taskCopy(`${topikLevel} 阶段模拟：限时综合练习`, `围绕${target}串联听力、写作、阅读和词汇语法`, ["按时间完成本组综合练习", "系统统计正确率", "归类全部错题", "完成后可补一句反思"])
+      ],
+      consolidation: [
+        taskCopy(`${topikLevel} 巩固练习：阶段检验`, `围绕${target}做一组综合同型题`, ["完成本组系统练习", "系统统计正确率", "错题产生后进入错题集", "完成后可补一句反思"])
       ],
       review: [
         taskCopy("错题复盘：同类变式题", "根据最近错题重做一组同型练习", ["完成到期错题", "系统统计正确率", "仍错题继续复习", "完成后可补一句反思"])
@@ -557,6 +563,9 @@ function productTaskCopy(settings = {}) {
     ],
     vocab: [
       taskCopy(`${topikLevel} 词汇语法：助词与语尾`, `围绕${target}练基础句型和高频表达`, ["完成本组词汇语法题", "系统统计正确率", "错题进入复习队列", "完成后可补一句反思"])
+    ],
+    consolidation: [
+      taskCopy(`${topikLevel} 巩固练习：阶段检验`, `围绕${target}做一组综合同型题`, ["完成本组系统练习", "系统统计正确率", "错题产生后进入错题集", "完成后可补一句反思"])
     ],
     review: [
       taskCopy("错题复盘：基础题重做", "按错因重新完成一组变式题", ["完成到期错题", "系统统计正确率", "仍错题继续复习", "完成后可补一句反思"])

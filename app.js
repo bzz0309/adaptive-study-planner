@@ -5,6 +5,7 @@ const categoryMeta = {
   writing: { label: "写作", className: "writing" },
   speaking: { label: "口语", className: "speaking" },
   mock: { label: "模拟测验", className: "mock" },
+  consolidation: { label: "巩固练习", className: "review" },
   review: { label: "错题复盘", className: "review" }
 };
 
@@ -22,16 +23,16 @@ const defaultTasks = [
   { id: 1, day: "mon", start: "11:00", end: "11:40", category: "listening", title: "短对话诊断", note: "辨认场所、人物与行动", status: "completed", standards: ["首遍不暂停完成15题", "正确率达到80%", "错题复听并写下漏听关键词", "次日重做错题"] },
   { id: 2, day: "mon", start: "19:30", end: "20:10", category: "vocab", title: "生活场景高频词", note: "交通、购物、时间", status: "completed", standards: ["学习30个高频词", "完成韩中辨认和例句填空", "当天正确率达到90%", "次日无提示回忆率达到85%"] },
   { id: 3, day: "tue", start: "11:00", end: "11:45", category: "reading", title: "助词与句子结构", note: "은/는、이/가、을/를", status: "progress", standards: ["25分钟内完成20题", "正确率达到80%", "错题标注为词汇、语法或理解错误", "在句子中圈出判断依据"] },
-  { id: 4, day: "tue", start: "20:00", end: "20:35", category: "review", title: "否定表达错题复盘", note: "안、못、-지 않다", status: "planned", standards: ["重做5道到期错题", "逐题说出否定信息", "完成5道AI变式题", "正确率达到90%"] },
+  { id: 4, day: "tue", start: "20:00", end: "20:35", category: "consolidation", title: "否定表达巩固练习", note: "안、못、-지 않다", status: "planned", standards: ["完成本组系统练习", "系统统计正确率", "错题产生后进入错题集", "完成后可补一句反思"] },
   { id: 5, day: "wed", start: "11:00", end: "11:45", category: "listening", title: "场景对话训练", note: "商店、餐厅、医院", status: "planned", standards: ["首遍不暂停完成15题", "每题记录场所关键词", "错题至少复听2遍", "正确率达到80%"] },
   { id: 6, day: "wed", start: "19:30", end: "20:10", category: "reading", title: "短文信息定位", note: "公告、广告、便条", status: "planned", standards: ["30分钟完成4篇短文共16题", "标出每题答案依据", "正确率达到80%", "每篇用一句中文概括主旨"] },
   { id: 7, day: "thu", start: "11:00", end: "11:40", category: "vocab", title: "动词与形容词变形", note: "现在、过去、将来", status: "planned", standards: ["完成24道变形题", "限时25分钟", "正确率达到85%", "错题各造一个新句子"] },
-  { id: 8, day: "thu", start: "20:00", end: "20:35", category: "review", title: "词汇隔日回忆", note: "不看词表主动回忆", status: "planned", standards: ["无提示回忆周一30词", "回忆率达到85%", "未记住的词放入新语境", "3天后再次检查"] },
+  { id: 8, day: "thu", start: "20:00", end: "20:35", category: "consolidation", title: "词汇隔日回忆", note: "不看词表主动回忆", status: "planned", standards: ["无提示回忆周一30词", "系统统计正确率", "薄弱词放入新语境", "完成后可补一句反思"] },
   { id: 9, day: "fri", start: "11:00", end: "11:45", category: "listening", title: "听懂说话目的", note: "为什么这样说、接下来做什么", status: "planned", standards: ["完成15题，首遍不暂停", "写下决定答案的动词", "正确率达到80%", "错题完成近义变式"] },
   { id: 10, day: "fri", start: "19:30", end: "20:15", category: "reading", title: "句子排序与衔接", note: "连接词、指代关系", status: "planned", standards: ["35分钟完成15题", "圈出连接词和指代词", "正确率达到80%", "错题复述排序依据"] },
   { id: 11, day: "sat", start: "14:00", end: "15:40", category: "mock", title: "半套限时模拟", note: "听力15题＋阅读20题", status: "planned", standards: ["全程不中断、不查词", "按规定时间完成35题", "分别记录听力和阅读正确率", "归类全部错题"] },
-  { id: 12, day: "sat", start: "20:00", end: "20:35", category: "review", title: "模拟题错因分析", note: "只处理最高频两类", status: "planned", standards: ["归纳最高频两类错误", "每类写出正确思路", "为每类生成3道诊断题", "安排下周强化任务"] },
-  { id: 13, day: "sun", start: "11:00", end: "11:40", category: "review", title: "本周错题二次检验", note: "延迟变式题", status: "planned", standards: ["完成10道延迟变式题", "正确率达到90%", "口头解释每类题的判断顺序", "仍错知识点标记需重学"] },
+  { id: 12, day: "sat", start: "20:00", end: "20:35", category: "consolidation", title: "阶段检验复盘", note: "只处理最高频两类薄弱点", status: "planned", standards: ["完成本组综合练习", "系统统计正确率", "整理薄弱点", "安排下周强化任务"] },
+  { id: 13, day: "sun", start: "11:00", end: "11:40", category: "consolidation", title: "本周知识二次检验", note: "延迟变式题", status: "planned", standards: ["完成10道延迟变式题", "系统统计正确率", "口头解释判断顺序", "仍错知识点标记需重学"] },
   { id: 14, day: "sun", start: "20:00", end: "20:25", category: "vocab", title: "轻量复习与下周预习", note: "只看未掌握内容", status: "planned", standards: ["复习未掌握词汇", "预览下周3个语法点", "写下一个最需要解决的问题", "25分钟到时停止"] }
 ];
 
@@ -56,6 +57,9 @@ const studyTemplates = {
   review: [
     ["到期错题复盘", "完成1、3、7、14天复习"], ["延迟变式检验", "正确作答并讲明思路"], ["本日知识回忆", "不看笔记复述判断路径"]
   ],
+  consolidation: [
+    ["阶段检验", "用本周内容做一组综合题"], ["延迟巩固练习", "不看笔记完成一组同型题"], ["本日知识回忆", "不看笔记复述判断路径"]
+  ],
   mock: [["阶段限时模拟", "按正式题型完成并归类错因"]]
 };
 
@@ -72,6 +76,7 @@ const ieltsTemplates = {
   speaking: [
     ["Speaking Part 1", "日常话题快速回答"], ["Speaking Part 2", "1分钟准备与2分钟陈述"], ["Speaking Part 3", "观点展开、比较与原因"], ["口语录音复盘", "流利度、词汇和语法自查"]
   ],
+  consolidation: studyTemplates.consolidation,
   review: studyTemplates.review,
   mock: [["IELTS 分项模拟", "按考试时限完成并记录四项表现"]]
 };
@@ -81,12 +86,13 @@ const ieltsGeneralWriting = [
 ];
 
 const genericTemplates = {
-  listening: [["听力理解训练", "定位关键信息并完成练习"], ["听力错题复盘", "复听并记录漏听原因"]],
+  listening: [["听力理解训练", "定位关键信息并完成练习"], ["听力复听巩固", "复听并记录漏听原因"]],
   reading: [["核心资料阅读", "提炼概念、结构与重点"], ["章节题目训练", "限时完成并标注依据"]],
   vocab: [["核心术语学习", "主动回忆并建立知识卡片"], ["知识点应用", "用例题检验理解"]],
   grammar: [["规则与结构学习", "理解规则并完成变式练习"], ["易错点辨析", "比较相近概念和适用条件"]],
   writing: [["书面输出练习", "按要求完成并自查修改"], ["答题框架训练", "组织观点、依据和结论"]],
   speaking: [["口头表达练习", "录音、复听并重新表达"], ["观点陈述训练", "结论、理由和例子"]],
+  consolidation: studyTemplates.consolidation,
   review: studyTemplates.review,
   mock: [["综合模拟练习", "按目标要求完成并归类错因"]]
 };
@@ -97,6 +103,7 @@ const completionStandards = {
   vocab: ["完成主动回忆和语境题", "正确率达到85%", "错词各造一个句子", "次日无提示复习"],
   writing: ["按题目要求限时完成", "检查结构、语法和连接", "修改至少一轮", "记录可复用表达"],
   speaking: ["按规定时间完成录音", "回答切题并展开理由", "复听标记停顿和重复", "重新录制一次"],
+  consolidation: ["完成本组系统练习", "系统统计正确率", "错题产生后进入错题集", "完成后可补一句反思"],
   review: ["完成全部到期错题", "完成延迟变式题", "正确率达到90%", "能口头说明判断路径"],
   mock: ["全程不中断、不查词", "按规定时间完成", "记录各部分正确率", "归类全部错题"]
 };
@@ -247,7 +254,7 @@ function generatePlanFromSettings(settings) {
       ? (weakTokens.length ? [...new Set(weakTokens)] : ["reading", "vocab", "writing"])
       : ["listening", "reading", "vocab", "grammar", ...(level === "II" ? ["writing"] : [])];
   const templateSource = exam === "IELTS" ? ieltsTemplates : (exam === "OTHER" ? genericTemplates : studyTemplates);
-  const rotation = [...weakTokens, ...coreTokens, "review", ...(settings.intensity === "高强度" ? ["mock"] : [])];
+  const rotation = [...weakTokens, ...coreTokens, "consolidation", ...(settings.intensity === "高强度" ? ["mock"] : [])];
   const foundationOffset = { "入门": 0, "一般": 1, "较好": 2, "不确定": 0 }[settings.foundation] || 0;
   let sequence = 0;
   const generated = [];
@@ -258,7 +265,7 @@ function generatePlanFromSettings(settings) {
     starts.forEach((start, blockIndex) => {
       let token = rotation[(dayIndex * blocksPerDay + blockIndex) % rotation.length];
       if (day.key === "sat" && blockIndex === blocksPerDay - 1) token = "mock";
-      if (day.key === "sun" && blockIndex === blocksPerDay - 1) token = "review";
+      if (day.key === "sun" && blockIndex === blocksPerDay - 1) token = "consolidation";
       const category = token === "grammar" ? "vocab" : token;
       const templates = exam === "IELTS" && level === "II" && token === "writing"
         ? ieltsGeneralWriting
@@ -732,7 +739,7 @@ function renderProgressView() {
   }
 
   const recent = records.slice(-4);
-  const categoryLabels = { listening: "听力", reading: "阅读", vocab: "词汇语法", writing: "写作", speaking: "口语", mock: "模拟", review: "错题" };
+  const categoryLabels = { listening: "听力", reading: "阅读", vocab: "词汇语法", writing: "写作", speaking: "口语", mock: "模拟", consolidation: "巩固", review: "错题" };
   const categories = [...new Set(records.map(task => task.category))].slice(0, 5);
   const completedDays = new Set(records.map(task => task.day));
   const streakDays = days.filter(day => completedDays.has(day.key)).length;
@@ -764,7 +771,7 @@ function renderProgressView() {
 
 function taskDisplayTitle(task = {}, index = 0) {
   const rawTitle = String(task.title || "");
-  if (!/target grade|listening|reading|writing|speaking|vocab|grammar|review/i.test(rawTitle)) return rawTitle || "学习任务";
+  if (!/target grade|listening|reading|writing|speaking|vocab|grammar|review|consolidation/i.test(rawTitle)) return rawTitle || "学习任务";
   const settings = JSON.parse(localStorage.getItem("topikPrototypeSettings") || "null") || {};
   const examPrefix = settings.exam === "IELTS"
     ? "IELTS"
@@ -775,6 +782,7 @@ function taskDisplayTitle(task = {}, index = 0) {
     reading: ["阅读：找文章中心句", "阅读：排句子顺序", "阅读：找答案依据"],
     vocab: ["词汇语法：助词与语尾", "词汇语法：高频表达", "词汇语法：语境填空"],
     grammar: ["词汇语法：助词与语尾", "词汇语法：连接语尾", "词汇语法：句子结构"],
+    consolidation: ["巩固练习：阶段检验", "巩固练习：综合题", "巩固练习：知识回忆"],
     review: ["错题复盘：同类变式题", "错题复盘：到期题重做", "错题复盘：判断路径"],
     mock: ["阶段模拟：限时综合练习"]
   };
@@ -784,6 +792,8 @@ function taskDisplayTitle(task = {}, index = 0) {
 
 function renderCalendar() {
   const calendar = $("#weekCalendar");
+  $("#consolidationLegend")?.classList.toggle("hidden", !tasks.some(task => task.category === "consolidation"));
+  $("#reviewLegend")?.classList.toggle("hidden", !tasks.some(task => task.category === "review"));
   calendar.innerHTML = days.map(day => {
     const dayTasks = tasks.filter(task => task.day === day.key);
     const total = dayTasks.reduce((sum, task) => sum + minutesBetween(task.start, task.end), 0);
@@ -794,7 +804,7 @@ function renderCalendar() {
         <small>${day.featured ? "计划开始 · " : ""}${Math.floor(total / 60)}小时${total % 60 ? `${total % 60}分钟` : ""}</small>
       </header>
       ${dayTasks.map(task => {
-        const meta = categoryMeta[task.category];
+        const meta = categoryMeta[task.category] || categoryMeta.consolidation;
         const duration = minutesBetween(task.start, task.end);
         const title = taskDisplayTitle(task, tasks.indexOf(task));
         return `<div class="task-card ${meta.className} ${task.status}" data-task-id="${task.id}" tabindex="0" role="button">
@@ -894,7 +904,7 @@ function openMasteryRecord(id, isSample = false) {
 function openTask(id) {
   activeTaskId = id;
   const task = tasks.find(item => item.id === id);
-  const meta = categoryMeta[task.category];
+  const meta = categoryMeta[task.category] || categoryMeta.consolidation;
   const total = Number(task.checkin?.total || 0);
   const correct = Number(task.checkin?.correct || 0);
   const rate = total ? Math.round(correct / total * 100) : null;
@@ -941,7 +951,8 @@ function tomorrowPlanFocus() {
   const tomorrowKey = nextStudyDayKey();
   const tomorrowTasks = tasks.filter(task => task.day === tomorrowKey);
   if (!tomorrowTasks.length) return defaultTomorrowFocus();
-  const priority = tomorrowTasks.find(task => task.category === "review") || tomorrowTasks[0];
+  const hasWrongRecords = errorItems.some(item => !item.mastered);
+  const priority = hasWrongRecords ? (tomorrowTasks.find(task => task.category === "review") || tomorrowTasks[0]) : tomorrowTasks[0];
   const moreCount = Math.max(0, tomorrowTasks.length - 1);
   return moreCount
     ? `明天按计划先做${taskFocusLabel(priority)}，再完成另外 ${moreCount} 组学习任务。`
@@ -1585,7 +1596,7 @@ function normalizeAiTasks(aiTasks, settings) {
   const availableStart = settings.availableStart || "00:00";
   const availableEnd = settings.availableEnd || "23:59";
   const allowed = settings.exam === "TOPIK"
-    ? ["listening", "reading", "vocab", "mock", "review", ...(settings.level === "II" ? ["writing"] : [])]
+    ? ["listening", "reading", "vocab", "mock", "consolidation", "review", ...(settings.level === "II" ? ["writing"] : [])]
     : Object.keys(categoryMeta);
   const allowedCategories = new Set(allowed);
   return (aiTasks || []).filter(task => allowedDays.has(task.day) && allowedCategories.has(task.category) && /^\d{2}:\d{2}$/.test(task.start || "") && /^\d{2}:\d{2}$/.test(task.end || "") && task.start >= availableStart && task.end <= availableEnd && task.start < task.end).map((task, index) => {
@@ -1598,7 +1609,7 @@ function normalizeAiTasks(aiTasks, settings) {
       title: String(task.title || "学习任务").slice(0, 40),
       note: String(task.note || "").slice(0, 100),
       status: "planned",
-      standards: Array.isArray(task.standards) ? task.standards.slice(0, 5).map(String) : completionStandards[task.category]
+      standards: Array.isArray(task.standards) ? task.standards.slice(0, 5).map(String) : (completionStandards[task.category] || completionStandards.consolidation)
     };
     normalized.title = taskDisplayTitle(normalized, index);
     return normalized;
@@ -1629,7 +1640,7 @@ async function commitPlanSettings(settings) {
     tasks = generatePlanFromSettings(settings);
   }
   localStorage.setItem("topikPrototypeTasks", JSON.stringify(tasks));
-  localStorage.setItem("topikPrototypePlanVersion", "6");
+  localStorage.setItem("topikPrototypePlanVersion", "7");
   renderCalendar();
   updateTomorrowFocus();
   $("#profileIntensity").textContent = settings.intensityLabel;
@@ -1996,11 +2007,11 @@ if (savedSettings) {
   updateExamOptions(savedSettings.exam || "TOPIK", savedSettings.level || "I");
   updateTargetGradeOptions(savedSettings.level || "I", savedSettings.targetGrade || (savedSettings.level === "II" ? "4" : "2"));
   applyExamBrand(savedSettings.exam || "TOPIK", savedSettings.level || "I", savedSettings.targetGrade);
-  if (localStorage.getItem("topikPrototypePlanVersion") !== "6") {
+  if (localStorage.getItem("topikPrototypePlanVersion") !== "7") {
     const upgradedSettings = { exam: savedSettings.exam || "TOPIK", level: savedSettings.level || "I", foundation: savedSettings.foundation || "一般", weak: savedSettings.weak || ["听力", "阅读"], times: savedSettings.times || ["下午", "晚上"], ...savedSettings };
     tasks = generatePlanFromSettings(upgradedSettings);
     localStorage.setItem("topikPrototypeTasks", JSON.stringify(tasks));
-    localStorage.setItem("topikPrototypePlanVersion", "6");
+    localStorage.setItem("topikPrototypePlanVersion", "7");
     renderCalendar();
   }
 } else {
