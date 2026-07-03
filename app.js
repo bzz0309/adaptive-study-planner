@@ -694,6 +694,77 @@ function minutesBetween(start, end) {
   return (eh * 60 + em) - (sh * 60 + sm);
 }
 
+function hasPracticeRecord(task = {}) {
+  return Number.isFinite(Number(task.checkin?.correct)) && Number(task.checkin?.total) > 0;
+}
+
+function completedPracticeTasks() {
+  return tasks.filter(hasPracticeRecord);
+}
+
+function accuracyFor(items = []) {
+  const total = items.reduce((sum, task) => sum + Number(task.checkin?.total || 0), 0);
+  const correct = items.reduce((sum, task) => sum + Number(task.checkin?.correct || 0), 0);
+  return total ? Math.round((correct / total) * 100) : null;
+}
+
+function renderProgressView() {
+  const records = completedPracticeTasks();
+  const mockRecords = records.filter(task => task.category === "mock");
+  const latestMockRate = accuracyFor(mockRecords.slice(-1));
+  $("#scorePill").classList.toggle("is-empty", latestMockRate === null);
+  $("#scorePill").innerHTML = latestMockRate === null
+    ? "<small>当前模拟</small><strong>暂无</strong><span>完成模拟后生成</span>"
+    : `<small>当前模拟</small><strong>${Math.round(latestMockRate * 2)} / 200</strong><span>按最近一次模拟估算</span>`;
+
+  if (!records.length) {
+    $("#progressGrid").innerHTML = `<article class="chart-card wide progress-empty-card">
+      <div class="card-title"><div><p>真实学习数据</p><strong>暂无练习记录</strong></div></div>
+      <p>完成第一组系统练习后，这里才会显示正确率、能力分布和连续学习。现在不会使用演示数据。</p>
+    </article>
+    <article class="chart-card progress-empty-card">
+      <div class="card-title"><div><p>能力分布</p><strong>等待答题数据</strong></div></div>
+      <p>听力、阅读、写作等分项会根据真实答题结果更新。</p>
+    </article>
+    <article class="chart-card">
+      <div class="card-title"><div><p>本周习惯</p><strong>还未开始</strong></div></div>
+      <div class="habit-days">${["一", "二", "三", "四", "五", "六", "日"].map(label => `<span>${label}</span>`).join("")}</div>
+      <p class="habit-note">完成当天任一组系统练习后，会点亮对应日期。</p>
+    </article>`;
+    return;
+  }
+
+  const recent = records.slice(-4);
+  const categoryLabels = { listening: "听力", reading: "阅读", vocab: "词汇语法", writing: "写作", speaking: "口语", mock: "模拟", review: "错题" };
+  const categories = [...new Set(records.map(task => task.category))].slice(0, 5);
+  const completedDays = new Set(records.map(task => task.day));
+  const streakDays = days.filter(day => completedDays.has(day.key)).length;
+  const overallRate = accuracyFor(records);
+  $("#progressGrid").innerHTML = `<article class="chart-card wide">
+    <div class="card-title"><div><p>最近练习正确率</p><strong>${overallRate}% · 来自真实答题</strong></div></div>
+    <div class="bar-chart" aria-label="最近练习正确率柱状图">
+      ${recent.map((task, index) => {
+        const rate = accuracyFor([task]) || 0;
+        return `<div><i style="height:${Math.max(8, rate)}%"></i><span>第${records.length - recent.length + index + 1}组</span><b>${rate}%</b></div>`;
+      }).join("")}
+    </div>
+  </article>
+  <article class="chart-card">
+    <div class="card-title"><div><p>能力分布</p><strong>按已完成练习统计</strong></div></div>
+    <div class="skill-bars">
+      ${categories.map(category => {
+        const rate = accuracyFor(records.filter(task => task.category === category)) || 0;
+        return `<div><span>${categoryLabels[category] || "练习"}</span><i><em style="width:${rate}%"></em></i><b>${rate}%</b></div>`;
+      }).join("")}
+    </div>
+  </article>
+  <article class="chart-card">
+    <div class="card-title"><div><p>本周习惯</p><strong>已学习 ${streakDays} 天</strong></div></div>
+    <div class="habit-days">${days.map((day, index) => `<span class="${completedDays.has(day.key) ? "done" : ""}">${["一", "二", "三", "四", "五", "六", "日"][index]}</span>`).join("")}</div>
+    <p class="habit-note">数据只来自已完成的系统练习。</p>
+  </article>`;
+}
+
 function taskDisplayTitle(task = {}, index = 0) {
   const rawTitle = String(task.title || "");
   if (!/target grade|listening|reading|writing|speaking|vocab|grammar|review/i.test(rawTitle)) return rawTitle || "学习任务";
@@ -748,12 +819,13 @@ function renderCalendar() {
 
 function updateProgress() {
   const planned = tasks.reduce((sum, task) => sum + minutesBetween(task.start, task.end), 0);
-  const completed = tasks.filter(task => task.status === "completed").reduce((sum, task) => sum + minutesBetween(task.start, task.end), 0);
-  const percentage = Math.round(completed / planned * 100);
+  const completed = completedPracticeTasks().reduce((sum, task) => sum + minutesBetween(task.start, task.end), 0);
+  const percentage = planned ? Math.round(completed / planned * 100) : 0;
   $("#plannedHours").textContent = `${(planned / 60).toFixed(1)} 小时`;
   $("#completedHours").textContent = `${(completed / 60).toFixed(1)} 小时`;
   $("#progressText").textContent = `${percentage}%`;
   $("#progressBar").style.width = `${percentage}%`;
+  renderProgressView();
 }
 
 function renderErrors(filter = "all") {
@@ -1663,6 +1735,7 @@ function switchView(view) {
   $$(".tab").forEach(tab => tab.classList.toggle("active", tab.dataset.view === view));
   $$(".view").forEach(section => section.classList.remove("active"));
   $("#" + view + "View").classList.add("active");
+  if (view === "progress") renderProgressView();
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#f6f5ef" />
   <title>TOPIK 学习计划</title>
-  <link rel="stylesheet" href="styles.css?v=20260704-intensity-plan" />
+  <link rel="stylesheet" href="styles.css?v=20260704-real-progress" />
 </head>
 <body>
   <div class="app-shell">
@@ -120,36 +120,10 @@
             <h2>学习进度</h2>
             <p>离暂定考试日 10月18日还有 120 天。</p>
           </div>
-          <div class="score-pill"><small>当前模拟</small><strong>126 / 200</strong><span>目标 140+</span></div>
+          <div class="score-pill is-empty" id="scorePill"><small>当前模拟</small><strong>暂无</strong><span>完成模拟后生成</span></div>
         </div>
 
-        <div class="progress-grid">
-          <article class="chart-card wide">
-            <div class="card-title"><div><p>近四周正确率</p><strong>正在稳步上升</strong></div><span class="positive">+12%</span></div>
-            <div class="bar-chart" aria-label="近四周正确率柱状图">
-              <div><i style="height:52%"></i><span>第1周</span><b>58%</b></div>
-              <div><i style="height:61%"></i><span>第2周</span><b>65%</b></div>
-              <div><i style="height:68%"></i><span>第3周</span><b>72%</b></div>
-              <div><i style="height:76%"></i><span>本周</span><b>81%</b></div>
-            </div>
-          </article>
-          <article class="chart-card">
-            <div class="card-title"><div><p>能力分布</p><strong>阅读更稳定</strong></div></div>
-            <div class="skill-bars">
-              <div><span>听力</span><i><em style="width:62%"></em></i><b>62%</b></div>
-              <div><span>阅读</span><i><em style="width:78%"></em></i><b>78%</b></div>
-              <div><span>词汇</span><i><em style="width:70%"></em></i><b>70%</b></div>
-              <div><span>语法</span><i><em style="width:66%"></em></i><b>66%</b></div>
-            </div>
-          </article>
-          <article class="chart-card">
-            <div class="card-title"><div><p>本周习惯</p><strong>连续学习 5 天</strong></div></div>
-            <div class="habit-days">
-              <span class="done">一</span><span class="done">二</span><span class="done">三</span><span class="done">四</span><span class="done">五</span><span>六</span><span>日</span>
-            </div>
-            <p class="habit-note">最常见问题：看到熟悉词后过早作答。</p>
-          </article>
-        </div>
+        <div class="progress-grid" id="progressGrid"></div>
       </section>
     </main>
   </div>
@@ -368,6 +342,6 @@
   </div>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="app.js?v=20260704-intensity-plan"></script>
+  <script src="app.js?v=20260704-real-progress"></script>
 </body>
 </html>
