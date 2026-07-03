@@ -367,6 +367,14 @@ const placeParticleQuestions = [
   { stem: "다음 달에 한국___ 가요.", options: ["에", "에서", "와", "만"], answer: 0, explanation: "가다 表示移动，目的地用 에。" },
   { stem: "아침마다 공원___ 운동해요.", options: ["에", "에서", "의", "도"], answer: 1, explanation: "운동하다 是在公园发生的动作，动作场所用 에서。" }
 ];
+const listeningFallbackScript = "남자: 수진 씨, 오늘 동아리 회의에 못 올 것 같아요. 갑자기 아르바이트 시간이 바뀌었거든요. 여자: 그래요? 그럼 내일 오전까지 의견을 문자로 보내 주세요. 회의에서 대신 말해 줄게요. 남자: 고마워요. 포스터 디자인에 대한 의견을 정리해서 보낼게요.";
+const listeningFallbackQuestions = [
+  { audioText: listeningFallbackScript, transcript: listeningFallbackScript, stem: "남자가 오늘 동아리 회의에 못 가는 이유는 무엇입니까?", options: ["포스터를 아직 만들지 못해서", "아르바이트 시간이 바뀌어서", "의견을 정리하지 못해서", "내일 오전에 약속이 있어서"], answer: 1, explanation: "남자는 갑자기 아르바이트 시간이 바뀌어서 오늘 동아리 회의에 못 간다고 말했습니다.", source: "TOPIK II listening reason type" },
+  { audioText: listeningFallbackScript, transcript: listeningFallbackScript, stem: "여자는 남자에게 무엇을 하라고 했습니까?", options: ["회의에 늦게 오라고 했습니다", "포스터를 바로 만들라고 했습니다", "의견을 문자로 보내라고 했습니다", "아르바이트 시간을 바꾸라고 했습니다"], answer: 2, explanation: "여자는 내일 오전까지 의견을 문자로 보내 달라고 했습니다.", source: "TOPIK II listening action type" },
+  { audioText: listeningFallbackScript, transcript: listeningFallbackScript, stem: "남자는 무엇에 대한 의견을 보내겠다고 했습니까?", options: ["회의 시간", "포스터 디자인", "동아리 장소", "아르바이트 일정"], answer: 1, explanation: "남자는 포스터 디자인에 대한 의견을 정리해서 보내겠다고 했습니다.", source: "TOPIK II listening detail type" },
+  { audioText: listeningFallbackScript, transcript: listeningFallbackScript, stem: "대화 내용과 같은 것을 고르십시오.", options: ["남자는 회의에서 발표할 것입니다", "여자는 남자의 의견을 대신 말할 것입니다", "회의는 내일 오전에 열립니다", "포스터는 이미 완성되었습니다"], answer: 1, explanation: "여자는 회의에서 남자의 의견을 대신 말해 주겠다고 했습니다.", source: "TOPIK II listening matching type" },
+  { audioText: listeningFallbackScript, transcript: listeningFallbackScript, stem: "이 대화에서 남자의 말하기 목적은 무엇입니까?", options: ["회의에 못 가는 상황을 설명하려고", "포스터 디자인을 칭찬하려고", "아르바이트를 소개하려고", "회의 장소를 확인하려고"], answer: 0, explanation: "남자는 아르바이트 시간이 바뀌어 회의에 못 간다는 상황을 설명하고 있습니다.", source: "TOPIK II listening purpose type" }
+];
 
 const examLabelMap = {
   TOPIK: "TOPIK",
@@ -384,6 +392,8 @@ let practiceTaskId = null;
 let practiceErrorId = null;
 let practiceWrongNotes = [];
 let practiceIsSample = false;
+let listeningPlayCounts = {};
+let listeningIsSpeaking = false;
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
@@ -818,6 +828,53 @@ function fallbackPracticeQuestions(errorId) {
   return particleQuestions.slice(5, 10);
 }
 
+function localFallbackForContext(errorId, context) {
+  if (context?.category === "listening") return listeningFallbackQuestions;
+  return fallbackPracticeQuestions(errorId);
+}
+
+function stopListeningAudio() {
+  if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+  listeningIsSpeaking = false;
+}
+
+function isListeningQuestion(question = {}) {
+  const task = practiceTaskId ? tasks.find(item => item.id === practiceTaskId) : null;
+  return Boolean(question.audioText || question.transcript || task?.category === "listening" || /listening|듣기/i.test(question.source || question.questionType || ""));
+}
+
+function listeningTextFor(question = {}) {
+  return String(question.audioText || question.transcript || "").trim();
+}
+
+function playListeningQuestion() {
+  const question = activePractice[questionIndex];
+  const text = listeningTextFor(question);
+  const key = `${questionIndex}`;
+  const currentCount = listeningPlayCounts[key] || 0;
+  const isReview = questionGraded;
+  if (!text) return showToast("这题暂时没有可播放音频，已作为听力文本题处理");
+  if (!("speechSynthesis" in window)) return showToast("当前浏览器不支持朗读，请提交后查看听力原文");
+  if (!isReview && currentCount >= 2) return showToast("答题阶段最多播放2次，提交后可反复复听");
+  stopListeningAudio();
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = "ko-KR";
+  utterance.rate = 0.88;
+  utterance.onend = () => {
+    listeningIsSpeaking = false;
+    renderQuestion();
+  };
+  utterance.onerror = () => {
+    listeningIsSpeaking = false;
+    showToast("朗读暂不可用，请提交后查看听力原文");
+    renderQuestion();
+  };
+  if (!isReview) listeningPlayCounts[key] = currentCount + 1;
+  listeningIsSpeaking = true;
+  window.speechSynthesis.speak(utterance);
+  renderQuestion();
+}
+
 function readPracticeQuestionCount() {
   const selected = Number($("#practiceQuestionCount")?.value || 5);
   return [5, 10, 15, 20].includes(selected) ? selected : 5;
@@ -827,12 +884,16 @@ function normalizePracticeQuestions(items, limit = 5) {
   return (items || []).map((item, index) => {
     const options = Array.isArray(item.options) ? item.options.map(String).slice(0, 4) : [];
     const answer = Number(item.answer);
+    const audioText = String(item.audioText || item.audio || item.transcript || "").trim();
     return {
       stem: String(item.stem || item.question || "").trim(),
       options,
       answer: Number.isInteger(answer) ? answer : 0,
       explanation: String(item.explanation || item.reason || "系统会根据答案依据继续调整后续练习。").trim(),
-      source: item.source ? String(item.source).slice(0, 120) : ""
+      source: item.source ? String(item.source).slice(0, 120) : "",
+      audioText,
+      transcript: String(item.transcript || audioText).trim(),
+      questionType: String(item.questionType || item.type || "").trim()
     };
   }).filter(item => item.stem && item.options.length >= 2 && item.answer >= 0 && item.answer < item.options.length).slice(0, limit);
 }
@@ -1189,9 +1250,11 @@ async function startPractice(errorId = "e1", linkedTaskId = null, isSample = fal
   practiceErrorId = linkedTaskId ? null : errorId;
   practiceIsSample = isSample;
   practiceWrongNotes = [];
+  listeningPlayCounts = {};
+  stopListeningAudio();
   const context = getPracticeContext(errorId, linkedTaskId);
   const questionCount = linkedTaskId ? readPracticeQuestionCount() : 5;
-  activePractice = fallbackPracticeQuestions(errorId);
+  activePractice = localFallbackForContext(errorId, context);
   questionIndex = 0;
   selectedAnswer = null;
   questionGraded = false;
@@ -1200,7 +1263,7 @@ async function startPractice(errorId = "e1", linkedTaskId = null, isSample = fal
   $("#practiceTitle").textContent = context.title;
   $("#questionProgress").textContent = "生成中";
   $("#questionArea").innerHTML = `<div class="standard-box"><p class="section-kicker">正在按考试与计划出题</p><h2>${context.examLabel}</h2><p>系统会优先参考当前考试类型、目标等级、任务目标和公开样题/真题题型，生成本组 ${questionCount} 道练习。</p></div>`;
-  $("#practiceFeedback").className = "practice-feedback hidden";
+  if (!questionGraded) $("#practiceFeedback").className = "practice-feedback hidden";
   $("#prevQuestion").disabled = true;
   $("#nextQuestion").disabled = true;
   openModal("practiceModal");
@@ -1222,16 +1285,25 @@ async function startPractice(errorId = "e1", linkedTaskId = null, isSample = fal
 
 function renderQuestion() {
   const question = activePractice[questionIndex];
+  const listening = isListeningQuestion(question);
+  const transcript = listeningTextFor(question);
+  const playCount = listeningPlayCounts[`${questionIndex}`] || 0;
+  const remainingPlays = Math.max(0, 2 - playCount);
   $("#questionProgress").textContent = `${questionIndex + 1} / ${activePractice.length}`;
-  $("#questionArea").innerHTML = `<p class="question-stem">${question.stem}</p><div class="answer-options">
+  $("#questionArea").innerHTML = `${listening ? `<div class="listening-player">
+    <div><span>听力播放</span><strong>${questionGraded ? "复盘阶段可反复听" : `答题阶段剩余 ${remainingPlays} 次`}</strong></div>
+    <button class="secondary-button compact" id="playListening" type="button" ${listeningIsSpeaking || (!questionGraded && remainingPlays <= 0) || !transcript ? "disabled" : ""}>${listeningIsSpeaking ? "播放中…" : "播放音频"}</button>
+  </div>` : ""}
+  <p class="question-stem">${question.stem}</p><div class="answer-options">
     ${question.options.map((option, index) => `<label class="answer-option ${selectedAnswer === index ? "selected" : ""}">
       <input type="radio" name="answer" value="${index}" />
       <span class="answer-letter">${String.fromCharCode(65 + index)}</span><span>${option}</span>
     </label>`).join("")}
-  </div>`;
-  $("#practiceFeedback").className = "practice-feedback hidden";
+  </div>${listening && questionGraded && transcript ? `<div class="transcript-box"><span>听力原文</span><p>${transcript}</p></div>` : ""}`;
+  if (!questionGraded) $("#practiceFeedback").className = "practice-feedback hidden";
   $("#nextQuestion").textContent = "提交答案";
   $("#prevQuestion").disabled = questionIndex === 0;
+  $("#playListening")?.addEventListener("click", playListeningQuestion);
   $$(".answer-option").forEach((option, index) => option.addEventListener("click", () => {
     if (questionGraded) return;
     selectedAnswer = index;
@@ -1246,11 +1318,12 @@ function advanceQuestion() {
     const question = activePractice[questionIndex];
     const correct = selectedAnswer === question.answer;
     if (correct) practiceCorrect += 1;
-    else practiceWrongNotes.push({ stem: question.stem, explanation: question.explanation });
+    else practiceWrongNotes.push({ stem: question.stem, explanation: question.explanation, listeningMistake: isListeningQuestion(question) ? "需要复听原文，标记没听出的关键词" : "" });
+    questionGraded = true;
+    renderQuestion();
     const feedback = $("#practiceFeedback");
     feedback.className = `practice-feedback ${correct ? "correct" : "wrong"}`;
     feedback.innerHTML = `<strong>${correct ? "回答正确" : `正确答案：${question.options[question.answer]}`}</strong><br>${question.explanation}`;
-    questionGraded = true;
     $("#nextQuestion").textContent = questionIndex === activePractice.length - 1 ? "查看本组结果" : "下一题";
     return;
   }
@@ -1277,7 +1350,7 @@ function completePracticeSession() {
     const task = tasks.find(item => item.id === practiceTaskId);
     if (task) {
       const autoNote = wrongCount
-        ? `AI自动记录：错${wrongCount}题；${practiceWrongNotes.slice(0, 2).map(item => item.explanation).join("；")}`
+        ? `AI自动记录：错${wrongCount}题；${practiceWrongNotes.slice(0, 2).map(item => item.listeningMistake || item.explanation).join("；")}`
         : "AI自动记录：本组全部正确，建议按计划进行延迟复习。";
       task.status = "completed";
       task.checkin = { correct: practiceCorrect, total, note: autoNote, reflection: task.checkin?.reflection || "", source: "系统练习自动统计", updatedAt: new Date().toISOString() };
@@ -1314,7 +1387,11 @@ function resetPracticeControls() {
 }
 
 function openModal(id) { $("#" + id).classList.remove("hidden"); document.body.style.overflow = "hidden"; }
-function closeModal(id) { $("#" + id).classList.add("hidden"); document.body.style.overflow = ""; }
+function closeModal(id) {
+  if (id === "practiceModal") stopListeningAudio();
+  $("#" + id).classList.add("hidden");
+  document.body.style.overflow = "";
+}
 function showToast(message) {
   const toast = $("#toast");
   toast.textContent = message;

@@ -109,6 +109,7 @@ function normalizeSource(source = {}, index = 0) {
 function normalizeQuestion(item = {}) {
   const options = Array.isArray(item.options) ? item.options.map(option => compact(option)).filter(Boolean).slice(0, 4) : [];
   const answer = Number(item.answer);
+  const audioText = compact(item.audioText || item.audio || item.transcript);
   return {
     stem: compact(item.stem || item.question),
     options,
@@ -116,6 +117,8 @@ function normalizeQuestion(item = {}) {
     explanation: compact(item.explanation || item.reason),
     source: compact(item.source || item.type || "Generated exam-type practice"),
     skill: compact(item.skill || item.questionType || ""),
+    audioText,
+    transcript: compact(item.transcript || audioText),
     reviewStatus: "pending"
   };
 }
@@ -172,6 +175,7 @@ function reviewQuestion(item = {}, settings = {}) {
   if (/all of the above|none of the above|以上皆是|以上都不是/i.test(question.options.join(" "))) issues.push("选项不够稳定");
 
   const questionType = inferQuestionType(question, settings);
+  if (/listening/.test(questionType) && !question.audioText) issues.push("听力题缺少可播放脚本");
   const passed = issues.length === 0;
   return {
     ...question,
@@ -214,6 +218,61 @@ function fallbackPractice(settings = {}) {
   const category = request.category || "vocab";
   const taskTitle = compact(request.taskTitle, "系统练习");
   const examLabel = getExamLabel({ ...settings, exam, level, targetGrade: request.targetGrade || settings.targetGrade });
+
+  if (exam === "TOPIK" && level === "II" && category === "listening") {
+    const listeningScript = "남자: 수진 씨, 오늘 동아리 회의에 못 올 것 같아요. 갑자기 아르바이트 시간이 바뀌었거든요. 여자: 그래요? 그럼 내일 오전까지 의견을 문자로 보내 주세요. 회의에서 대신 말해 줄게요. 남자: 고마워요. 포스터 디자인에 대한 의견을 정리해서 보낼게요.";
+    return {
+      questions: [
+        {
+          audioText: listeningScript,
+          transcript: listeningScript,
+          stem: "남자가 오늘 동아리 회의에 못 가는 이유는 무엇입니까?",
+          options: ["포스터를 아직 만들지 못해서", "아르바이트 시간이 바뀌어서", "의견을 정리하지 못해서", "내일 오전에 약속이 있어서"],
+          answer: 1,
+          explanation: "남자는 갑자기 아르바이트 시간이 바뀌어서 오늘 동아리 회의에 못 간다고 말했습니다.",
+          source: "TOPIK II listening reason type"
+        },
+        {
+          audioText: listeningScript,
+          transcript: listeningScript,
+          stem: "여자는 남자에게 무엇을 하라고 했습니까?",
+          options: ["회의에 늦게 오라고 했습니다", "포스터를 바로 만들라고 했습니다", "의견을 문자로 보내라고 했습니다", "아르바이트 시간을 바꾸라고 했습니다"],
+          answer: 2,
+          explanation: "여자는 내일 오전까지 의견을 문자로 보내 달라고 했습니다.",
+          source: "TOPIK II listening action type"
+        },
+        {
+          audioText: listeningScript,
+          transcript: listeningScript,
+          stem: "남자는 무엇에 대한 의견을 보내겠다고 했습니까?",
+          options: ["회의 시간", "포스터 디자인", "동아리 장소", "아르바이트 일정"],
+          answer: 1,
+          explanation: "남자는 포스터 디자인에 대한 의견을 정리해서 보내겠다고 했습니다.",
+          source: "TOPIK II listening detail type"
+        },
+        {
+          audioText: listeningScript,
+          transcript: listeningScript,
+          stem: "대화 내용과 같은 것을 고르십시오.",
+          options: ["남자는 회의에서 발표할 것입니다", "여자는 남자의 의견을 대신 말할 것입니다", "회의는 내일 오전에 열립니다", "포스터는 이미 완성되었습니다"],
+          answer: 1,
+          explanation: "여자는 회의에서 남자의 의견을 대신 말해 주겠다고 했습니다.",
+          source: "TOPIK II listening matching type"
+        },
+        {
+          audioText: listeningScript,
+          transcript: listeningScript,
+          stem: "이 대화에서 남자의 말하기 목적은 무엇입니까?",
+          options: ["회의에 못 가는 상황을 설명하려고", "포스터 디자인을 칭찬하려고", "아르바이트를 소개하려고", "회의 장소를 확인하려고"],
+          answer: 0,
+          explanation: "남자는 아르바이트 시간이 바뀌어 회의에 못 간다는 상황을 설명하고 있습니다.",
+          source: "TOPIK II listening purpose type"
+        }
+      ],
+      title: `${examLabel} · ${taskTitle}`,
+      sources: sourceList({ exam })
+    };
+  }
 
   if (exam === "IELTS") {
     return {
@@ -293,10 +352,12 @@ function fallbackPractice(settings = {}) {
         },
         writingQuestion,
         {
-          stem: "듣기에서 화자의 의도를 묻는 문제를 풀 때 가장 중요한 단서는 무엇입니까?",
-          options: ["배경 음악", "마지막 행동 제안과 말투", "문장의 길이", "낯선 단어 하나"],
+          audioText: "남자: 수진 씨, 오늘 동아리 회의에 못 올 것 같아요. 갑자기 아르바이트 시간이 바뀌었거든요. 여자: 그래요? 그럼 내일 오전까지 의견을 문자로 보내 주세요. 회의에서 대신 말해 줄게요. 남자: 고마워요. 포스터 디자인에 대한 의견을 정리해서 보낼게요.",
+          transcript: "남자: 수진 씨, 오늘 동아리 회의에 못 올 것 같아요. 갑자기 아르바이트 시간이 바뀌었거든요. 여자: 그래요? 그럼 내일 오전까지 의견을 문자로 보내 주세요. 회의에서 대신 말해 줄게요. 남자: 고마워요. 포스터 디자인에 대한 의견을 정리해서 보낼게요.",
+          stem: "남자가 오늘 동아리 회의에 못 가는 이유는 무엇입니까?",
+          options: ["포스터를 아직 만들지 못해서", "아르바이트 시간이 바뀌어서", "의견을 정리하지 못해서", "내일 오전에 약속이 있어서"],
           answer: 1,
-          explanation: "意图题通常看说话人的建议、请求、态度和最后的行动方向。",
+          explanation: "남자는 갑자기 아르바이트 시간이 바뀌어서 오늘 동아리 회의에 못 간다고 말했습니다.",
           source: "TOPIK II listening intent type"
         },
         {
@@ -420,8 +481,10 @@ function buildPracticePrompt(settings = {}) {
     "You are a careful exam practice generator for a study planner.",
     "Generate original practice questions that follow public official sample-question types and user-provided context.",
     "Do not reproduce a copyrighted full exam paper or claim unverifiable sources.",
-    "Return strict JSON only with this shape: {\"questions\":[{\"stem\":\"...\",\"options\":[\"...\"],\"answer\":0,\"explanation\":\"...\",\"source\":\"...\"}],\"sources\":[\"...\"]}.",
+    "Return strict JSON only with this shape: {\"questions\":[{\"stem\":\"...\",\"options\":[\"...\"],\"answer\":0,\"explanation\":\"...\",\"source\":\"...\",\"audioText\":\"...\",\"transcript\":\"...\"}],\"sources\":[\"...\"]}.",
     "Each question must have 4 options and a zero-based numeric answer.",
+    "For listening questions, put the dialogue or monologue in audioText and transcript, and keep stem as only the question. Do not place the full listening script inside stem.",
+    "For non-listening questions, audioText and transcript may be empty.",
     `Exam: ${getExamLabel(settings)}.`,
     `Category: ${request.category || "mixed"}.`,
     `Task: ${request.taskTitle || "practice"}.`,

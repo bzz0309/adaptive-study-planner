@@ -211,6 +211,11 @@ input:focus, textarea:focus, select:focus { border-color: #8497a8; box-shadow: 0
 .modal-actions { display: flex; justify-content: flex-end; gap: 9px; margin-top: 20px; }
 .practice-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding-right: 30px; }
 .question-progress { padding: 6px 9px; border-radius: 99px; background: #eef0f2; color: #53606c; font-size: 10px; font-weight: 800; }
+.listening-player { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 24px 0 16px; padding: 13px; border: 1px solid #dce3dc; border-radius: 14px; background: #f5f8f2; }
+.listening-player span, .transcript-box span { display: block; color: var(--muted); font-size: 10px; font-weight: 850; }
+.listening-player strong { display: block; margin-top: 3px; color: var(--ink); font-size: 13px; }
+.transcript-box { margin-top: 14px; padding: 13px; border-radius: 13px; background: #f4f4ef; }
+.transcript-box p { margin: 6px 0 0; color: #26323c; font-size: 12px; font-weight: 650; line-height: 1.65; }
 .question-stem { margin: 28px 0 16px; font-size: 20px; font-weight: 800; line-height: 1.6; }
 .answer-options { display: grid; gap: 9px; }
 .answer-option { display: flex; align-items: center; gap: 11px; padding: 13px; border: 1px solid var(--line); border-radius: 13px; background: white; cursor: pointer; }
