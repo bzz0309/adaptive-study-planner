@@ -1419,12 +1419,20 @@ async function startPractice(errorId = "e1", linkedTaskId = null, isSample = fal
   questionGraded = false;
   practiceCorrect = 0;
   $("#practiceEyebrow").textContent = errorId === "imported-1" ? "导入错题诊断 · 5题" : `${context.examLabel} · 系统出题`;
-  $("#practiceTitle").textContent = context.title;
-  $("#questionProgress").textContent = "生成中";
-  $("#questionArea").innerHTML = `<div class="standard-box"><p class="section-kicker">正在按考试与计划出题</p><h2>${context.examLabel}</h2><p>系统会优先参考当前考试类型、目标等级、任务目标和公开样题/真题题型，生成本组 ${questionCount} 道练习。</p></div>`;
+  $("#practiceTitle").textContent = "正在生成练习题";
+  $("#questionProgress").textContent = "请稍候";
+  $("#questionArea").innerHTML = `<div class="practice-loading-state" role="status" aria-live="polite">
+    <span class="loading-spinner" aria-hidden="true"></span>
+    <div>
+      <p class="section-kicker">系统出题中</p>
+      <h3>正在按你的考试目标生成 ${questionCount} 道题</h3>
+      <p>会参考当前考试类型、目标等级、任务目标和公开题型结构。题目生成完成后会自动进入第 1 题。</p>
+    </div>
+  </div>`;
   if (!questionGraded) $("#practiceFeedback").className = "practice-feedback hidden";
   $("#prevQuestion").disabled = true;
   $("#nextQuestion").disabled = true;
+  $("#nextQuestion").textContent = "正在生成";
   openModal("practiceModal");
   try {
     const generated = await loadExamDrivenPractice(errorId, linkedTaskId, questionCount);
@@ -1438,6 +1446,7 @@ async function startPractice(errorId = "e1", linkedTaskId = null, isSample = fal
   questionGraded = false;
   practiceCorrect = 0;
   practiceWrongNotes = [];
+  $("#practiceTitle").textContent = context.title;
   $("#nextQuestion").disabled = false;
   renderQuestion();
 }
