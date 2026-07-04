@@ -213,7 +213,7 @@ function updateExamOptions(exam, level = "I") {
   $("#writingLegend").classList.toggle("hidden", !(isIELTS || isTopikII || isOther));
   $("#speakingLegend").classList.toggle("hidden", !(isIELTS || isOther));
   if (isOther) {
-    $("#weakHelp").textContent = "请选择适合这个考试或学习项目的能力项；也可以在上方直接描述学习内容。";
+    $("#weakHelp").textContent = "请选择适合这个考试或学习项目的能力项；补充范围可写教材章节、老师要求或特殊目标。";
   } else if (isIELTS) {
     $('#vocabWeakOption input').checked = false;
     $('#grammarWeakOption input').checked = false;
@@ -1705,7 +1705,7 @@ function renderSourceChoices(sources) {
   $("#confirmResourceSources").innerHTML = sources.map((source, index) => `<label class="source-choice">
     <input type="checkbox" data-confirm-source="${index}" checked />
     <span><strong>${escapeImportText(source.title)} · ${escapeImportText(source.type)}</strong><small>${escapeImportText(source.detail || source.url || "")}</small></span>
-  </label>`).join("") || '<div class="source-line">未选择资料来源，将只按你填写的学习内容生成。</div>';
+  </label>`).join("") || '<div class="source-line">未选择资料来源，将只按考试目标和补充学习范围生成。</div>';
 }
 
 function updatePlanConfirmationState() {
@@ -1987,7 +1987,7 @@ function initializeEvents() {
     }));
     const autoResearch = $("#autoResearch").checked;
     if (exam === "OTHER" && !customExamName) return showToast("请填写考试或学习项目名称");
-    if (exam === "OTHER" && !studyContent && !resourceLinks.length && !materialFiles.length && !autoResearch) return showToast("请填写学习内容、添加资料，或允许AI搜索");
+    if (exam === "OTHER" && !studyContent && !resourceLinks.length && !materialFiles.length && !autoResearch) return showToast("请填写补充学习范围、添加资料，或允许AI搜索");
     if (!studyDays.length) return showToast("请至少选择一个学习日");
     if (!firstRoundWeeks) return showToast("请填写第一轮计划用时");
     if (!availableStart || !availableEnd || availableStart >= availableEnd) return showToast("请填写有效的北京时间范围");
