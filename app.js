@@ -457,6 +457,7 @@ let practiceTaskId = null;
 let practiceErrorId = null;
 let practiceWrongNotes = [];
 let practiceIsSample = false;
+let practiceReviewMode = "learning";
 let listeningPlayCounts = {};
 let listeningIsSpeaking = false;
 let activeCalendarFilter = "all";
@@ -947,6 +948,7 @@ function openTask(id) {
   const hasSeenTaskFlow = localStorage.getItem("topikPrototypeTaskFlowSeen") === "yes";
   $("#taskFlowIntro").classList.toggle("hidden", hasSeenTaskFlow);
   if (!hasSeenTaskFlow) localStorage.setItem("topikPrototypeTaskFlowSeen", "yes");
+  $("#practiceReviewMode").value = localStorage.getItem("topikPrototypePracticeReviewMode") || "learning";
   $("#taskRecordTitle").textContent = hasLearningRecord ? "答题结果" : "开始前确认";
   $("#taskAutoRecord").innerHTML = total
     ? `<span>系统已记录</span><strong>${correct} / ${total} 题正确 · ${rate}%</strong><p>${task.checkin?.source || "系统练习自动统计"} · ${task.checkin?.updatedAt ? new Date(task.checkin.updatedAt).toLocaleString("zh-CN", { hour12: false }) : "刚刚"}</p>`
@@ -1086,6 +1088,11 @@ function playListeningQuestion() {
 function readPracticeQuestionCount() {
   const selected = Number($("#practiceQuestionCount")?.value || 5);
   return [5, 10, 15, 20].includes(selected) ? selected : 5;
+}
+
+function readPracticeReviewMode() {
+  const selected = $("#practiceReviewMode")?.value || localStorage.getItem("topikPrototypePracticeReviewMode") || "learning";
+  return selected === "exam" ? "exam" : "learning";
 }
 
 function normalizePracticeQuestions(items, limit = 5) {
@@ -1451,6 +1458,8 @@ async function saveReflection() {
 
 async function startPractice(errorId = "e1", linkedTaskId = null, isSample = false) {
   resetPracticeControls();
+  practiceReviewMode = linkedTaskId ? readPracticeReviewMode() : "learning";
+  if (linkedTaskId) localStorage.setItem("topikPrototypePracticeReviewMode", practiceReviewMode);
   practiceTaskId = linkedTaskId;
   practiceErrorId = linkedTaskId ? null : errorId;
   practiceIsSample = isSample;
@@ -1499,6 +1508,7 @@ async function startPractice(errorId = "e1", linkedTaskId = null, isSample = fal
 
 function renderQuestion() {
   const question = activePractice[questionIndex];
+  const learningMode = practiceReviewMode === "learning";
   const listening = isListeningQuestion(question);
   const transcript = listeningTextFor(question);
   const transcriptZh = String(question.transcriptZh || "").trim();
@@ -1506,15 +1516,15 @@ function renderQuestion() {
   const remainingPlays = Math.max(0, 2 - playCount);
   $("#questionProgress").textContent = `${questionIndex + 1} / ${activePractice.length}`;
   $("#questionArea").innerHTML = `${listening ? `<div class="listening-player">
-    <div><span>听力播放</span><strong>${questionGraded ? "复盘阶段可反复听" : `答题阶段剩余 ${remainingPlays} 次`}</strong></div>
-    <button class="secondary-button compact" id="playListening" type="button" ${listeningIsSpeaking || (!questionGraded && remainingPlays <= 0) || !transcript ? "disabled" : ""}>${listeningIsSpeaking ? "播放中…" : "播放音频"}</button>
+    <div><span>听力播放</span><strong>${questionGraded ? (learningMode ? "复盘阶段可反复听" : "本题已记录，整组完成后复盘") : `答题阶段剩余 ${remainingPlays} 次`}</strong></div>
+    <button class="secondary-button compact" id="playListening" type="button" ${listeningIsSpeaking || (!learningMode && questionGraded) || (!questionGraded && remainingPlays <= 0) || !transcript ? "disabled" : ""}>${listeningIsSpeaking ? "播放中…" : "播放音频"}</button>
   </div>` : ""}
   <p class="question-stem">${escapeImportText(question.stem)}</p><div class="answer-options">
     ${question.options.map((option, index) => `<label class="answer-option ${selectedAnswer === index ? "selected" : ""}">
       <input type="radio" name="answer" value="${index}" />
       <span class="answer-letter">${String.fromCharCode(65 + index)}</span><span>${escapeImportText(option)}</span>
     </label>`).join("")}
-  </div>${listening && questionGraded && transcript ? `<div class="transcript-box"><span>听力原文</span><p>${escapeImportText(transcript)}</p>${transcriptZh ? `<span>中文翻译</span><p>${escapeImportText(transcriptZh)}</p>` : ""}</div>` : ""}`;
+  </div>${listening && learningMode && questionGraded && transcript ? `<div class="transcript-box"><span>听力原文</span><p>${escapeImportText(transcript)}</p>${transcriptZh ? `<span>中文翻译</span><p>${escapeImportText(transcriptZh)}</p>` : ""}</div>` : ""}`;
   if (!questionGraded) $("#practiceFeedback").className = "practice-feedback hidden";
   $("#nextQuestion").textContent = "提交答案";
   $("#prevQuestion").disabled = questionIndex === 0;
@@ -1543,6 +1553,13 @@ function advanceQuestion() {
     });
     questionGraded = true;
     renderQuestion();
+    if (practiceReviewMode === "exam") {
+      const feedback = $("#practiceFeedback");
+      feedback.className = "practice-feedback recorded";
+      feedback.innerHTML = "<strong>本题已记录</strong><br><span>考试模式下不立刻显示答案和中文解析，整组完成后统一复盘。</span>";
+      $("#nextQuestion").textContent = questionIndex === activePractice.length - 1 ? "查看本组结果" : "下一题";
+      return;
+    }
     const answerText = question.options[question.answer] || "";
     const answerZh = question.answerZh || question.optionTranslations?.[question.answer] || "";
     const explanation = question.explanation || "系统会根据答案依据继续调整后续练习。";

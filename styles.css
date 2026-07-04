@@ -242,6 +242,7 @@ input:focus, textarea:focus, select:focus { border-color: #8497a8; box-shadow: 0
 .practice-feedback { margin-top: 14px; padding: 12px; border-radius: 12px; font-size: 11px; line-height: 1.6; }
 .practice-feedback.correct { color: #276344; background: #e2f2e1; }
 .practice-feedback.wrong { color: #8c433d; background: #f8e2df; }
+.practice-feedback.recorded { color: #52606b; background: #eef1f2; }
 .practice-feedback.hidden { display: none; }
 .mastery-proof { display: flex; align-items: center; gap: 12px; margin: 16px 0; padding: 14px; border-radius: 14px; background: #eaf4e9; }
 .mastery-proof > span { display: grid; flex: 0 0 auto; place-items: center; width: 34px; height: 34px; border-radius: 50%; color: white; background: #4f8061; font-weight: 900; }
