@@ -1077,14 +1077,15 @@ function openTask(id) {
   $("#practiceModeNote").innerHTML = isMockTask
     ? `<span>模拟考试</span><strong>先完整答完本组，再统一查看答案、中文解析和错题。</strong>`
     : `<span>学习模式</span><strong>提交后显示中文解析，帮你把这一题学懂。</strong>`;
+  $("#practiceModeNote").classList.add("hidden");
   $("#taskRecordTitle").textContent = hasLearningRecord ? "答题结果" : "开始前确认";
   $("#taskAutoRecord").innerHTML = total
     ? `<span>系统已记录</span><strong>${correct} / ${total} 题正确 · ${rate}%</strong><p>${task.checkin?.source || "系统练习自动统计"} · ${task.checkin?.updatedAt ? new Date(task.checkin.updatedAt).toLocaleString("zh-CN", { hour12: false }) : "刚刚"}</p>`
     : `<span>系统自动记录</span><strong>选择题数后开始练习，系统会自动统计正确率、错题和用时。</strong>`;
-  $("#reflectionField").classList.toggle("hidden", !hasLearningRecord);
+  $("#reflectionField").classList.add("hidden");
   $("#taskNote").disabled = !hasLearningRecord;
   $("#taskNote").value = hasLearningRecord ? (task.checkin?.reflection || "") : "";
-  $("#saveReflection").classList.toggle("hidden", !hasLearningRecord);
+  $("#saveReflection").classList.add("hidden");
   $("#saveReflection").disabled = !hasLearningRecord;
   $("#saveReflection").textContent = "保存反思";
   $("#cancelTaskPlan").classList.toggle("hidden", hasLearningRecord);
@@ -1345,6 +1346,8 @@ function renderPracticeResultBoard() {
   const firstWrongLine = firstWrong
     ? `<p><strong>先看第 ${firstWrong.index + 1} 题：</strong>${escapeImportText(firstWrong.answerZh || firstWrong.answer || "回看答案依据")}</p>`
     : "";
+  const linkedTask = practiceTaskId ? tasks.find(item => item.id === practiceTaskId) : null;
+  const reflectionValue = linkedTask?.checkin?.reflection || "";
   $("#questionArea").innerHTML = `<div class="practice-result-board">
     <p class="section-kicker">本组完成 · 系统自动记录</p>
     <h2>${correct} / ${total} 题正确</h2>
@@ -1365,6 +1368,10 @@ function renderPracticeResultBoard() {
       ${firstWrongLine}
       <p><strong>复盘建议：</strong>${escapeImportText(reviewAdvice)}</p>
     </div>
+    ${linkedTask ? `<label class="result-reflection-field">
+      <span>补一句反思 <small>可选</small></span>
+      <textarea id="practiceReflectionNote" rows="2" placeholder="比如：哪里卡住了、下次想先复习什么">${escapeImportText(reflectionValue)}</textarea>
+    </label>` : ""}
     <div class="result-actions">
       ${wrong
         ? `<button class="secondary-button" id="retryWrongQuestions" type="button">重做错题</button>`
@@ -1922,6 +1929,7 @@ function completePracticeSession() {
   const total = activePractice.length;
   const wrongCount = total - practiceCorrect;
   const rate = total ? Math.round(practiceCorrect / total * 100) : 0;
+  const resultReflection = $("#practiceReflectionNote")?.value.trim() || "";
   if (practiceTaskId) {
     const task = tasks.find(item => item.id === practiceTaskId);
     if (task) {
@@ -1929,7 +1937,7 @@ function completePracticeSession() {
         ? `AI自动记录：错${wrongCount}题；${practiceWrongNotes.slice(0, 2).map(item => item.listeningMistake || item.explanationZh || item.explanation).join("；")}`
         : "AI自动记录：本组全部正确，建议按计划进行延迟复习。";
       task.status = "completed";
-      task.checkin = { correct: practiceCorrect, total, note: autoNote, reflection: task.checkin?.reflection || "", source: "系统练习自动统计", updatedAt: new Date().toISOString() };
+      task.checkin = { correct: practiceCorrect, total, note: autoNote, reflection: resultReflection || task.checkin?.reflection || "", source: "系统练习自动统计", updatedAt: new Date().toISOString() };
       localStorage.setItem("topikPrototypeTasks", JSON.stringify(tasks));
       renderCalendar();
       updateTomorrowFocus();
@@ -1948,7 +1956,7 @@ function completePracticeSession() {
     scheduleCloudSave();
   }
   closeModal("practiceModal");
-  showToast(practiceIsSample ? "示例练习已完成，不会写入你的错题集" : (practiceTaskId ? "学习行为已自动记录" : "练习结果已更新到错题集"));
+  showToast(practiceIsSample ? "示例练习已完成，不会写入你的错题集" : (practiceTaskId ? (resultReflection ? "学习结果和反思已保存" : "学习行为已自动记录") : "练习结果已更新到错题集"));
   practiceTaskId = null;
   practiceErrorId = null;
   practiceIsSample = false;

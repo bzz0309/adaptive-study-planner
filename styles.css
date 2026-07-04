@@ -280,6 +280,10 @@ input:focus, textarea:focus, select:focus { border-color: #8497a8; box-shadow: 0
 .question-status-grid button.unanswered { color: #67727c; background: #deded8; }
 .result-review-note { display: grid; gap: 8px; color: #26323c; font-size: 13px; line-height: 1.65; }
 .result-review-note p { margin: 0; }
+.result-reflection-field { display: grid; gap: 8px; color: #66717e; font-size: 12px; font-weight: 850; }
+.result-reflection-field small { color: #9aa1a8; font-weight: 800; }
+.result-reflection-field textarea { min-height: 74px; resize: vertical; border: 1px solid #ddd9d1; border-radius: 14px; padding: 12px 14px; background: rgba(255,255,255,.72); color: #18222c; font: inherit; font-size: 14px; line-height: 1.55; outline: none; }
+.result-reflection-field textarea:focus { border-color: #7b8cfa; box-shadow: 0 0 0 3px rgba(123,140,250,.14); }
 .result-actions { display: flex; flex-wrap: wrap; gap: 10px; }
 .mastery-proof { display: flex; align-items: center; gap: 12px; margin: 16px 0; padding: 14px; border-radius: 14px; background: #eaf4e9; }
 .mastery-proof > span { display: grid; flex: 0 0 auto; place-items: center; width: 34px; height: 34px; border-radius: 50%; color: white; background: #4f8061; font-weight: 900; }
