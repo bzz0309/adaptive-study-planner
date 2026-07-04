@@ -1503,7 +1503,14 @@ function advanceQuestion() {
     const question = activePractice[questionIndex];
     const correct = selectedAnswer === question.answer;
     if (correct) practiceCorrect += 1;
-    else practiceWrongNotes.push({ stem: question.stem, explanation: question.explanation, listeningMistake: isListeningQuestion(question) ? "需要复听原文，标记没听出的关键词" : "" });
+    else practiceWrongNotes.push({
+      stem: question.stem,
+      explanation: question.explanation,
+      explanationZh: question.explanationZh || "",
+      answer: question.options[question.answer] || "",
+      answerZh: question.answerZh || question.optionTranslations?.[question.answer] || "",
+      listeningMistake: isListeningQuestion(question) ? "需要复听原文，标记没听出的关键词" : ""
+    });
     questionGraded = true;
     renderQuestion();
     const answerText = question.options[question.answer] || "";
@@ -1523,7 +1530,17 @@ function advanceQuestion() {
     renderQuestion();
   } else {
     const rate = Math.round(practiceCorrect / activePractice.length * 100);
-    $("#questionArea").innerHTML = `<div class="standard-box"><p class="section-kicker">本组完成 · 系统自动记录</p><h2>${practiceCorrect} / ${activePractice.length} 题正确</h2><p>薄弱点：${practiceWrongNotes.length ? practiceWrongNotes[0].explanation : "本组暂未发现明显薄弱点"}。<br><strong>下一步：${rate >= 80 ? "进入第二组语境变式题" : "先看一条短规则，再做5道基础题"}</strong></p></div>`;
+    const firstWrong = practiceWrongNotes[0];
+    const reviewReason = firstWrong
+      ? (firstWrong.explanationZh || firstWrong.explanation || "这组里有题目需要回看答案依据。")
+      : "本组暂未发现明显薄弱点。";
+    const reviewAnswer = firstWrong?.answer
+      ? `<p><strong>先看这一题：</strong>${escapeImportText(firstWrong.answer)}${firstWrong.answerZh ? `（${escapeImportText(firstWrong.answerZh)}）` : ""}</p>`
+      : "";
+    const reviewAdvice = practiceWrongNotes.length
+      ? (rate >= 80 ? "建议复听错题原文，确认没听出的关键词后再继续下一组。" : "建议先看错题解析，把关键词和句子结构补清楚后再继续练习。")
+      : "建议保持当前节奏，继续完成下一组计划。";
+    $("#questionArea").innerHTML = `<div class="standard-box"><p class="section-kicker">本组完成 · 系统自动记录</p><h2>${practiceCorrect} / ${activePractice.length} 题正确</h2>${reviewAnswer}<p><strong>中文解释：</strong>${escapeImportText(reviewReason)}</p><p><strong>复盘建议：</strong>${escapeImportText(reviewAdvice)}</p></div>`;
     $("#practiceFeedback").className = "practice-feedback hidden";
     $("#prevQuestion").style.display = "none";
     $("#nextQuestion").textContent = "完成本组";
@@ -1539,7 +1556,7 @@ function completePracticeSession() {
     const task = tasks.find(item => item.id === practiceTaskId);
     if (task) {
       const autoNote = wrongCount
-        ? `AI自动记录：错${wrongCount}题；${practiceWrongNotes.slice(0, 2).map(item => item.listeningMistake || item.explanation).join("；")}`
+        ? `AI自动记录：错${wrongCount}题；${practiceWrongNotes.slice(0, 2).map(item => item.listeningMistake || item.explanationZh || item.explanation).join("；")}`
         : "AI自动记录：本组全部正确，建议按计划进行延迟复习。";
       task.status = "completed";
       task.checkin = { correct: practiceCorrect, total, note: autoNote, reflection: task.checkin?.reflection || "", source: "系统练习自动统计", updatedAt: new Date().toISOString() };
