@@ -256,11 +256,15 @@ input:focus, textarea:focus, select:focus { border-color: #8497a8; box-shadow: 0
 .answer-option.selected { border-color: var(--navy); background: #edf1f4; }
 .answer-option input { display: none; }
 .answer-letter { display: grid; place-items: center; width: 27px; height: 27px; flex: none; border-radius: 8px; background: #f0f0eb; font-size: 10px; font-weight: 800; }
-.practice-feedback { margin-top: 14px; padding: 12px; border-radius: 12px; font-size: 11px; line-height: 1.6; }
+.practice-feedback { display: grid; gap: 11px; margin-top: 14px; padding: 14px; border-radius: 14px; font-size: 11px; line-height: 1.6; }
 .practice-feedback.correct { color: #276344; background: #e2f2e1; }
 .practice-feedback.wrong { color: #8c433d; background: #f8e2df; }
 .practice-feedback.recorded { color: #52606b; background: #eef1f2; }
 .practice-feedback.hidden { display: none; }
+.feedback-answer-line, .feedback-mini-line { display: grid; gap: 4px; }
+.feedback-answer-line span, .feedback-mini-line span { font-size: 10px; font-weight: 850; opacity: .78; }
+.feedback-answer-line strong { color: currentColor; font-size: 13px; line-height: 1.45; }
+.feedback-answer-line p, .feedback-mini-line p { margin: 0; color: currentColor; font-size: 11px; line-height: 1.6; }
 .practice-result-board { display: grid; gap: 16px; padding: 22px; border-radius: 18px; background: #f4f4f0; }
 .practice-result-board h2 { font-size: 30px; }
 .result-legend { display: flex; flex-wrap: wrap; gap: 12px 18px; color: #4f5c66; font-size: 12px; font-weight: 800; }

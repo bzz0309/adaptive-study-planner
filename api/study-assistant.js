@@ -127,6 +127,7 @@ function normalizeQuestion(item = {}) {
   const audioText = compact(item.audioText || item.audio || item.transcript);
   return {
     stem: compact(item.stem || item.question),
+    stemZh: compact(item.stemZh || item.questionZh || item.stemChinese || ""),
     options,
     optionTranslations: Array.isArray(item.optionTranslations || item.optionsZh)
       ? (item.optionTranslations || item.optionsZh).map(option => compact(option)).slice(0, 4)
@@ -682,10 +683,10 @@ function buildPracticePrompt(settings = {}) {
     "You are a careful exam practice generator for a study planner.",
     "Generate original practice questions that follow public official sample-question types and user-provided context.",
     "Do not reproduce a copyrighted full exam paper or claim unverifiable sources.",
-    "Return strict JSON only with this shape: {\"questions\":[{\"stem\":\"...\",\"options\":[\"...\"],\"optionTranslations\":[\"...\"],\"answer\":0,\"answerZh\":\"...\",\"explanation\":\"...\",\"explanationZh\":\"...\",\"source\":\"...\",\"audioText\":\"...\",\"transcript\":\"...\",\"transcriptZh\":\"...\"}],\"sources\":[\"...\"]}.",
+    "Return strict JSON only with this shape: {\"questions\":[{\"stem\":\"...\",\"stemZh\":\"...\",\"options\":[\"...\"],\"optionTranslations\":[\"...\"],\"answer\":0,\"answerZh\":\"...\",\"explanation\":\"...\",\"explanationZh\":\"...\",\"source\":\"...\",\"audioText\":\"...\",\"transcript\":\"...\",\"transcriptZh\":\"...\"}],\"sources\":[\"...\"]}.",
     "Each question must have 4 options and a zero-based numeric answer.",
     "For listening questions, put the dialogue or monologue in audioText and transcript, and keep stem as only the question. Do not place the full listening script inside stem.",
-    "For Korean listening questions, include transcriptZh, answerZh, explanationZh, and optionTranslations in Simplified Chinese for review after answering.",
+    "For every Korean question, include stemZh, answerZh, explanationZh, and optionTranslations in Simplified Chinese. explanationZh should explain the question content and why the correct option matches it; do not write English explanations.",
     "For non-listening questions, audioText and transcript may be empty.",
     `Exam: ${getExamLabel(settings)}.`,
     `Category: ${request.category || "mixed"}.`,

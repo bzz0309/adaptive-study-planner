@@ -1355,6 +1355,7 @@ function normalizePracticeQuestions(items, limit = 5) {
     const audioText = String(item.audioText || item.audio || item.transcript || "").trim();
     return {
       stem: String(item.stem || item.question || "").trim(),
+      stemZh: String(item.stemZh || item.questionZh || item.stemChinese || "").trim(),
       options,
       optionTranslations: Array.isArray(item.optionTranslations || item.optionsZh) ? (item.optionTranslations || item.optionsZh).map(String).slice(0, 4) : [],
       answer: Number.isInteger(answer) ? answer : 0,
@@ -1368,6 +1369,35 @@ function normalizePracticeQuestions(items, limit = 5) {
       questionType: String(item.questionType || item.type || "").trim()
     };
   }).filter(item => item.stem && item.options.length >= 2 && item.answer >= 0 && item.answer < item.options.length).slice(0, limit);
+}
+
+function answerLetter(index) {
+  return String.fromCharCode(65 + index);
+}
+
+function questionMeaningText(question = {}) {
+  if (question.stemZh) return question.stemZh;
+  if (question.transcriptZh) return `听力原文大意：${question.transcriptZh}`;
+  return "先抓题干里的时间、地点、对象、动作等关键信息，再和选项逐一核对。";
+}
+
+function practiceExplanationText(question = {}) {
+  return question.explanationZh || question.explanation || "这道题要根据题干中的关键信息判断，正确选项和原文信息一致。";
+}
+
+function renderPracticeFeedback(question = {}, correct = false) {
+  const correctOption = question.options?.[question.answer] || "";
+  const correctOptionZh = question.answerZh || question.optionTranslations?.[question.answer] || "";
+  const selectedOption = question.options?.[selectedAnswer] || "";
+  const selectedLabel = selectedAnswer === null ? "" : `${answerLetter(selectedAnswer)}. ${selectedOption}`;
+  return `<div class="feedback-answer-line">
+    <span>${correct ? "回答正确" : "正确答案"}</span>
+    <strong>${answerLetter(question.answer)}. ${escapeImportText(correctOption)}</strong>
+    ${correctOptionZh ? `<p>${escapeImportText(correctOptionZh)}</p>` : ""}
+  </div>
+  ${!correct && selectedLabel ? `<div class="feedback-mini-line"><span>你的选择</span><p>${escapeImportText(selectedLabel)}</p></div>` : ""}
+  <div class="feedback-mini-line"><span>题目内容</span><p>${escapeImportText(questionMeaningText(question))}</p></div>
+  <div class="feedback-mini-line"><span>为什么选它</span><p>${escapeImportText(practiceExplanationText(question))}</p></div>`;
 }
 
 function getPracticeContext(errorId, linkedTaskId) {
@@ -1776,7 +1806,7 @@ function renderQuestion() {
   <p class="question-stem">${escapeImportText(question.stem)}</p><div class="answer-options">
     ${question.options.map((option, index) => `<label class="answer-option ${selectedAnswer === index ? "selected" : ""}">
       <input type="radio" name="answer" value="${index}" />
-      <span class="answer-letter">${String.fromCharCode(65 + index)}</span><span>${escapeImportText(option)}</span>
+      <span class="answer-letter">${answerLetter(index)}</span><span>${escapeImportText(option)}</span>
     </label>`).join("")}
   </div>${listening && learningMode && questionGraded && transcript ? `<div class="transcript-box"><span>听力原文</span><p>${escapeImportText(transcript)}</p>${transcriptZh ? `<span>中文翻译</span><p>${escapeImportText(transcriptZh)}</p>` : ""}</div>` : ""}`;
   if (!questionGraded) $("#practiceFeedback").className = "practice-feedback hidden";
@@ -1816,13 +1846,9 @@ function advanceQuestion() {
       $("#nextQuestion").textContent = questionIndex === activePractice.length - 1 ? "查看本组结果" : "下一题";
       return;
     }
-    const answerText = question.options[question.answer] || "";
-    const answerZh = question.answerZh || question.optionTranslations?.[question.answer] || "";
-    const explanation = question.explanation || "系统会根据答案依据继续调整后续练习。";
-    const explanationZh = question.explanationZh || "";
     const feedback = $("#practiceFeedback");
     feedback.className = `practice-feedback ${correct ? "correct" : "wrong"}`;
-    feedback.innerHTML = `<strong>${correct ? "回答正确" : `正确答案：${escapeImportText(answerText)}`}</strong>${answerZh ? `<br><span>中文意思：${escapeImportText(answerZh)}</span>` : ""}<br>${escapeImportText(explanation)}${explanationZh ? `<br><span>中文解析：${escapeImportText(explanationZh)}</span>` : ""}`;
+    feedback.innerHTML = renderPracticeFeedback(question, correct);
     $("#nextQuestion").textContent = questionIndex === activePractice.length - 1 ? "查看本组结果" : "下一题";
     return;
   }
