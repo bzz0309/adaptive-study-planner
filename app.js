@@ -479,6 +479,58 @@ const placeParticleQuestions = [
   { stem: "다음 달에 한국___ 가요.", options: ["에", "에서", "와", "만"], answer: 0, explanation: "가다 表示移动，目的地用 에。" },
   { stem: "아침마다 공원___ 운동해요.", options: ["에", "에서", "의", "도"], answer: 1, explanation: "운동하다 是在公园发生的动作，动作场所用 에서。" }
 ];
+const topikIReadingFallbackQuestions = [
+  {
+    stem: "다음을 읽고 맞는 것을 고르십시오.\n\n서울문화센터 한국어 교실\n기간: 5월 6일 ~ 6월 27일\n시간: 화·목 오후 7시~9시\n장소: 서울문화센터 3층\n신청: 4월 30일까지 센터 사무실에서",
+    stemZh: "阅读公告信息：首尔文化中心韩语教室从5月6日到6月27日，每周二、周四晚上7点到9点，在首尔文化中心3楼上课，报名截止到4月30日。",
+    options: ["한국어 수업은 주말에 있습니다.", "수업은 저녁에 두 시간 합니다.", "신청은 5월 6일까지 할 수 있습니다.", "수업 장소는 서울문화센터 1층입니다."],
+    optionTranslations: ["韩语课在周末上。", "课程在晚上上两个小时。", "可以在5月6日前报名。", "上课地点在首尔文化中心1楼。"],
+    answer: 1,
+    answerZh: "课程在晚上上两个小时。",
+    explanationZh: "公告写着上课时间是周二、周四晚上7点到9点，所以一次课是晚上两个小时。",
+    source: "TOPIK I reading notice type"
+  },
+  {
+    stem: "다음을 읽고 맞는 것을 고르십시오.\n\n책 할인 행사\n기간: 6월 1일 ~ 6월 10일\n장소: 한빛서점\n내용: 소설 20%, 어린이 책 30% 할인\n문의: 02-123-4567",
+    stemZh: "阅读广告信息：韩빛书店6月1日到6月10日有图书打折活动，小说打八折，儿童书打七折。",
+    options: ["행사는 한 달 동안 합니다.", "어린이 책은 30% 할인합니다.", "장소는 도서관입니다.", "소설은 할인하지 않습니다."],
+    optionTranslations: ["活动持续一个月。", "儿童书打七折。", "地点在图书馆。", "小说不打折。"],
+    answer: 1,
+    answerZh: "儿童书打七折。",
+    explanationZh: "广告中写着 어린이 책 30% 할인，意思是儿童书优惠30%。",
+    source: "TOPIK I reading advertisement type"
+  },
+  {
+    stem: "다음을 읽고 맞는 것을 고르십시오.\n\n민수 씨, 오늘 회의는 오후 3시에 시작합니다. 회의실이 2층에서 4층으로 바뀌었습니다. 늦지 마세요.",
+    stemZh: "阅读便条信息：今天会议下午3点开始，会议室从2楼改到4楼。",
+    options: ["회의는 오전에 시작합니다.", "회의실은 4층입니다.", "민수 씨는 오늘 수업이 있습니다.", "회의는 2층에서 합니다."],
+    optionTranslations: ["会议上午开始。", "会议室在4楼。", "民秀今天有课。", "会议在2楼开。"],
+    answer: 1,
+    answerZh: "会议室在4楼。",
+    explanationZh: "便条里写着会议室从2楼改到了4楼，所以正确选项是会议室在4楼。",
+    source: "TOPIK I reading memo type"
+  },
+  {
+    stem: "다음을 읽고 맞는 것을 고르십시오.\n\n박물관 안내\n여는 시간: 오전 10시\n닫는 시간: 오후 6시\n쉬는 날: 월요일\n입장료: 어른 5,000원, 학생 3,000원",
+    stemZh: "阅读场馆信息：博物馆上午10点开门，下午6点关门，周一休息，成人票5000韩元，学生票3000韩元。",
+    options: ["박물관은 월요일에 쉽니다.", "학생 입장료는 5,000원입니다.", "박물관은 오전 9시에 엽니다.", "어른은 무료로 들어갑니다."],
+    optionTranslations: ["博物馆周一休息。", "学生票是5000韩元。", "博物馆上午9点开门。", "成人免费入场。"],
+    answer: 0,
+    answerZh: "博物馆周一休息。",
+    explanationZh: " 안내문里写着 쉬는 날: 월요일，意思是休息日是周一。",
+    source: "TOPIK I reading facility information type"
+  },
+  {
+    stem: "다음을 읽고 맞는 것을 고르십시오.\n\n요리 교실 참가자 모집\n대상: 한국 음식을 배우고 싶은 사람\n날짜: 7월 5일 토요일\n시간: 오후 2시~4시\n준비물: 앞치마",
+    stemZh: "阅读招募信息：烹饪课招募想学习韩国料理的人，时间是7月5日星期六下午2点到4点，需要带围裙。",
+    options: ["요리 교실은 일요일에 합니다.", "참가자는 앞치마를 가져가야 합니다.", "수업은 오전에 있습니다.", "한국 음식을 먹고 싶은 사람만 참가할 수 있습니다."],
+    optionTranslations: ["烹饪课在周日。", "参加者需要带围裙。", "课程在上午。", "只有想吃韩国料理的人可以参加。"],
+    answer: 1,
+    answerZh: "参加者需要带围裙。",
+    explanationZh: "招募信息的准备物写着 앞치마，所以参加者需要带围裙。",
+    source: "TOPIK I reading recruitment notice type"
+  }
+];
 const listeningFallbackScript = "남자: 수진 씨, 오늘 동아리 회의에 못 올 것 같아요. 갑자기 아르바이트 시간이 바뀌었거든요. 여자: 그래요? 그럼 내일 오전까지 의견을 문자로 보내 주세요. 회의에서 대신 말해 줄게요. 남자: 고마워요. 포스터 디자인에 대한 의견을 정리해서 보낼게요.";
 const listeningFallbackScriptZh = "男：秀珍，我今天可能去不了社团会议了。突然打工时间变了。女：是吗？那请你明天上午之前把意见用短信发给我吧。我会在会议上替你说。男：谢谢。我会整理好关于海报设计的意见发过去。";
 const listeningFallbackQuestions = [
@@ -1205,6 +1257,7 @@ function fallbackPracticeQuestions(errorId) {
 
 function localFallbackForContext(errorId, context) {
   if (context?.category === "listening") return listeningFallbackQuestions;
+  if (context?.category === "reading") return topikIReadingFallbackQuestions;
   return fallbackPracticeQuestions(errorId);
 }
 
