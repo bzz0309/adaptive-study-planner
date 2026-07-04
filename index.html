@@ -242,12 +242,12 @@
     <div class="modal-panel resource-confirm-panel">
       <button class="modal-close" data-close="resourceConfirmModal">×</button>
       <p class="section-kicker">生成前确认</p>
-      <h2 id="resourceConfirmTitle">确认学习范围与资料</h2>
-      <p class="settings-intro">请最后核对一次关键信息。确认后，AI会按这些资料生成课程表。</p>
+      <h2 id="resourceConfirmTitle">确认考试目标、补充范围与资料</h2>
+      <p class="settings-intro">请最后核对一次关键信息。确认后，AI会按考试目标、补充范围和资料来源生成课程表。</p>
       <div class="confirmation-grid">
         <div><span>考试 / 项目</span><strong id="confirmExamName"></strong></div>
         <div><span>目标</span><strong id="confirmExamGoal"></strong></div>
-        <div class="wide"><span>学习范围</span><p id="confirmStudyScope"></p></div>
+        <div class="wide"><span>薄弱项 / 补充范围</span><p id="confirmStudyScope"></p></div>
         <div class="wide"><span>学习安排</span><p id="confirmStudySchedule"></p></div>
         <div class="wide"><span>题型参考来源</span><div id="confirmResourceSources"></div></div>
       </div>
@@ -343,6 +343,6 @@
   </div>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="app.js?v=20260704-scope-copy"></script>
+  <script src="app.js?v=20260704-confirm-scope-copy"></script>
 </body>
 </html>

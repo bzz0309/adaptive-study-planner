@@ -1724,7 +1724,11 @@ async function showResourceConfirmation(settings) {
     : (settings.exam === "IELTS" ? (settings.level === "II" ? "培训类" : "学术类") : `TOPIK ${settings.level} · 目标${settings.targetGrade || (settings.level === "II" ? "4" : "2")}级`);
   $("#confirmExamName").textContent = examName;
   $("#confirmExamGoal").textContent = goal;
-  $("#confirmStudyScope").textContent = settings.studyContent || (settings.weak.length ? settings.weak.join("、") : "将根据考试范围整理核心科目");
+  const scopeParts = [
+    settings.weak.length ? `薄弱项：${settings.weak.join("、")}` : "",
+    settings.studyContent ? `补充范围：${settings.studyContent}` : ""
+  ].filter(Boolean);
+  $("#confirmStudyScope").textContent = scopeParts.join("；") || "将根据考试目标整理核心科目";
   const dayNames = { mon: "周一", tue: "周二", wed: "周三", thu: "周四", fri: "周五", sat: "周六", sun: "周日" };
   $("#confirmStudySchedule").textContent = `${(settings.studyDays || []).map(day => dayNames[day]).join("、") || "每天"} · 北京时间 ${settings.availableStart}–${settings.availableEnd} · 第一轮 ${settings.firstRoundWeeks} 周${settings.examDate ? ` · 考试日 ${settings.examDate}` : ""}`;
   const sources = suggestedSourcesFor(settings);
