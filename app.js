@@ -978,6 +978,8 @@ function renderProgressView() {
 function taskDisplayTitle(task = {}, index = 0) {
   const rawTitle = String(task.title || "");
   if (task.customTitle && rawTitle) return rawTitle;
+  const cleanedTitle = rawTitle.replace(/^(听力|阅读|词汇\s*\/\s*语法|词汇|语法|写作|巩固练习|模拟测验|错题复盘)[：:]\s*/, "");
+  if (cleanedTitle && cleanedTitle !== rawTitle) return cleanedTitle;
   if (/^(IELTS|雅思|学习)\s/.test(rawTitle)) return rawTitle;
   if (rawTitle && !/^TOPIK\s+[I]{1,2}\s/.test(rawTitle) && !/target grade|listening|reading|writing|speaking|vocab|grammar|review|consolidation/i.test(rawTitle)) return rawTitle;
   const settings = JSON.parse(localStorage.getItem("topikPrototypeSettings") || "null") || {};
