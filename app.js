@@ -1340,7 +1340,7 @@ function renderPracticeResultBoard() {
     .filter(Boolean);
   const firstWrong = wrongList[0];
   const reviewAdvice = wrong
-    ? "建议先重做错题，再重做本组。错题会进入错题集，之后按复习节奏提醒。"
+    ? "建议先把错题重做一遍。错题会进入错题集，之后按复习节奏提醒。"
     : "本组全部正确。可以继续下一组学习，之后按计划做延迟复习。";
   const firstWrongLine = firstWrong
     ? `<p><strong>先看第 ${firstWrong.index + 1} 题：</strong>${escapeImportText(firstWrong.answerZh || firstWrong.answer || "回看答案依据")}</p>`
@@ -1366,8 +1366,10 @@ function renderPracticeResultBoard() {
       <p><strong>复盘建议：</strong>${escapeImportText(reviewAdvice)}</p>
     </div>
     <div class="result-actions">
-      <button class="secondary-button" id="retryWrongQuestions" type="button" ${wrong ? "" : "disabled"}>重做错题</button>
-      <button class="secondary-button" id="retryAllQuestions" type="button">重做本组</button>
+      ${wrong
+        ? `<button class="secondary-button" id="retryWrongQuestions" type="button">重做错题</button>`
+        : `<button class="secondary-button" id="retryAllQuestions" type="button">再练一组</button>`
+      }
     </div>
   </div>`;
   $("#practiceFeedback").className = "practice-feedback hidden";
