@@ -40,25 +40,25 @@ let tasks = JSON.parse(localStorage.getItem("topikPrototypeTasks") || "null") ||
 
 const studyTemplates = {
   listening: [
-    ["短对话关键词", "人物、场所与下一步行动"], ["否定与时态辨音", "안、못、过去与将来"], ["长对话信息定位", "先读选项，再捕捉差异"], ["听力跟读复盘", "复听、影子跟读、复述"]
+    ["短对话关键词", "人物、场所与下一步行动"], ["听懂说话目的", "判断为什么这样说"], ["抓原因与理由", "听出 못 가요、바뀌었어요 等理由"], ["后续行动判断", "听懂接下来要做什么"], ["细节信息定位", "时间、地点、对象和数量"], ["否定与时态辨音", "안、못、过去与将来"], ["长对话信息定位", "先读选项，再捕捉差异"], ["听力跟读复盘", "复听、影子跟读、复述"]
   ],
   reading: [
-    ["公告与广告阅读", "日期、地点、对象与目的"], ["短文信息定位", "题干关键词回原文"], ["句子排序与衔接", "连接词和指代关系"], ["限时阅读训练", "速度与正确率并重"]
+    ["公告与广告阅读", "日期、地点、对象与目的"], ["短文信息定位", "题干关键词回原文"], ["文章中心句判断", "找首尾句和重复关键词"], ["句子排序与衔接", "连接词和指代关系"], ["细节与同义改写", "把选项换回原文表达"], ["长文段落关系", "看转折、举例和总结句"], ["限时阅读训练", "速度与正确率并重"]
   ],
   vocab: [
-    ["高频主题词汇", "生活、学校、交通与购物"], ["词汇主动回忆", "不看词表完成韩中互译"], ["近义词辨析", "结合固定搭配记忆"], ["词汇语境填空", "用句子记住词义和搭配"]
+    ["高频主题词汇", "生活、学校、交通与购物"], ["助词与语尾", "은/는、이/가、을/를 与连接语尾"], ["词汇主动回忆", "不看词表完成韩中互译"], ["近义词辨析", "结合固定搭配记忆"], ["固定搭配训练", "动词、名词和常见表达搭配"], ["词汇语境填空", "用句子记住词义和搭配"]
   ],
   grammar: [
     ["核心助词辨析", "은/는、이/가、을/를"], ["连接语尾训练", "原因、转折与顺序"], ["动词形容词变形", "时态、敬语与不规则变化"], ["语法变式练习", "先找谓语，再判断结构"]
   ],
   writing: [
-    ["短句改写", "用指定语法重组句子"], ["图表写作结构", "趋势、比较与总结"], ["主题作文提纲", "观点、理由与例证"], ["写作自查训练", "语法、连接和表达准确性"]
+    ["短句改写", "用指定语法重组句子"], ["图表开头句", "先说明资料主题"], ["图表趋势句", "上升、下降、比较与总结"], ["观点理由展开", "观点、理由与例证"], ["连接句子训练", "原因、转折和递进"], ["写作自查训练", "语法、连接和表达准确性"]
   ],
   review: [
     ["到期错题复盘", "完成1、3、7、14天复习"], ["延迟变式检验", "正确作答并讲明思路"], ["本日知识回忆", "不看笔记复述判断路径"]
   ],
   consolidation: [
-    ["阶段检验", "用本周内容做一组综合题"], ["延迟巩固练习", "不看笔记完成一组同型题"], ["本日知识回忆", "不看笔记复述判断路径"]
+    ["阶段检验", "用本周内容做一组综合题"], ["错因预防练习", "先看常见误区，再做同型题"], ["延迟巩固练习", "不看笔记完成一组同型题"], ["混合题型串联", "听力、阅读和词汇语法穿插"], ["限时综合检验", "按考试节奏完成一组题"], ["本日知识回忆", "不看笔记复述判断路径"]
   ],
   mock: [["阶段限时模拟", "按正式题型完成并归类错因"]]
 };
@@ -257,6 +257,7 @@ function generatePlanFromSettings(settings) {
   const rotation = [...weakTokens, ...coreTokens, "consolidation", ...(settings.intensity === "高强度" ? ["mock"] : [])];
   const foundationOffset = { "入门": 0, "一般": 1, "较好": 2, "不确定": 0 }[settings.foundation] || 0;
   let sequence = 0;
+  const categoryCounts = {};
   const generated = [];
 
   const selectedDayKeys = settings.studyDays?.length ? new Set(settings.studyDays) : new Set(days.map(day => day.key));
@@ -270,13 +271,16 @@ function generatePlanFromSettings(settings) {
       const templates = exam === "IELTS" && level === "II" && token === "writing"
         ? ieltsGeneralWriting
         : (templateSource[token] || studyTemplates[token]);
-      const template = templates[(sequence + foundationOffset) % templates.length];
+      const categoryIndex = categoryCounts[category] || 0;
+      categoryCounts[category] = categoryIndex + 1;
+      const template = templates[(categoryIndex + foundationOffset) % templates.length];
       generated.push({
         id: 1000 + sequence,
         day: day.key,
         start: minutesToClock(start),
         end: minutesToClock(start + blockMinutes),
         category,
+        displayIndex: categoryIndex,
         title: template[0],
         note: `${settings.studyContent ? `${settings.studyContent.slice(0, 22)} · ` : ""}${template[1]}${weakTokens.includes(token) ? " · 薄弱项加练" : ""}`,
         status: "planned",
@@ -772,23 +776,25 @@ function renderProgressView() {
 
 function taskDisplayTitle(task = {}, index = 0) {
   const rawTitle = String(task.title || "");
-  if (!/target grade|listening|reading|writing|speaking|vocab|grammar|review|consolidation/i.test(rawTitle)) return rawTitle || "学习任务";
+  if (/^(TOPIK|IELTS|雅思|学习)\s/.test(rawTitle)) return rawTitle;
+  if (task.id < 1000 && !/target grade|listening|reading|writing|speaking|vocab|grammar|review|consolidation/i.test(rawTitle)) return rawTitle || "学习任务";
   const settings = JSON.parse(localStorage.getItem("topikPrototypeSettings") || "null") || {};
   const examPrefix = settings.exam === "IELTS"
     ? "IELTS"
     : (settings.exam === "TOPIK" ? `TOPIK ${settings.level === "II" ? "II" : "I"}` : (settings.customExamName || "学习"));
   const titleMap = {
-    listening: ["听力：听懂说话目的", "听力：抓时间地点人物", "听力：听关键词"],
-    writing: ["写作：写图表趋势", "写作：写观点理由", "写作：连接句子"],
-    reading: ["阅读：找文章中心句", "阅读：排句子顺序", "阅读：找答案依据"],
-    vocab: ["词汇语法：助词与语尾", "词汇语法：高频表达", "词汇语法：语境填空"],
-    grammar: ["词汇语法：助词与语尾", "词汇语法：连接语尾", "词汇语法：句子结构"],
-    consolidation: ["巩固练习：阶段检验", "巩固练习：综合题", "巩固练习：知识回忆"],
+    listening: ["听力：听懂说话目的", "听力：抓原因和理由", "听力：判断后续行动", "听力：抓时间地点人物", "听力：细节与同义替换", "听力：否定与时态辨音"],
+    writing: ["写作：图表开头句", "写作：写图表趋势", "写作：写观点理由", "写作：连接句子", "写作：短句改写", "写作：自查修改"],
+    reading: ["阅读：找文章中心句", "阅读：排句子顺序", "阅读：公告广告信息", "阅读：细节同义改写", "阅读：长文段落关系", "阅读：找答案依据", "阅读：限时阅读"],
+    vocab: ["词汇语法：助词与语尾", "词汇语法：连接语尾", "词汇语法：近义词辨析", "词汇语法：固定搭配", "词汇语法：语境填空", "词汇语法：高频表达"],
+    grammar: ["词汇语法：助词与语尾", "词汇语法：连接语尾", "词汇语法：句子结构", "词汇语法：时态与敬语"],
+    consolidation: ["巩固练习：阶段检验", "巩固练习：错因预防", "巩固练习：混合题型", "巩固练习：限时综合", "巩固练习：知识回忆", "巩固练习：延迟检验"],
     review: ["错题复盘：同类变式题", "错题复盘：到期题重做", "错题复盘：判断路径"],
     mock: ["阶段模拟：限时综合练习"]
   };
   const options = titleMap[task.category] || ["学习任务"];
-  return `${examPrefix} ${options[index % options.length]}`;
+  const displayIndex = Number.isInteger(task.displayIndex) ? task.displayIndex : index;
+  return `${examPrefix} ${options[displayIndex % options.length]}`;
 }
 
 function renderCalendar() {
@@ -1633,6 +1639,7 @@ function normalizeAiTasks(aiTasks, settings) {
       start: task.start,
       end: task.end,
       category: task.category,
+      displayIndex: index,
       title: String(task.title || "学习任务").slice(0, 40),
       note: String(task.note || "").slice(0, 100),
       status: "planned",
@@ -1667,7 +1674,7 @@ async function commitPlanSettings(settings) {
     tasks = generatePlanFromSettings(settings);
   }
   localStorage.setItem("topikPrototypeTasks", JSON.stringify(tasks));
-  localStorage.setItem("topikPrototypePlanVersion", "7");
+  localStorage.setItem("topikPrototypePlanVersion", "8");
   renderCalendar();
   updateTomorrowFocus();
   $("#profileIntensity").textContent = settings.intensityLabel;
@@ -2038,11 +2045,11 @@ if (savedSettings) {
   updateExamOptions(savedSettings.exam || "TOPIK", savedSettings.level || "I");
   updateTargetGradeOptions(savedSettings.level || "I", savedSettings.targetGrade || (savedSettings.level === "II" ? "4" : "2"));
   applyExamBrand(savedSettings.exam || "TOPIK", savedSettings.level || "I", savedSettings.targetGrade);
-  if (localStorage.getItem("topikPrototypePlanVersion") !== "7") {
+  if (localStorage.getItem("topikPrototypePlanVersion") !== "8") {
     const upgradedSettings = { exam: savedSettings.exam || "TOPIK", level: savedSettings.level || "I", foundation: savedSettings.foundation || "一般", weak: savedSettings.weak || ["听力", "阅读"], times: savedSettings.times || ["下午", "晚上"], ...savedSettings };
     tasks = generatePlanFromSettings(upgradedSettings);
     localStorage.setItem("topikPrototypeTasks", JSON.stringify(tasks));
-    localStorage.setItem("topikPrototypePlanVersion", "7");
+    localStorage.setItem("topikPrototypePlanVersion", "8");
     renderCalendar();
   }
 } else {

@@ -509,11 +509,14 @@ function fallbackPlan(settings = {}) {
   const targetMinutes = dailyTargetMinutes(settings);
   const blockMinutes = blockSizeForIntensity(settings);
   const blocksPerDay = Math.max(1, Math.ceil(targetMinutes / blockMinutes));
+  const categoryCounts = {};
   const tasks = days.flatMap((day, dayIndex) => dailyStudyStarts(settings, blocksPerDay, blockMinutes).map((start, index) => {
     let category = categories[(dayIndex + index) % categories.length];
     if (day === "sat" && index === blocksPerDay - 1 && categories.includes("mock")) category = "mock";
     if (day === "sun" && index === blocksPerDay - 1) category = "consolidation";
-    const item = copy[category]?.[(dayIndex + index) % copy[category].length] || copy.consolidation?.[0] || copy.review[0];
+    const categoryIndex = categoryCounts[category] || 0;
+    categoryCounts[category] = categoryIndex + 1;
+    const item = copy[category]?.[categoryIndex % copy[category].length] || copy.consolidation?.[0] || copy.review[0];
     return {
       day,
       start: minutesToClock(start),
@@ -563,25 +566,40 @@ function productTaskCopy(settings = {}) {
     return {
       listening: [
         taskCopy(`${topikLevel} 听力：听懂说话目的`, `围绕${target}练“为什么这样说”和“接下来做什么”`, ["完成本组听力同型题", "系统统计正确率", "错题进入复习队列", "完成后可补一句反思"]),
-        taskCopy(`${topikLevel} 听力：抓时间地点人物`, `围绕${target}练时间、地点、人物关系和原因`, ["完成本组听力同型题", "系统记录错题", "复盘干扰信息", "完成后可补一句反思"])
+        taskCopy(`${topikLevel} 听力：抓原因和理由`, `围绕${target}练“为什么不能去/为什么这样做”`, ["完成本组听力同型题", "系统记录错题", "复盘理由词", "完成后可补一句反思"]),
+        taskCopy(`${topikLevel} 听力：判断后续行动`, `围绕${target}练“接下来要做什么”和请求表达`, ["完成本组听力同型题", "系统统计正确率", "标出动作动词", "完成后可补一句反思"]),
+        taskCopy(`${topikLevel} 听力：抓时间地点人物`, `围绕${target}练时间、地点、人物关系和数量`, ["完成本组听力同型题", "系统记录错题", "复盘干扰信息", "完成后可补一句反思"]),
+        taskCopy(`${topikLevel} 听力：细节与同义替换`, `围绕${target}练选项和原文的换说关系`, ["完成本组听力同型题", "系统统计正确率", "整理同义表达", "完成后可补一句反思"])
       ],
       writing: [
         taskCopy(`${topikLevel} 写作：写图表趋势`, `围绕${target}练上升、下降、比较和总结`, ["完成本组写作结构题", "系统记录完成情况", "整理可复用句式", "完成后可补一句反思"]),
-        taskCopy(`${topikLevel} 写作：写观点理由`, `围绕${target}练观点、理由和例子`, ["完成本组写作结构题", "检查逻辑连接", "记录薄弱表达", "完成后可补一句反思"])
+        taskCopy(`${topikLevel} 写作：图表开头句`, `围绕${target}练资料主题说明和开头模板`, ["完成本组写作结构题", "检查开头是否客观", "整理可复用句式", "完成后可补一句反思"]),
+        taskCopy(`${topikLevel} 写作：写观点理由`, `围绕${target}练观点、理由和例子`, ["完成本组写作结构题", "检查逻辑连接", "记录薄弱表达", "完成后可补一句反思"]),
+        taskCopy(`${topikLevel} 写作：连接句子`, `围绕${target}练原因、转折和递进连接`, ["完成本组改写题", "检查连接语尾", "记录薄弱表达", "完成后可补一句反思"])
       ],
       reading: [
         taskCopy(`${topikLevel} 阅读：找文章中心句`, `围绕${target}练中心句、重复词和段落目的`, ["完成本组阅读同型题", "系统统计正确率", "标出答案依据", "错题进入复习队列"]),
-        taskCopy(`${topikLevel} 阅读：排句子顺序`, `围绕${target}练连接词、指代和前后逻辑`, ["完成本组阅读同型题", "系统记录错题", "复述判断路径", "完成后可补一句反思"])
+        taskCopy(`${topikLevel} 阅读：排句子顺序`, `围绕${target}练连接词、指代和前后逻辑`, ["完成本组阅读同型题", "系统记录错题", "复述判断路径", "完成后可补一句反思"]),
+        taskCopy(`${topikLevel} 阅读：公告广告信息`, `围绕${target}练日期、地点、对象和目的`, ["完成本组阅读同型题", "系统统计正确率", "标出答案依据", "完成后可补一句反思"]),
+        taskCopy(`${topikLevel} 阅读：细节同义改写`, `围绕${target}练题干关键词和原文换说`, ["完成本组阅读同型题", "系统记录错题", "整理同义表达", "完成后可补一句反思"]),
+        taskCopy(`${topikLevel} 阅读：长文段落关系`, `围绕${target}练转折、举例和总结句`, ["完成本组阅读同型题", "系统统计正确率", "复述段落关系", "完成后可补一句反思"]),
+        taskCopy(`${topikLevel} 阅读：限时信息定位`, `围绕${target}练快速定位题干关键词`, ["完成限时阅读题", "系统记录错题", "标出定位依据", "完成后可补一句反思"])
       ],
       vocab: [
         taskCopy(`${topikLevel} 词汇语法：助词与语尾`, `围绕${target}练助词、连接语尾和高频表达`, ["完成本组词汇语法题", "系统统计正确率", "错题进入复习队列", "完成后可补一句反思"]),
-        taskCopy(`${topikLevel} 词汇语法：语境填空`, `围绕${target}练句子结构、固定搭配和语境判断`, ["完成本组词汇语法题", "系统记录错题", "整理易混表达", "完成后可补一句反思"])
+        taskCopy(`${topikLevel} 词汇语法：近义词辨析`, `围绕${target}练意思相近词和固定搭配`, ["完成本组词汇语法题", "系统记录错题", "整理易混表达", "完成后可补一句反思"]),
+        taskCopy(`${topikLevel} 词汇语法：语境填空`, `围绕${target}练句子结构、固定搭配和语境判断`, ["完成本组词汇语法题", "系统记录错题", "整理易混表达", "完成后可补一句反思"]),
+        taskCopy(`${topikLevel} 词汇语法：连接语尾`, `围绕${target}练原因、转折、条件和顺序`, ["完成本组词汇语法题", "系统统计正确率", "整理连接表达", "完成后可补一句反思"])
       ],
       mock: [
         taskCopy(`${topikLevel} 阶段模拟：限时综合练习`, `围绕${target}串联听力、写作、阅读和词汇语法`, ["按时间完成本组综合练习", "系统统计正确率", "归类全部错题", "完成后可补一句反思"])
       ],
       consolidation: [
-        taskCopy(`${topikLevel} 巩固练习：阶段检验`, `围绕${target}做一组综合同型题`, ["完成本组系统练习", "系统统计正确率", "错题产生后进入错题集", "完成后可补一句反思"])
+        taskCopy(`${topikLevel} 巩固练习：阶段检验`, `围绕${target}做一组综合同型题`, ["完成本组系统练习", "系统统计正确率", "错题产生后进入错题集", "完成后可补一句反思"]),
+        taskCopy(`${topikLevel} 巩固练习：错因预防`, `先看常见误区，再完成一组同型题`, ["完成本组系统练习", "系统统计正确率", "整理薄弱点", "完成后可补一句反思"]),
+        taskCopy(`${topikLevel} 巩固练习：混合题型`, `把听力、阅读和词汇语法串联练习`, ["完成本组系统练习", "系统统计正确率", "错题进入错题集", "完成后可补一句反思"]),
+        taskCopy(`${topikLevel} 巩固练习：限时综合`, `按考试节奏完成一组混合题`, ["完成本组系统练习", "系统统计正确率", "整理薄弱点", "完成后可补一句反思"]),
+        taskCopy(`${topikLevel} 巩固练习：知识回忆`, `不看笔记复述本周判断路径`, ["完成本组系统练习", "系统统计正确率", "记录卡点", "完成后可补一句反思"])
       ],
       review: [
         taskCopy("错题复盘：同类变式题", "根据最近错题重做一组同型练习", ["完成到期错题", "系统统计正确率", "仍错题继续复习", "完成后可补一句反思"])
