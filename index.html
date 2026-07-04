@@ -166,6 +166,7 @@
         <label id="reflectionField" class="hidden">完成后反思 <small>可选</small><textarea id="taskNote" rows="2" placeholder="完成答题后，可以补一句哪里卡住了"></textarea></label>
       </div>
       <div class="modal-actions">
+        <button class="danger-button" id="cancelTaskPlan">取消这个计划</button>
         <button class="primary-button" id="openPractice">开始学习</button>
         <button class="secondary-button hidden" id="saveReflection">保存反思</button>
       </div>
@@ -235,7 +236,7 @@
           <div class="custom-duration hidden" id="customDuration"><label>每天最少<input type="number" id="durationMin" min="0.5" max="12" step="0.5" value="2" /><span>小时</span></label><span class="duration-dash">—</span><label>每天最多<input type="number" id="durationMax" min="0.5" max="12" step="0.5" value="4" /><span>小时</span></label></div>
         </fieldset>
         <fieldset><legend>每周学习日期 <small>可多选</small></legend><div class="chip-options"><label><input type="checkbox" name="studyDay" value="mon" checked /><span>周一</span></label><label><input type="checkbox" name="studyDay" value="tue" checked /><span>周二</span></label><label><input type="checkbox" name="studyDay" value="wed" checked /><span>周三</span></label><label><input type="checkbox" name="studyDay" value="thu" checked /><span>周四</span></label><label><input type="checkbox" name="studyDay" value="fri" checked /><span>周五</span></label><label><input type="checkbox" name="studyDay" value="sat" checked /><span>周六</span></label><label><input type="checkbox" name="studyDay" value="sun" checked /><span>周日</span></label></div></fieldset>
-        <fieldset class="planning-fields"><legend>每天可学习的北京时间</legend><div class="form-split"><label>开始时间<input id="availableStart" type="time" value="11:00" /></label><label>结束时间<input id="availableEnd" type="time" value="21:00" /></label></div><p class="field-help">课程只会安排在这个时间范围内。</p></fieldset>
+        <fieldset class="planning-fields"><legend>每天可学习的北京时间</legend><div class="form-split"><label>开始时间<input id="availableStart" type="time" value="11:00" /></label><label>结束时间<input id="availableEnd" type="time" value="21:00" /></label></div><p class="field-help">课程只会安排在这个时间范围内，并默认避开午饭、晚饭和课间休息。</p></fieldset>
         <fieldset><legend>常用学习时段 <small>可多选，用于在可用时间内优先排课</small></legend><div class="chip-options"><label><input type="checkbox" name="time" value="上午" /><span>上午</span></label><label><input type="checkbox" name="time" value="下午" checked /><span>下午</span></label><label><input type="checkbox" name="time" value="晚上" checked /><span>晚上</span></label><label><input type="checkbox" name="time" value="不固定" /><span>不固定</span></label></div></fieldset>
         <fieldset class="resource-fields"><legend>学习资料 <small>可选</small></legend><label>资料链接 <small>每行一个，可填写课程、考试官网或教材页面</small><textarea id="resourceLinks" rows="3" placeholder="https://...&#10;https://..."></textarea></label><label class="material-upload-zone"><input type="file" id="materialFiles" accept="image/*,.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.md" multiple /><span class="upload-icon">＋</span><span><strong>上传本地资料</strong><small>PDF、图片、Word、PPT、表格或文本；一次最多10个</small></span></label><div class="material-file-list" id="materialFileList"></div><label class="research-toggle"><input type="checkbox" id="autoResearch" checked /><span><strong>缺少资料时让AI搜索补充</strong><small>优先考试官网和权威资料，确认后才生成计划</small></span></label></fieldset>
         <button class="primary-button full" type="submit">生成我的周计划</button>
@@ -348,6 +349,6 @@
   </div>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="app.js?v=20260704-result-board"></script>
+  <script src="app.js?v=20260704-rest-aware-schedule"></script>
 </body>
 </html>

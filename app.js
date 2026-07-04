@@ -136,6 +136,29 @@ function blockSizeForIntensity(settings = {}) {
   return 40;
 }
 
+const protectedBreaks = [
+  { start: 12 * 60, end: 13 * 60 + 30 },
+  { start: 18 * 60, end: 19 * 60 }
+];
+
+function overlapsProtectedBreak(start, end) {
+  return protectedBreaks.some(rest => start < rest.end && end > rest.start);
+}
+
+function splitWindowAroundBreaks(window, blockMinutes) {
+  let segments = [{ start: window.start, end: window.end }];
+  protectedBreaks.forEach(rest => {
+    segments = segments.flatMap(segment => {
+      if (segment.end <= rest.start || segment.start >= rest.end) return [segment];
+      return [
+        { start: segment.start, end: Math.min(segment.end, rest.start) },
+        { start: Math.max(segment.start, rest.end), end: segment.end }
+      ];
+    });
+  });
+  return segments.filter(segment => segment.end - segment.start >= blockMinutes);
+}
+
 function preferredStudyWindows(settings = {}, blockMinutes = 45) {
   const selected = settings.times?.length ? settings.times : ["下午", "晚上"];
   const availableStart = clockToMinutes(settings.availableStart, 8 * 60);
@@ -150,7 +173,8 @@ function preferredStudyWindows(settings = {}, blockMinutes = 45) {
     start: Math.max(start, availableStart),
     end: Math.min(end, availableEnd)
   })).filter(window => window.end - window.start >= blockMinutes);
-  return windows.length ? windows : [{ start: availableStart, end: availableEnd }];
+  const source = windows.length ? windows : [{ start: availableStart, end: availableEnd }];
+  return source.flatMap(window => splitWindowAroundBreaks(window, blockMinutes));
 }
 
 function dailyStudyStarts(settings = {}, blocksPerDay = 1, blockMinutes = 45) {
@@ -161,7 +185,9 @@ function dailyStudyStarts(settings = {}, blocksPerDay = 1, blockMinutes = 45) {
   const candidates = [];
   const windowSlots = windows.map(window => {
     const slots = [];
-    for (let start = window.start; start + blockMinutes <= window.end; start += blockMinutes + gap) slots.push(start);
+    for (let start = window.start; start + blockMinutes <= window.end; start += blockMinutes + gap) {
+      if (!overlapsProtectedBreak(start, start + blockMinutes)) slots.push(start);
+    }
     return slots;
   });
   const longest = Math.max(...windowSlots.map(slots => slots.length), 0);
@@ -171,7 +197,7 @@ function dailyStudyStarts(settings = {}, blocksPerDay = 1, blockMinutes = 45) {
     });
   }
   for (let start = availableStart; start + blockMinutes <= availableEnd; start += blockMinutes + gap) {
-    candidates.push(start);
+    if (!overlapsProtectedBreak(start, start + blockMinutes)) candidates.push(start);
   }
   const unique = [...new Set(candidates)];
   const starts = [];
@@ -821,7 +847,8 @@ function renderCalendar() {
   });
   calendar.innerHTML = days.map(day => {
     const dayTasks = tasks.filter(task => task.day === day.key);
-    const total = dayTasks.reduce((sum, task) => sum + minutesBetween(task.start, task.end), 0);
+    const activeDayTasks = dayTasks.filter(task => task.status !== "cancelled");
+    const total = activeDayTasks.reduce((sum, task) => sum + minutesBetween(task.start, task.end), 0);
     return `<article class="day-column ${day.featured ? "today" : ""}">
       <header class="day-head">
         <p><span>${day.en}</span><span>${day.date}</span></p>
@@ -837,7 +864,7 @@ function renderCalendar() {
           <div class="task-time"><span>◷ ${task.start}–${task.end}</span><span>${meta.label}</span></div>
           <h4>${title}</h4>
           <p>${task.note}</p>
-          <span class="task-duration">${duration}分钟</span>
+          <span class="task-duration">${task.status === "cancelled" ? "已取消" : `${duration}分钟`}</span>
         </div>`;
       }).join("")}
     </article>`;
@@ -856,7 +883,9 @@ function applyCalendarFilter(filter = "all") {
 }
 
 function updateProgress() {
-  const planned = tasks.reduce((sum, task) => sum + minutesBetween(task.start, task.end), 0);
+  const planned = tasks
+    .filter(task => task.status !== "cancelled")
+    .reduce((sum, task) => sum + minutesBetween(task.start, task.end), 0);
   const completed = completedPracticeTasks().reduce((sum, task) => sum + minutesBetween(task.start, task.end), 0);
   const percentage = planned ? Math.round(completed / planned * 100) : 0;
   $("#plannedHours").textContent = `${(planned / 60).toFixed(1)} 小时`;
@@ -963,8 +992,36 @@ function openTask(id) {
   $("#saveReflection").classList.toggle("hidden", !hasLearningRecord);
   $("#saveReflection").disabled = !hasLearningRecord;
   $("#saveReflection").textContent = "保存反思";
+  $("#cancelTaskPlan").classList.toggle("hidden", hasLearningRecord);
+  $("#cancelTaskPlan").disabled = hasLearningRecord;
+  $("#cancelTaskPlan").textContent = task.status === "cancelled" ? "恢复这个计划" : "取消这个计划";
+  $("#openPractice").classList.toggle("hidden", task.status === "cancelled");
+  $("#openPractice").disabled = task.status === "cancelled";
   $("#openPractice").textContent = isMockTask ? "开始模拟" : "开始学习";
   openModal("taskModal");
+}
+
+function cancelActiveTaskPlan() {
+  const task = tasks.find(item => item.id === activeTaskId);
+  if (!task) return;
+  if (hasPracticeRecord(task)) return showToast("已完成的学习记录不能取消");
+  if (task.status === "cancelled") {
+    task.status = "planned";
+    localStorage.setItem("topikPrototypeTasks", JSON.stringify(tasks));
+    renderCalendar();
+    closeModal("taskModal");
+    scheduleCloudSave();
+    showToast("已恢复这个计划");
+    return;
+  }
+  if (!window.confirm("确定取消这个学习计划吗？")) return;
+  task.status = "cancelled";
+  localStorage.setItem("topikPrototypeTasks", JSON.stringify(tasks));
+  activeTaskId = null;
+  renderCalendar();
+  closeModal("taskModal");
+  scheduleCloudSave();
+  showToast("已取消这个计划");
 }
 
 function defaultTomorrowFocus() {
@@ -1754,7 +1811,18 @@ function normalizeAiTasks(aiTasks, settings) {
     ? ["listening", "reading", "vocab", "mock", "consolidation", "review", ...(settings.level === "II" ? ["writing"] : [])]
     : Object.keys(categoryMeta);
   const allowedCategories = new Set(allowed);
-  return (aiTasks || []).filter(task => allowedDays.has(task.day) && allowedCategories.has(task.category) && /^\d{2}:\d{2}$/.test(task.start || "") && /^\d{2}:\d{2}$/.test(task.end || "") && task.start >= availableStart && task.end <= availableEnd && task.start < task.end).map((task, index) => {
+  return (aiTasks || []).filter(task => {
+    const validClock = /^\d{2}:\d{2}$/.test(task.start || "") && /^\d{2}:\d{2}$/.test(task.end || "");
+    if (!validClock) return false;
+    const startMinutes = clockToMinutes(task.start);
+    const endMinutes = clockToMinutes(task.end);
+    return allowedDays.has(task.day)
+      && allowedCategories.has(task.category)
+      && task.start >= availableStart
+      && task.end <= availableEnd
+      && task.start < task.end
+      && !overlapsProtectedBreak(startMinutes, endMinutes);
+  }).map((task, index) => {
     const normalized = {
       id: 3000 + index,
       day: task.day,
@@ -1968,6 +2036,7 @@ function initializeEvents() {
     $("#errorList").scrollIntoView({ behavior: "smooth", block: "start" });
   }));
   $("#saveReflection").addEventListener("click", saveReflection);
+  $("#cancelTaskPlan").addEventListener("click", cancelActiveTaskPlan);
   $("#openPractice").addEventListener("click", () => { const linkedTaskId = activeTaskId; closeModal("taskModal"); startPractice("e1", linkedTaskId); });
   $("#startDueReview").addEventListener("click", () => {
     const dueItem = errorItems.find(item => item.due && !item.mastered);

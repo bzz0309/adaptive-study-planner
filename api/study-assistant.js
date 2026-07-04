@@ -458,6 +458,29 @@ function blockSizeForIntensity(settings = {}) {
   return 40;
 }
 
+const PROTECTED_BREAKS = [
+  { start: 12 * 60, end: 13 * 60 + 30 },
+  { start: 18 * 60, end: 19 * 60 }
+];
+
+function overlapsProtectedBreak(start, end) {
+  return PROTECTED_BREAKS.some(rest => start < rest.end && end > rest.start);
+}
+
+function splitWindowAroundBreaks(window, blockMinutes) {
+  let segments = [{ start: window.start, end: window.end }];
+  PROTECTED_BREAKS.forEach(rest => {
+    segments = segments.flatMap(segment => {
+      if (segment.end <= rest.start || segment.start >= rest.end) return [segment];
+      return [
+        { start: segment.start, end: Math.min(segment.end, rest.start) },
+        { start: Math.max(segment.start, rest.end), end: segment.end }
+      ];
+    });
+  });
+  return segments.filter(segment => segment.end - segment.start >= blockMinutes);
+}
+
 function dailyStudyStarts(settings = {}, blocksPerDay = 1, blockMinutes = 45) {
   const availableStart = clockToMinutes(settings.availableStart, 8 * 60);
   const availableEnd = clockToMinutes(settings.availableEnd, 22 * 60);
@@ -472,12 +495,15 @@ function dailyStudyStarts(settings = {}, blocksPerDay = 1, blockMinutes = 45) {
     start: Math.max(start, availableStart),
     end: Math.min(end, availableEnd)
   })).filter(window => window.end - window.start >= blockMinutes);
-  const sourceWindows = windows.length ? windows : [{ start: availableStart, end: availableEnd }];
+  const sourceWindows = (windows.length ? windows : [{ start: availableStart, end: availableEnd }])
+    .flatMap(window => splitWindowAroundBreaks(window, blockMinutes));
   const gap = settings.intensity === "高强度" ? 15 : 20;
   const candidates = [];
   const windowSlots = sourceWindows.map(window => {
     const slots = [];
-    for (let start = window.start; start + blockMinutes <= window.end; start += blockMinutes + gap) slots.push(start);
+    for (let start = window.start; start + blockMinutes <= window.end; start += blockMinutes + gap) {
+      if (!overlapsProtectedBreak(start, start + blockMinutes)) slots.push(start);
+    }
     return slots;
   });
   const longest = Math.max(...windowSlots.map(slots => slots.length), 0);
@@ -486,7 +512,9 @@ function dailyStudyStarts(settings = {}, blocksPerDay = 1, blockMinutes = 45) {
       if (Number.isFinite(slots[round])) candidates.push(slots[round]);
     });
   }
-  for (let start = availableStart; start + blockMinutes <= availableEnd; start += blockMinutes + gap) candidates.push(start);
+  for (let start = availableStart; start + blockMinutes <= availableEnd; start += blockMinutes + gap) {
+    if (!overlapsProtectedBreak(start, start + blockMinutes)) candidates.push(start);
+  }
   const starts = [];
   [...new Set(candidates)].forEach(start => {
     const overlaps = starts.some(existing => Math.abs(existing - start) < blockMinutes + 5);

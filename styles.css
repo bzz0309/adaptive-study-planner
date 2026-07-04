@@ -116,6 +116,9 @@ h2 { margin: 0; font-size: 25px; letter-spacing: -.025em; }
 .task-card.review { color: var(--teal); background: var(--teal-bg); border-color: #bde4db; }
 .task-card.completed { opacity: .64; }
 .task-card.completed::after { content: "✓"; position: absolute; right: 10px; bottom: 9px; display: grid; place-items: center; width: 18px; height: 18px; color: white; background: currentColor; border-radius: 50%; font-size: 10px; }
+.task-card.cancelled { opacity: .44; filter: grayscale(.35); }
+.task-card.cancelled h4, .task-card.cancelled p { text-decoration: line-through; text-decoration-thickness: 2px; }
+.task-card.cancelled::after { content: "已取消"; position: absolute; right: 10px; bottom: 8px; padding: 3px 7px; border-radius: 99px; color: #5d6871; background: rgba(255,255,255,.72); font-size: 8px; font-weight: 850; }
 .task-time { display: flex; justify-content: space-between; gap: 4px; font-size: 9px; font-weight: 800; opacity: .78; }
 .task-card h4 { margin: 8px 0 4px; color: currentColor; font-size: 13px; line-height: 1.35; }
 .task-card p { margin: 0; color: currentColor; font-size: 10px; line-height: 1.4; opacity: .8; }
@@ -126,6 +129,7 @@ h2 { margin: 0; font-size: 25px; letter-spacing: -.025em; }
 .primary-button, .secondary-button { padding: 11px 16px; border-radius: 12px; cursor: pointer; font-weight: 800; }
 .primary-button { border: 1px solid var(--navy); color: #fff; background: var(--navy); }
 .secondary-button { border: 1px solid var(--line); color: var(--ink); background: #fff; }
+.danger-button { margin-right: auto; padding: 11px 15px; border: 1px solid #ecc9c3; border-radius: 12px; color: #9c4238; background: #fff7f5; font-weight: 850; cursor: pointer; }
 .primary-button.full { width: 100%; margin-top: 8px; }
 .secondary-button.full { width: 100%; margin-top: 10px; }
 .hidden { display: none !important; }
@@ -808,5 +812,6 @@ legend small { color: var(--muted); font-size: 9px; font-weight: 600; }
   .duration-dash { display: none; }
   .modal-actions { flex-direction: column-reverse; }
   .modal-actions button { width: 100%; }
+  .danger-button { margin-right: 0; }
   .confirmation-grid { grid-template-columns: 1fr; }
 }
