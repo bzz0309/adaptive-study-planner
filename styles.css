@@ -220,10 +220,12 @@ h2 { margin: 0; font-size: 25px; letter-spacing: -.025em; }
 .auto-record-box span { color: #6b737b; font-size: 10px; font-weight: 820; }
 .auto-record-box strong { color: #24313d; font-size: 13px; line-height: 1.45; }
 .auto-record-box p { margin: 0; color: #7a817f; font-size: 11px; line-height: 1.5; }
-.task-edit-panel { display: grid; gap: 11px; margin-top: 14px; padding: 14px; border: 1px solid #dfe2dd; border-radius: 14px; background: #fbfaf6; }
-.task-edit-panel h3 { margin: 0; color: var(--ink); font-size: 13px; }
+.task-edit-panel { display: grid; gap: 11px; margin-top: 16px; padding: 16px; border: 1px solid #e2e2dc; border-radius: 16px; background: #fbfaf6; }
+.task-edit-panel h3 { margin: 0 0 2px; color: var(--ink); font-size: 13px; }
 .task-edit-panel label { display: grid; gap: 6px; color: #505963; font-size: 10px; font-weight: 800; }
 .inline-actions { display: flex; justify-content: flex-end; gap: 9px; }
+.subtle-danger { justify-self: start; margin: 2px 0 0; padding: 0; border: 0; border-radius: 0; background: transparent; color: #a65c54; font-size: 11px; font-weight: 800; }
+.subtle-danger:hover { color: #87382f; text-decoration: underline; }
 .practice-mode-note { display: grid; gap: 5px; padding: 12px 13px; border-radius: 12px; background: #eef3f7; }
 .practice-mode-note span { color: #617080; font-size: 10px; font-weight: 850; }
 .practice-mode-note strong { color: #25313c; font-size: 12px; line-height: 1.5; }
@@ -231,6 +233,10 @@ input, textarea, select { width: 100%; padding: 10px 11px; border: 1px solid #dc
 input:focus, textarea:focus, select:focus { border-color: #8497a8; box-shadow: 0 0 0 3px #e7ebee; }
 .form-split { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 9px; margin-top: 20px; }
+.task-panel.is-editing > .modal-actions { display: none; }
+.task-panel > .modal-actions { align-items: center; }
+.task-panel > .modal-actions .secondary-button { border-color: transparent; background: transparent; color: #5b6570; }
+.task-panel > .modal-actions .secondary-button:hover { background: #f2f2ec; }
 .practice-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding-right: 30px; }
 .question-progress { padding: 6px 9px; border-radius: 99px; background: #eef0f2; color: #53606c; font-size: 10px; font-weight: 800; }
 .practice-loading-state { display: flex; align-items: flex-start; gap: 14px; margin: 28px 0 10px; padding: 18px; border: 1px solid #d8e3dc; border-radius: 16px; background: linear-gradient(180deg, #f8faf6, #eef6ef); }

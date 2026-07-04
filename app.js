@@ -1005,6 +1005,8 @@ function openMasteryRecord(id, isSample = false) {
 function openTask(id) {
   activeTaskId = id;
   const task = tasks.find(item => item.id === id);
+  const taskModalPanel = $("#taskModal .task-panel");
+  taskModalPanel?.classList.remove("is-editing");
   const meta = categoryMeta[task.category] || categoryMeta.consolidation;
   const total = Number(task.checkin?.total || 0);
   const correct = Number(task.checkin?.correct || 0);
@@ -1063,7 +1065,8 @@ function toggleTaskEdit(forceOpen = null) {
   const panel = $("#taskEditPanel");
   const shouldOpen = forceOpen ?? panel.classList.contains("hidden");
   panel.classList.toggle("hidden", !shouldOpen);
-  $("#editTaskPlan").textContent = shouldOpen ? "收起编辑" : "编辑计划";
+  $("#taskModal .task-panel")?.classList.toggle("is-editing", shouldOpen);
+  $("#editTaskPlan").textContent = "编辑计划";
 }
 
 function saveTaskEdit() {
