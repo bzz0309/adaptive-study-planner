@@ -564,7 +564,7 @@ const materialPracticeBank = [
     sourceTitle: "用户资料《完全掌握 TOPIK I 初级阅读》",
     questions: [
       {
-        materialImage: "assets/materials/topik1-reading/page-100.png",
+        materialImage: "assets/materials/topik1-reading/question/question-100.png",
         stem: "다음을 읽고 내용과 다른 것을 고르십시오.",
         stemZh: "阅读招聘广告，选择与内容不一致的一项。",
         options: ["커피전문점에서 아르바이트 학생을 구합니다.", "고등학생도 일할 수 있습니다.", "일주일에 삼일 일합니다.", "남녀 모두 일할 수 있습니다."],
@@ -576,7 +576,7 @@ const materialPracticeBank = [
         source: "用户资料《完全掌握 TOPIK I 初级阅读》p.84 · 标识阅读"
       },
       {
-        materialImage: "assets/materials/topik1-reading/page-101.png",
+        materialImage: "assets/materials/topik1-reading/question/question-101.png",
         stem: "다음을 읽고 내용과 다른 것을 고르십시오.",
         stemZh: "阅读音乐会海报，选择与内容不一致的一项。",
         options: ["서울 벚꽃 음악회는 3일 동안 열립니다.", "서울 벚꽃 음악회는 하루에 두 번씩 열립니다.", "서울 벚꽃 음악회는 4월에 열립니다.", "서울 벚꽃 음악회는 누구나 참여할 수 있습니다."],
@@ -588,7 +588,7 @@ const materialPracticeBank = [
         source: "用户资料《完全掌握 TOPIK I 初级阅读》p.85 · 标识阅读"
       },
       {
-        materialImage: "assets/materials/topik1-reading/page-102.png",
+        materialImage: "assets/materials/topik1-reading/question/question-102.png",
         stem: "다음을 읽고 내용과 다른 것을 고르십시오.",
         stemZh: "阅读促销信息，选择与内容不一致的一项。",
         options: ["수박을 시청 앞에서 팝니다.", "수박을 싸게 팝니다.", "수박을 먹어 볼 수 있습니다.", "5월 11일에는 열리지 않습니다."],
@@ -600,7 +600,7 @@ const materialPracticeBank = [
         source: "用户资料《完全掌握 TOPIK I 初级阅读》p.86 · 标识阅读"
       },
       {
-        materialImage: "assets/materials/topik1-reading/page-103.png",
+        materialImage: "assets/materials/topik1-reading/question/question-103.png",
         stem: "다음을 읽고 내용과 다른 것을 고르십시오.",
         stemZh: "阅读免费韩文教室公告，选择与内容不一致的一项。",
         options: ["한글 수업은 10월부터 있습니다.", "9월 20일까지 신청해야 합니다.", "외국인도 참여할 수 있습니다.", "이 수업은 무료입니다."],
@@ -612,7 +612,7 @@ const materialPracticeBank = [
         source: "用户资料《完全掌握 TOPIK I 初级阅读》p.87 · 标识阅读"
       },
       {
-        materialImage: "assets/materials/topik1-reading/page-104.png",
+        materialImage: "assets/materials/topik1-reading/question/question-104.png",
         stem: "다음을 읽고 내용과 다른 것을 고르십시오.",
         stemZh: "阅读便条内容，选择与内容不一致的一项。",
         options: ["제인 씨는 오늘 학교에 안 왔습니다.", "제인 씨는 어제 학교에 왔습니다.", "밍밍 씨는 제인 씨를 걱정합니다.", "내일은 시험이 있습니다."],
