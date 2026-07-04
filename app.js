@@ -9,15 +9,37 @@ const categoryMeta = {
   review: { label: "错题复盘", className: "review" }
 };
 
-const days = [
-  { key: "mon", en: "MON", name: "周一", date: "6月22日", featured: true },
-  { key: "tue", en: "TUE", name: "周二", date: "6月23日" },
-  { key: "wed", en: "WED", name: "周三", date: "6月24日" },
-  { key: "thu", en: "THU", name: "周四", date: "6月25日" },
-  { key: "fri", en: "FRI", name: "周五", date: "6月26日" },
-  { key: "sat", en: "SAT", name: "周六", date: "6月27日" },
-  { key: "sun", en: "SUN", name: "周日", date: "6月28日" }
+const baseDays = [
+  { key: "mon", en: "MON", name: "周一" },
+  { key: "tue", en: "TUE", name: "周二" },
+  { key: "wed", en: "WED", name: "周三" },
+  { key: "thu", en: "THU", name: "周四" },
+  { key: "fri", en: "FRI", name: "周五" },
+  { key: "sat", en: "SAT", name: "周六" },
+  { key: "sun", en: "SUN", name: "周日" }
 ];
+
+function dateLabel(date) {
+  return `${date.getMonth() + 1}月${date.getDate()}日`;
+}
+
+function sameDate(first, second) {
+  return first.getFullYear() === second.getFullYear() && first.getMonth() === second.getMonth() && first.getDate() === second.getDate();
+}
+
+function buildCurrentWeekDays(referenceDate = new Date()) {
+  const today = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), referenceDate.getDate());
+  const mondayOffset = (today.getDay() + 6) % 7;
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - mondayOffset);
+  return baseDays.map((day, index) => {
+    const date = new Date(monday);
+    date.setDate(monday.getDate() + index);
+    return { ...day, date: dateLabel(date), fullDate: date, featured: sameDate(date, today) };
+  });
+}
+
+let days = buildCurrentWeekDays();
 
 const defaultTasks = [
   { id: 1, day: "mon", start: "11:00", end: "11:40", category: "listening", title: "短对话诊断", note: "辨认场所、人物与行动", status: "completed", standards: ["首遍不暂停完成15题", "正确率达到80%", "错题复听并写下漏听关键词", "次日重做错题"] },
@@ -852,6 +874,9 @@ function taskTrainingPoint(task = {}, index = 0) {
 }
 
 function renderCalendar() {
+  days = buildCurrentWeekDays();
+  const weekRangeTitle = $("#weekRangeTitle");
+  if (weekRangeTitle) weekRangeTitle.textContent = `${days[0].date}—${days[6].date}`;
   const calendar = $("#weekCalendar");
   $("#consolidationLegend")?.classList.toggle("hidden", !tasks.some(task => task.category === "consolidation"));
   $("#reviewLegend")?.classList.toggle("hidden", !tasks.some(task => task.category === "review"));
@@ -869,7 +894,7 @@ function renderCalendar() {
       <header class="day-head">
         <p><span>${day.en}</span><span>${day.date}</span></p>
         <h3>${day.name}</h3>
-        <small>${day.featured ? "计划开始 · " : ""}${Math.floor(total / 60)}小时${total % 60 ? `${total % 60}分钟` : ""}</small>
+        <small>${day.featured ? "今天 · " : ""}${Math.floor(total / 60)}小时${total % 60 ? `${total % 60}分钟` : ""}</small>
       </header>
       ${dayTasks.map(task => {
         const meta = categoryMeta[task.category] || categoryMeta.consolidation;
