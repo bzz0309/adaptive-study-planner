@@ -216,6 +216,9 @@ h2 { margin: 0; font-size: 25px; letter-spacing: -.025em; }
 .auto-record-box span { color: #6b737b; font-size: 10px; font-weight: 820; }
 .auto-record-box strong { color: #24313d; font-size: 13px; line-height: 1.45; }
 .auto-record-box p { margin: 0; color: #7a817f; font-size: 11px; line-height: 1.5; }
+.practice-mode-note { display: grid; gap: 5px; padding: 12px 13px; border-radius: 12px; background: #eef3f7; }
+.practice-mode-note span { color: #617080; font-size: 10px; font-weight: 850; }
+.practice-mode-note strong { color: #25313c; font-size: 12px; line-height: 1.5; }
 input, textarea, select { width: 100%; padding: 10px 11px; border: 1px solid #dcdcd6; border-radius: 10px; color: var(--ink); background: #fff; outline: none; }
 input:focus, textarea:focus, select:focus { border-color: #8497a8; box-shadow: 0 0 0 3px #e7ebee; }
 .form-split { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }

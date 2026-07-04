@@ -52,7 +52,7 @@ const studyTemplates = {
     ["核心助词辨析", "은/는、이/가、을/를"], ["连接语尾训练", "原因、转折与顺序"], ["动词形容词变形", "时态、敬语与不规则变化"], ["语法变式练习", "先找谓语，再判断结构"]
   ],
   writing: [
-    ["短句改写", "用指定语法重组句子"], ["图表开头句", "先说明资料主题"], ["图表趋势句", "上升、下降、比较与总结"], ["观点理由展开", "观点、理由与例证"], ["连接句子训练", "原因、转折和递进"], ["写作自查训练", "语法、连接和表达准确性"]
+    ["句子补全", "对应TOPIK写作51题，练对话和句子空格"], ["短文逻辑补全", "对应TOPIK写作52题，练前后文逻辑"], ["图表说明", "对应TOPIK写作53题，练趋势、比较和总结"], ["议论文结构", "对应TOPIK写作54题，练观点、理由和例证"]
   ],
   review: [
     ["到期错题复盘", "完成1、3、7、14天复习"], ["延迟变式检验", "正确作答并讲明思路"], ["本日知识回忆", "不看笔记复述判断路径"]
@@ -786,7 +786,7 @@ function taskDisplayTitle(task = {}, index = 0) {
     : (settings.exam === "TOPIK" ? `TOPIK ${settings.level === "II" ? "II" : "I"}` : (settings.customExamName || "学习"));
   const titleMap = {
     listening: ["听力：短对话理解", "听力：说话意图判断", "听力：原因理由定位", "听力：下一步行动判断", "听力：信息一致判断", "听力：否定时态辨认"],
-    writing: ["写作：图表开头句", "写作：趋势描述", "写作：观点理由展开", "写作：连接句子", "写作：短句改写", "写作：自查修改"],
+    writing: ["写作：句子补全", "写作：短文逻辑补全", "写作：图表说明", "写作：议论文结构"],
     reading: ["阅读：实用文信息读取", "阅读：句子顺序整理", "阅读：中心内容理解", "阅读：细节同义改写", "阅读：长文段落关系", "阅读：题干信息定位", "阅读：限时阅读"],
     vocab: ["词汇语法：助词语尾基础", "词汇语法：连接表达", "词汇语法：近义表达辨析", "词汇语法：固定搭配", "词汇语法：语境填空", "词汇语法：主题词汇回忆"],
     grammar: ["词汇语法：助词语尾基础", "词汇语法：连接表达", "词汇语法：句子结构", "词汇语法：时态与敬语"],
@@ -948,7 +948,10 @@ function openTask(id) {
   const hasSeenTaskFlow = localStorage.getItem("topikPrototypeTaskFlowSeen") === "yes";
   $("#taskFlowIntro").classList.toggle("hidden", hasSeenTaskFlow);
   if (!hasSeenTaskFlow) localStorage.setItem("topikPrototypeTaskFlowSeen", "yes");
-  $("#practiceReviewMode").value = localStorage.getItem("topikPrototypePracticeReviewMode") || "learning";
+  const isMockTask = task.category === "mock";
+  $("#practiceModeNote").innerHTML = isMockTask
+    ? `<span>模拟考试</span><strong>先完整答完本组，再统一查看答案、中文解析和错题。</strong>`
+    : `<span>学习模式</span><strong>提交后显示中文解析，帮你把这一题学懂。</strong>`;
   $("#taskRecordTitle").textContent = hasLearningRecord ? "答题结果" : "开始前确认";
   $("#taskAutoRecord").innerHTML = total
     ? `<span>系统已记录</span><strong>${correct} / ${total} 题正确 · ${rate}%</strong><p>${task.checkin?.source || "系统练习自动统计"} · ${task.checkin?.updatedAt ? new Date(task.checkin.updatedAt).toLocaleString("zh-CN", { hour12: false }) : "刚刚"}</p>`
@@ -959,6 +962,7 @@ function openTask(id) {
   $("#saveReflection").classList.toggle("hidden", !hasLearningRecord);
   $("#saveReflection").disabled = !hasLearningRecord;
   $("#saveReflection").textContent = "保存反思";
+  $("#openPractice").textContent = isMockTask ? "开始模拟" : "开始学习";
   openModal("taskModal");
 }
 
@@ -1090,9 +1094,9 @@ function readPracticeQuestionCount() {
   return [5, 10, 15, 20].includes(selected) ? selected : 5;
 }
 
-function readPracticeReviewMode() {
-  const selected = $("#practiceReviewMode")?.value || localStorage.getItem("topikPrototypePracticeReviewMode") || "learning";
-  return selected === "exam" ? "exam" : "learning";
+function reviewModeForTask(linkedTaskId) {
+  const task = tasks.find(item => item.id === linkedTaskId);
+  return task?.category === "mock" ? "exam" : "learning";
 }
 
 function normalizePracticeQuestions(items, limit = 5) {
@@ -1458,8 +1462,7 @@ async function saveReflection() {
 
 async function startPractice(errorId = "e1", linkedTaskId = null, isSample = false) {
   resetPracticeControls();
-  practiceReviewMode = linkedTaskId ? readPracticeReviewMode() : "learning";
-  if (linkedTaskId) localStorage.setItem("topikPrototypePracticeReviewMode", practiceReviewMode);
+  practiceReviewMode = linkedTaskId ? reviewModeForTask(linkedTaskId) : "learning";
   practiceTaskId = linkedTaskId;
   practiceErrorId = linkedTaskId ? null : errorId;
   practiceIsSample = isSample;

@@ -159,12 +159,10 @@
             <option value="20">20题 · 深度练习</option>
           </select>
         </label>
-        <label>练习模式
-          <select id="practiceReviewMode">
-            <option value="learning" selected>学习模式 · 提交后看中文解析</option>
-            <option value="exam">考试模式 · 整组完成后统一复盘</option>
-          </select>
-        </label>
+        <div class="practice-mode-note" id="practiceModeNote">
+          <span>学习模式</span>
+          <strong>提交后显示中文解析，帮你把这一题学懂。</strong>
+        </div>
         <label id="reflectionField" class="hidden">完成后反思 <small>可选</small><textarea id="taskNote" rows="2" placeholder="完成答题后，可以补一句哪里卡住了"></textarea></label>
       </div>
       <div class="modal-actions">
@@ -350,6 +348,6 @@
   </div>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="app.js?v=20260704-practice-mode"></script>
+  <script src="app.js?v=20260704-study-exam-path"></script>
 </body>
 </html>
