@@ -1431,7 +1431,8 @@ function answerLetter(index) {
 function questionMeaningText(question = {}) {
   if (question.stemZh) return question.stemZh;
   if (question.transcriptZh) return `听力原文大意：${question.transcriptZh}`;
-  return "先抓题干里的时间、地点、对象、动作等关键信息，再和选项逐一核对。";
+  if (question.stem) return question.stem;
+  return "当前题目内容暂未返回中文说明。";
 }
 
 function practiceExplanationText(question = {}) {
