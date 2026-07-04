@@ -28,7 +28,8 @@ function sameDate(first, second) {
 }
 
 function buildCurrentWeekDays(referenceDate = new Date()) {
-  const today = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), referenceDate.getDate());
+  const [year, month, dayOfMonth] = beijingDateKey(referenceDate).split("-").map(Number);
+  const today = new Date(year, month - 1, dayOfMonth);
   const mondayOffset = (today.getDay() + 6) % 7;
   const monday = new Date(today);
   monday.setDate(today.getDate() - mondayOffset);
@@ -131,11 +132,15 @@ const completionStandards = {
 };
 
 const weakTokenMap = { "听力": "listening", "阅读": "reading", "词汇": "vocab", "语法": "grammar", "写作": "writing", "口语": "speaking" };
-const planSchemaVersion = "11";
+const planSchemaVersion = "13";
 
 function selectedStudyTokens(settings = {}, fallbackTokens = []) {
   const selected = [...new Set((settings.weak || []).map(item => weakTokenMap[item]).filter(Boolean))];
   return selected.length ? selected : fallbackTokens;
+}
+
+function normalizeStudyCategory(token) {
+  return token === "grammar" ? "vocab" : token;
 }
 
 function defaultStudyTokens(settings = {}) {
@@ -148,7 +153,7 @@ function defaultStudyTokens(settings = {}) {
 function scopedConsolidationTemplates(tokens = []) {
   const labels = tokens
     .filter(token => !["consolidation", "mock", "review"].includes(token))
-    .map(token => categoryMeta[token === "grammar" ? "vocab" : token]?.label || "")
+    .map(token => categoryMeta[normalizeStudyCategory(token)]?.label || "")
     .filter(Boolean);
   const scope = [...new Set(labels)].join("和") || "本周内容";
   return [
@@ -285,9 +290,6 @@ function updateExamOptions(exam, level = "I") {
   $("#grammarWeakOption").classList.toggle("hidden", isIELTS && !isOther);
   $("#writingWeakOption").classList.toggle("hidden", !(isIELTS || isTopikII || isOther));
   $("#speakingWeakOption").classList.toggle("hidden", !(isIELTS || isOther));
-  $("#vocabLegend").classList.toggle("hidden", isIELTS && !isOther);
-  $("#writingLegend").classList.toggle("hidden", !(isIELTS || isTopikII || isOther));
-  $("#speakingLegend").classList.toggle("hidden", !(isIELTS || isOther));
   if (isOther) {
     $("#weakHelp").textContent = "请选择适合这个考试或学习项目的能力项；补充范围可写教材章节、老师要求或特殊目标。";
   } else if (isIELTS) {
@@ -339,7 +341,7 @@ function generatePlanFromSettings(settings) {
       let token = rotation[(dayIndex * blocksPerDay + blockIndex) % rotation.length];
       if (day.key === "sat" && blockIndex === blocksPerDay - 1 && rotation.includes("mock")) token = "mock";
       if (day.key === "sun" && blockIndex === blocksPerDay - 1 && rotation.includes("consolidation")) token = "consolidation";
-      const category = token === "grammar" ? "vocab" : token;
+      const category = normalizeStudyCategory(token);
       const templates = exam === "IELTS" && level === "II" && token === "writing"
         ? ieltsGeneralWriting
         : token === "consolidation"
@@ -356,7 +358,7 @@ function generatePlanFromSettings(settings) {
         category,
         displayIndex: categoryIndex,
         title: template[0],
-        note: `${settings.studyContent ? `${settings.studyContent.slice(0, 22)} · ` : ""}${template[1]}${weakTokens.includes(token) ? " · 薄弱项加练" : ""}`,
+        note: `${settings.studyContent ? `${settings.studyContent.slice(0, 22)} · ` : ""}${template[1]}${weakTokens.map(normalizeStudyCategory).includes(category) ? " · 薄弱项加练" : ""}`,
         status: "planned",
         standards: completionStandards[category] || completionStandards.vocab
       });
@@ -570,7 +572,7 @@ const materialPracticeBank = [
     sourceTitle: "用户资料《完全掌握 TOPIK I 初级阅读》",
     questions: [
       {
-        materialImage: "assets/materials/topik1-reading/block-cn/block-100.png",
+        materialImage: "assets/materials/topik1-reading/question/question-100.png",
         stem: "다음을 읽고 내용과 다른 것을 고르십시오.",
         stemZh: "阅读招聘广告，选择与内容不一致的一项。",
         options: ["커피전문점에서 아르바이트 학생을 구합니다.", "고등학생도 일할 수 있습니다.", "일주일에 삼일 일합니다.", "남녀 모두 일할 수 있습니다."],
@@ -582,7 +584,7 @@ const materialPracticeBank = [
         source: "用户资料《完全掌握 TOPIK I 初级阅读》p.84 · 标识阅读"
       },
       {
-        materialImage: "assets/materials/topik1-reading/block-cn/block-101.png",
+        materialImage: "assets/materials/topik1-reading/question/question-101.png",
         stem: "다음을 읽고 내용과 다른 것을 고르십시오.",
         stemZh: "阅读音乐会海报，选择与内容不一致的一项。",
         options: ["서울 벚꽃 음악회는 3일 동안 열립니다.", "서울 벚꽃 음악회는 하루에 두 번씩 열립니다.", "서울 벚꽃 음악회는 4월에 열립니다.", "서울 벚꽃 음악회는 누구나 참여할 수 있습니다."],
@@ -594,7 +596,7 @@ const materialPracticeBank = [
         source: "用户资料《完全掌握 TOPIK I 初级阅读》p.85 · 标识阅读"
       },
       {
-        materialImage: "assets/materials/topik1-reading/block-cn/block-102.png",
+        materialImage: "assets/materials/topik1-reading/question/question-102.png",
         stem: "다음을 읽고 내용과 다른 것을 고르십시오.",
         stemZh: "阅读促销信息，选择与内容不一致的一项。",
         options: ["수박을 시청 앞에서 팝니다.", "수박을 싸게 팝니다.", "수박을 먹어 볼 수 있습니다.", "5월 11일에는 열리지 않습니다."],
@@ -606,7 +608,7 @@ const materialPracticeBank = [
         source: "用户资料《完全掌握 TOPIK I 初级阅读》p.86 · 标识阅读"
       },
       {
-        materialImage: "assets/materials/topik1-reading/block-cn/block-103.png",
+        materialImage: "assets/materials/topik1-reading/question/question-103.png",
         stem: "다음을 읽고 내용과 다른 것을 고르십시오.",
         stemZh: "阅读免费韩文教室公告，选择与内容不一致的一项。",
         options: ["한글 수업은 10월부터 있습니다.", "9월 20일까지 신청해야 합니다.", "외국인도 참여할 수 있습니다.", "이 수업은 무료입니다."],
@@ -618,7 +620,7 @@ const materialPracticeBank = [
         source: "用户资料《完全掌握 TOPIK I 初级阅读》p.87 · 标识阅读"
       },
       {
-        materialImage: "assets/materials/topik1-reading/block-cn/block-104.png",
+        materialImage: "assets/materials/topik1-reading/question/question-104.png",
         stem: "다음을 읽고 내용과 다른 것을 고르십시오.",
         stemZh: "阅读便条内容，选择与内容不一致的一项。",
         options: ["제인 씨는 오늘 학교에 안 왔습니다.", "제인 씨는 어제 학교에 왔습니다.", "밍밍 씨는 제인 씨를 걱정합니다.", "내일은 시험이 있습니다."],
@@ -1010,7 +1012,7 @@ function taskDisplayNote(task = {}, index = 0) {
   const settings = JSON.parse(localStorage.getItem("topikPrototypeSettings") || "null") || {};
   const rawNote = String(task.note || "");
   if (task.customTitle || settings.exam !== "TOPIK" || settings.level === "II") return rawNote;
-  const token = task.category === "grammar" ? "vocab" : task.category;
+  const token = normalizeStudyCategory(task.category);
   const templates = studyTemplates[token] || studyTemplates.consolidation || [];
   const displayIndex = Number.isInteger(task.displayIndex) ? task.displayIndex : index;
   const templateNote = templates[displayIndex % templates.length]?.[1] || "";
@@ -1035,8 +1037,12 @@ function renderCalendar() {
   const weekRangeTitle = $("#weekRangeTitle");
   if (weekRangeTitle) weekRangeTitle.textContent = `${days[0].date}—${days[6].date}`;
   const calendar = $("#weekCalendar");
-  $("#consolidationLegend")?.classList.toggle("hidden", !tasks.some(task => task.category === "consolidation"));
-  $("#reviewLegend")?.classList.toggle("hidden", !tasks.some(task => task.category === "review"));
+  const visibleCategories = new Set(tasks.filter(task => task.status !== "cancelled").map(task => task.category));
+  if (activeCalendarFilter !== "all" && !visibleCategories.has(activeCalendarFilter)) activeCalendarFilter = "all";
+  $$("[data-calendar-filter]").forEach(button => {
+    const filter = button.dataset.calendarFilter;
+    button.classList.toggle("hidden", filter !== "all" && !visibleCategories.has(filter));
+  });
   $("#calendarLegend")?.classList.toggle("has-filter", activeCalendarFilter !== "all");
   $$("[data-calendar-filter]").forEach(button => {
     const active = button.dataset.calendarFilter === activeCalendarFilter;
@@ -1058,7 +1064,7 @@ function renderCalendar() {
         const duration = minutesBetween(task.start, task.end);
         const title = taskDisplayTitle(task, tasks.indexOf(task));
         const dimmed = activeCalendarFilter !== "all" && task.category !== activeCalendarFilter;
-        return `<div class="task-card ${meta.className} ${task.status} ${dimmed ? "dimmed" : ""}" data-task-id="${task.id}" tabindex="0" role="button">
+        return `<div class="task-card ${meta.className} ${task.status} ${dimmed ? "dimmed" : ""}" data-task-id="${task.id}" data-task-category="${task.category}" tabindex="0" role="button">
           <div class="task-time"><span>◷ ${task.start}–${task.end}</span><span>${meta.label}</span></div>
           <h4>${title}</h4>
           <p>${taskDisplayNote(task, tasks.indexOf(task))}</p>
@@ -2210,7 +2216,7 @@ function normalizeAiTasks(aiTasks, settings) {
   const availableStart = settings.availableStart || "00:00";
   const availableEnd = settings.availableEnd || "23:59";
   const defaultTokens = defaultStudyTokens(settings);
-  const selectedTokens = selectedStudyTokens(settings, defaultTokens).map(token => token === "grammar" ? "vocab" : token);
+  const selectedTokens = selectedStudyTokens(settings, defaultTokens).map(normalizeStudyCategory);
   const allowed = [...new Set([
     ...selectedTokens,
     "consolidation",
@@ -2219,23 +2225,25 @@ function normalizeAiTasks(aiTasks, settings) {
   ])];
   const allowedCategories = new Set(allowed);
   return (aiTasks || []).filter(task => {
+    const category = normalizeStudyCategory(task.category);
     const validClock = /^\d{2}:\d{2}$/.test(task.start || "") && /^\d{2}:\d{2}$/.test(task.end || "");
     if (!validClock) return false;
     const startMinutes = clockToMinutes(task.start);
     const endMinutes = clockToMinutes(task.end);
     return allowedDays.has(task.day)
-      && allowedCategories.has(task.category)
+      && allowedCategories.has(category)
       && task.start >= availableStart
       && task.end <= availableEnd
       && task.start < task.end
       && !overlapsProtectedBreak(startMinutes, endMinutes);
   }).map((task, index) => {
+    const category = normalizeStudyCategory(task.category);
     const normalized = {
       id: 3000 + index,
       day: task.day,
       start: task.start,
       end: task.end,
-      category: task.category,
+      category,
       displayIndex: index,
       title: String(task.title || "学习任务").slice(0, 40),
       note: String(task.note || "").slice(0, 100),
