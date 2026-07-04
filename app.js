@@ -40,13 +40,13 @@ let tasks = JSON.parse(localStorage.getItem("topikPrototypeTasks") || "null") ||
 
 const studyTemplates = {
   listening: [
-    ["短对话理解", "先听人物、场所和正在发生的事"], ["说话意图判断", "判断为什么这样说、想表达什么"], ["原因理由定位", "抓 못 가요、바뀌었어요 等理由线索"], ["下一步行动判断", "听懂接下来要做什么或让谁做什么"], ["信息一致判断", "核对时间、地点、对象和数量"], ["否定时态辨认", "听清 안、못、过去和将来"], ["长对话信息定位", "先读选项，再捕捉差异"], ["听力复听复盘", "复听、影子跟读、复述"]
+    ["听人物和地点", "短对话里先抓谁、在哪里、正在做什么"], ["听下一步行动", "练“接下来做什么”和请求表达"], ["听原因和理由", "抓 못 가요、바뀌었어요 等理由线索"], ["听数字和时间", "练日期、价格、时间和数量"], ["听内容一致", "核对选项是否和原文相同"], ["听否定和时态", "听清 안、못、过去和将来"], ["看图听关键词", "先看图中差异，再听对应词"], ["听后复述", "复听、影子跟读、用中文说出大意"]
   ],
   reading: [
-    ["实用文信息读取", "公告、广告里的日期、地点、对象与目的"], ["题干信息定位", "用题干关键词回原文找依据"], ["中心内容理解", "找首尾句和重复关键词"], ["句子顺序整理", "看连接词、指代和前后逻辑"], ["细节同义改写", "把选项换回原文表达"], ["长文段落关系", "看转折、举例和总结句"], ["限时阅读训练", "速度与正确率并重"]
+    ["公告信息读取", "练日期、地点、对象和目的"], ["广告信息读取", "练价格、时间、活动和条件"], ["短文大意理解", "找重复关键词和中心句"], ["题干关键词定位", "先看题干，再回原文找依据"], ["图表信息读取", "读表格、时间表和简单说明"], ["句子连接判断", "看前后句的因果、转折和顺序"], ["限时阅读", "控制速度，同时标出答案依据"]
   ],
   vocab: [
-    ["主题词汇回忆", "生活、学校、交通与购物"], ["助词语尾基础", "은/는、이/가、을/를 与连接语尾"], ["词汇主动回忆", "不看词表完成韩中互译"], ["近义表达辨析", "结合固定搭配记忆"], ["固定搭配训练", "动词、名词和常见表达搭配"], ["语境填空练习", "用句子记住词义和搭配"]
+    ["生活场景词汇", "学校、交通、购物和日常活动"], ["基础助词辨析", "은/는、이/가、을/를 的句中作用"], ["动词形容词变形", "现在、过去、将来和敬语形式"], ["连接语尾基础", "原因、转折、顺序和条件表达"], ["固定搭配训练", "动词、名词和常见表达搭配"], ["语境填空", "根据句意选择合适词语或语尾"], ["易混词辨析", "把意思相近的词放进句子里区分"]
   ],
   grammar: [
     ["核心助词辨析", "은/는、이/가、을/를"], ["连接语尾训练", "原因、转折与顺序"], ["动词形容词变形", "时态、敬语与不规则变化"], ["语法变式练习", "先找谓语，再判断结构"]
@@ -280,7 +280,7 @@ function generatePlanFromSettings(settings) {
       ? (weakTokens.length ? [...new Set(weakTokens)] : ["reading", "vocab", "writing"])
       : ["listening", "reading", "vocab", "grammar", ...(level === "II" ? ["writing"] : [])];
   const templateSource = exam === "IELTS" ? ieltsTemplates : (exam === "OTHER" ? genericTemplates : studyTemplates);
-  const rotation = [...weakTokens, ...coreTokens, "consolidation", ...(settings.intensity === "高强度" ? ["mock"] : [])];
+  const rotation = [...new Set([...weakTokens, ...coreTokens, "consolidation", ...(settings.intensity === "高强度" ? ["mock"] : [])])];
   const foundationOffset = { "入门": 0, "一般": 1, "较好": 2, "不确定": 0 }[settings.foundation] || 0;
   let sequence = 0;
   const categoryCounts = {};
@@ -806,33 +806,48 @@ function renderProgressView() {
 function taskDisplayTitle(task = {}, index = 0) {
   const rawTitle = String(task.title || "");
   if (task.customTitle && rawTitle) return rawTitle;
-  if (/^(TOPIK|IELTS|雅思|学习)\s/.test(rawTitle)) return rawTitle;
-  if (task.id < 1000 && !/target grade|listening|reading|writing|speaking|vocab|grammar|review|consolidation/i.test(rawTitle)) return rawTitle || "学习任务";
+  if (/^(IELTS|雅思|学习)\s/.test(rawTitle)) return rawTitle;
+  if (rawTitle && !/^TOPIK\s+[I]{1,2}\s/.test(rawTitle) && !/target grade|listening|reading|writing|speaking|vocab|grammar|review|consolidation/i.test(rawTitle)) return rawTitle;
   const settings = JSON.parse(localStorage.getItem("topikPrototypeSettings") || "null") || {};
   const examPrefix = settings.exam === "IELTS"
     ? "IELTS"
-    : (settings.exam === "TOPIK" ? `TOPIK ${settings.level === "II" ? "II" : "I"}` : (settings.customExamName || "学习"));
+    : (settings.exam === "TOPIK" ? "" : (settings.customExamName || "学习"));
   const titleMap = {
-    listening: ["听力：短对话理解", "听力：说话意图判断", "听力：原因理由定位", "听力：下一步行动判断", "听力：信息一致判断", "听力：否定时态辨认"],
+    listening: ["听人物和地点", "听下一步行动", "听原因和理由", "听数字和时间", "听内容一致", "听否定和时态", "看图听关键词", "听后复述"],
     writing: ["写作：句子补全", "写作：短文逻辑补全", "写作：图表说明", "写作：议论文结构"],
-    reading: ["阅读：实用文信息读取", "阅读：句子顺序整理", "阅读：中心内容理解", "阅读：细节同义改写", "阅读：长文段落关系", "阅读：题干信息定位", "阅读：限时阅读"],
-    vocab: ["词汇语法：助词语尾基础", "词汇语法：连接表达", "词汇语法：近义表达辨析", "词汇语法：固定搭配", "词汇语法：语境填空", "词汇语法：主题词汇回忆"],
-    grammar: ["词汇语法：助词语尾基础", "词汇语法：连接表达", "词汇语法：句子结构", "词汇语法：时态与敬语"],
-    consolidation: ["巩固练习：阶段综合检验", "巩固练习：错因预防", "巩固练习：混合题型", "巩固练习：限时综合", "巩固练习：知识回忆", "巩固练习：延迟检验"],
+    reading: ["公告信息读取", "广告信息读取", "短文大意理解", "题干关键词定位", "图表信息读取", "句子连接判断", "限时阅读"],
+    vocab: ["生活场景词汇", "基础助词辨析", "动词形容词变形", "连接语尾基础", "固定搭配训练", "语境填空", "易混词辨析"],
+    grammar: ["基础助词辨析", "连接语尾基础", "句子结构判断", "时态与敬语"],
+    consolidation: ["错因预防练习", "延迟巩固练习", "混合题型串联", "限时综合练习", "本日知识回忆"],
     review: ["错题复盘：同类变式题", "错题复盘：到期题重做", "错题复盘：判断路径"],
     mock: ["阶段模拟：限时综合练习"]
   };
   const options = titleMap[task.category] || ["学习任务"];
   const displayIndex = Number.isInteger(task.displayIndex) ? task.displayIndex : index;
-  return `${examPrefix} ${options[displayIndex % options.length]}`;
+  return [examPrefix, options[displayIndex % options.length]].filter(Boolean).join(" ");
+}
+
+function taskDisplayNote(task = {}, index = 0) {
+  const settings = JSON.parse(localStorage.getItem("topikPrototypeSettings") || "null") || {};
+  const rawNote = String(task.note || "");
+  if (task.customTitle || settings.exam !== "TOPIK" || settings.level === "II") return rawNote;
+  const token = task.category === "grammar" ? "vocab" : task.category;
+  const templates = studyTemplates[token] || studyTemplates.consolidation || [];
+  const displayIndex = Number.isInteger(task.displayIndex) ? task.displayIndex : index;
+  const templateNote = templates[displayIndex % templates.length]?.[1] || "";
+  const looksLikeOldGeneratedNote = /^围绕目标\d级/.test(rawNote) || /综合同型题|基础句型和高频表达|公告、广告和短文信息/.test(rawNote);
+  return looksLikeOldGeneratedNote && templateNote ? templateNote : rawNote;
 }
 
 function taskTrainingPoint(task = {}, index = 0) {
   const title = taskDisplayTitle(task, index);
   const parts = title.split("：");
-  const moduleName = parts[0]?.replace(/^TOPIK\s+[I]{1,2}\s+/, "").replace(/^IELTS\s+/, "").trim() || (categoryMeta[task.category]?.label || "练习");
-  const point = parts.slice(1).join("：") || String(task.title || "本组练习");
-  const note = String(task.note || "").replace(/^围绕目标\d级/, "目标训练：").replace(/^目标训练：/, "目标训练：");
+  const hasModulePrefix = parts.length > 1;
+  const moduleName = hasModulePrefix
+    ? parts[0].replace(/^TOPIK\s+[I]{1,2}\s+/, "").replace(/^IELTS\s+/, "").trim()
+    : (categoryMeta[task.category]?.label || "练习");
+  const point = hasModulePrefix ? parts.slice(1).join("：") : title;
+  const note = taskDisplayNote(task, index).replace(/^围绕目标\d级/, "目标训练：").replace(/^目标训练：/, "目标训练：");
   return { moduleName, point, note };
 }
 
@@ -864,7 +879,7 @@ function renderCalendar() {
         return `<div class="task-card ${meta.className} ${task.status} ${dimmed ? "dimmed" : ""}" data-task-id="${task.id}" tabindex="0" role="button">
           <div class="task-time"><span>◷ ${task.start}–${task.end}</span><span>${meta.label}</span></div>
           <h4>${title}</h4>
-          <p>${task.note}</p>
+          <p>${taskDisplayNote(task, tasks.indexOf(task))}</p>
           <span class="task-duration">${task.status === "cancelled" ? "已取消" : `${duration}分钟`}</span>
         </div>`;
       }).join("")}
