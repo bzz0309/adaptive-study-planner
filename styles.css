@@ -81,8 +81,12 @@ h2 { margin: 0; font-size: 25px; letter-spacing: -.025em; }
 .reminder-controls input[type="time"] { width: 86px; height: 36px; padding: 0 7px; border: 1px solid var(--line); border-radius: 10px; background: #fff; font-size: 12px; font-weight: 750; }
 .secondary-button.compact { padding: 9px 11px; border-radius: 10px; font-size: 11px; white-space: nowrap; }
 .legend { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0 12px; }
-.legend span, .modal-category { padding: 5px 9px; border-radius: 99px; font-size: 10px; font-weight: 800; }
-.legend span::before { content: ""; display: inline-block; width: 6px; height: 6px; margin-right: 5px; border-radius: 50%; background: currentColor; }
+.legend button, .modal-category { padding: 5px 9px; border-radius: 99px; font-size: 10px; font-weight: 800; }
+.legend button { border: 0; cursor: pointer; transition: box-shadow .16s ease, transform .16s ease, opacity .16s ease; }
+.legend button::before { content: ""; display: inline-block; width: 6px; height: 6px; margin-right: 5px; border-radius: 50%; background: currentColor; }
+.legend button:hover { transform: translateY(-1px); box-shadow: 0 6px 12px rgba(33,40,49,.08); }
+.legend button.active { box-shadow: 0 0 0 2px currentColor inset; }
+.legend.has-filter button:not(.active) { opacity: .45; }
 .legend-listening { color: var(--blue); background: var(--blue-bg); }
 .legend-reading { color: var(--green); background: var(--green-bg); }
 .legend-vocab { color: var(--amber); background: var(--amber-bg); }
@@ -102,6 +106,7 @@ h2 { margin: 0; font-size: 25px; letter-spacing: -.025em; }
 .day-column.today .day-head p, .day-column.today .day-head small { color: #bfc8d0; }
 .task-card { position: relative; margin-bottom: 9px; padding: 12px 11px; border: 1px solid transparent; border-radius: 14px; cursor: pointer; transition: transform .16s ease, box-shadow .16s ease; }
 .task-card:hover { transform: translateY(-2px); box-shadow: 0 8px 18px rgba(33,40,49,.09); }
+.task-card.dimmed { opacity: .26; }
 .task-card.listening { color: var(--blue); background: var(--blue-bg); border-color: #c7def8; }
 .task-card.reading { color: var(--green); background: var(--green-bg); border-color: #cae8c8; }
 .task-card.vocab { color: var(--amber); background: var(--amber-bg); border-color: #f1ddaf; }
@@ -773,7 +778,7 @@ legend small { color: var(--muted); font-size: 9px; font-weight: 600; }
   .week-stats strong { font-size: 13px; }
   .week-stats span { font-size: 9px; }
   .legend { overflow-x: auto; flex-wrap: nowrap; padding-bottom: 4px; }
-  .legend span { white-space: nowrap; }
+  .legend button { white-space: nowrap; }
   .form-split, .option-grid.two { grid-template-columns: 1fr; }
   .custom-duration { align-items: stretch; flex-direction: column; }
   .duration-dash { display: none; }

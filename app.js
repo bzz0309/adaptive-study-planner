@@ -28,10 +28,10 @@ const defaultTasks = [
   { id: 6, day: "wed", start: "19:30", end: "20:10", category: "reading", title: "短文信息定位", note: "公告、广告、便条", status: "planned", standards: ["30分钟完成4篇短文共16题", "标出每题答案依据", "正确率达到80%", "每篇用一句中文概括主旨"] },
   { id: 7, day: "thu", start: "11:00", end: "11:40", category: "vocab", title: "动词与形容词变形", note: "现在、过去、将来", status: "planned", standards: ["完成24道变形题", "限时25分钟", "正确率达到85%", "错题各造一个新句子"] },
   { id: 8, day: "thu", start: "20:00", end: "20:35", category: "consolidation", title: "词汇隔日回忆", note: "不看词表主动回忆", status: "planned", standards: ["无提示回忆周一30词", "系统统计正确率", "薄弱词放入新语境", "完成后可补一句反思"] },
-  { id: 9, day: "fri", start: "11:00", end: "11:45", category: "listening", title: "听懂说话目的", note: "为什么这样说、接下来做什么", status: "planned", standards: ["完成15题，首遍不暂停", "写下决定答案的动词", "正确率达到80%", "错题完成近义变式"] },
+  { id: 9, day: "fri", start: "11:00", end: "11:45", category: "listening", title: "说话意图判断", note: "为什么这样说、想表达什么", status: "planned", standards: ["完成15题，首遍不暂停", "写下决定答案的动词", "正确率达到80%", "错题完成近义变式"] },
   { id: 10, day: "fri", start: "19:30", end: "20:15", category: "reading", title: "句子排序与衔接", note: "连接词、指代关系", status: "planned", standards: ["35分钟完成15题", "圈出连接词和指代词", "正确率达到80%", "错题复述排序依据"] },
   { id: 11, day: "sat", start: "14:00", end: "15:40", category: "mock", title: "半套限时模拟", note: "听力15题＋阅读20题", status: "planned", standards: ["全程不中断、不查词", "按规定时间完成35题", "分别记录听力和阅读正确率", "归类全部错题"] },
-  { id: 12, day: "sat", start: "20:00", end: "20:35", category: "consolidation", title: "阶段检验复盘", note: "只处理最高频两类薄弱点", status: "planned", standards: ["完成本组综合练习", "系统统计正确率", "整理薄弱点", "安排下周强化任务"] },
+  { id: 12, day: "sat", start: "20:00", end: "20:35", category: "consolidation", title: "阶段综合检验", note: "只处理最高频两类薄弱点", status: "planned", standards: ["完成本组综合练习", "系统统计正确率", "整理薄弱点", "安排下周强化任务"] },
   { id: 13, day: "sun", start: "11:00", end: "11:40", category: "consolidation", title: "本周知识二次检验", note: "延迟变式题", status: "planned", standards: ["完成10道延迟变式题", "系统统计正确率", "口头解释判断顺序", "仍错知识点标记需重学"] },
   { id: 14, day: "sun", start: "20:00", end: "20:25", category: "vocab", title: "轻量复习与下周预习", note: "只看未掌握内容", status: "planned", standards: ["复习未掌握词汇", "预览下周3个语法点", "写下一个最需要解决的问题", "25分钟到时停止"] }
 ];
@@ -40,13 +40,13 @@ let tasks = JSON.parse(localStorage.getItem("topikPrototypeTasks") || "null") ||
 
 const studyTemplates = {
   listening: [
-    ["短对话关键词", "人物、场所与下一步行动"], ["听懂说话目的", "判断为什么这样说"], ["抓原因与理由", "听出 못 가요、바뀌었어요 等理由"], ["后续行动判断", "听懂接下来要做什么"], ["细节信息定位", "时间、地点、对象和数量"], ["否定与时态辨音", "안、못、过去与将来"], ["长对话信息定位", "先读选项，再捕捉差异"], ["听力跟读复盘", "复听、影子跟读、复述"]
+    ["短对话理解", "先听人物、场所和正在发生的事"], ["说话意图判断", "判断为什么这样说、想表达什么"], ["原因理由定位", "抓 못 가요、바뀌었어요 等理由线索"], ["下一步行动判断", "听懂接下来要做什么或让谁做什么"], ["信息一致判断", "核对时间、地点、对象和数量"], ["否定时态辨认", "听清 안、못、过去和将来"], ["长对话信息定位", "先读选项，再捕捉差异"], ["听力复听复盘", "复听、影子跟读、复述"]
   ],
   reading: [
-    ["公告与广告阅读", "日期、地点、对象与目的"], ["短文信息定位", "题干关键词回原文"], ["文章中心句判断", "找首尾句和重复关键词"], ["句子排序与衔接", "连接词和指代关系"], ["细节与同义改写", "把选项换回原文表达"], ["长文段落关系", "看转折、举例和总结句"], ["限时阅读训练", "速度与正确率并重"]
+    ["实用文信息读取", "公告、广告里的日期、地点、对象与目的"], ["题干信息定位", "用题干关键词回原文找依据"], ["中心内容理解", "找首尾句和重复关键词"], ["句子顺序整理", "看连接词、指代和前后逻辑"], ["细节同义改写", "把选项换回原文表达"], ["长文段落关系", "看转折、举例和总结句"], ["限时阅读训练", "速度与正确率并重"]
   ],
   vocab: [
-    ["高频主题词汇", "生活、学校、交通与购物"], ["助词与语尾", "은/는、이/가、을/를 与连接语尾"], ["词汇主动回忆", "不看词表完成韩中互译"], ["近义词辨析", "结合固定搭配记忆"], ["固定搭配训练", "动词、名词和常见表达搭配"], ["词汇语境填空", "用句子记住词义和搭配"]
+    ["主题词汇回忆", "生活、学校、交通与购物"], ["助词语尾基础", "은/는、이/가、을/를 与连接语尾"], ["词汇主动回忆", "不看词表完成韩中互译"], ["近义表达辨析", "结合固定搭配记忆"], ["固定搭配训练", "动词、名词和常见表达搭配"], ["语境填空练习", "用句子记住词义和搭配"]
   ],
   grammar: [
     ["核心助词辨析", "은/는、이/가、을/를"], ["连接语尾训练", "原因、转折与顺序"], ["动词形容词变形", "时态、敬语与不规则变化"], ["语法变式练习", "先找谓语，再判断结构"]
@@ -58,7 +58,7 @@ const studyTemplates = {
     ["到期错题复盘", "完成1、3、7、14天复习"], ["延迟变式检验", "正确作答并讲明思路"], ["本日知识回忆", "不看笔记复述判断路径"]
   ],
   consolidation: [
-    ["阶段检验", "用本周内容做一组综合题"], ["错因预防练习", "先看常见误区，再做同型题"], ["延迟巩固练习", "不看笔记完成一组同型题"], ["混合题型串联", "听力、阅读和词汇语法穿插"], ["限时综合检验", "按考试节奏完成一组题"], ["本日知识回忆", "不看笔记复述判断路径"]
+    ["阶段综合检验", "用本周内容做一组综合题"], ["错因预防练习", "先看常见误区，再做同型题"], ["延迟巩固练习", "不看笔记完成一组同型题"], ["混合题型串联", "听力、阅读和词汇语法穿插"], ["限时综合检验", "按考试节奏完成一组题"], ["本日知识回忆", "不看笔记复述判断路径"]
   ],
   mock: [["阶段限时模拟", "按正式题型完成并归类错因"]]
 };
@@ -459,6 +459,7 @@ let practiceWrongNotes = [];
 let practiceIsSample = false;
 let listeningPlayCounts = {};
 let listeningIsSpeaking = false;
+let activeCalendarFilter = "all";
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
@@ -783,12 +784,12 @@ function taskDisplayTitle(task = {}, index = 0) {
     ? "IELTS"
     : (settings.exam === "TOPIK" ? `TOPIK ${settings.level === "II" ? "II" : "I"}` : (settings.customExamName || "学习"));
   const titleMap = {
-    listening: ["听力：听懂说话目的", "听力：抓原因和理由", "听力：判断后续行动", "听力：抓时间地点人物", "听力：细节与同义替换", "听力：否定与时态辨音"],
-    writing: ["写作：图表开头句", "写作：写图表趋势", "写作：写观点理由", "写作：连接句子", "写作：短句改写", "写作：自查修改"],
-    reading: ["阅读：找文章中心句", "阅读：排句子顺序", "阅读：公告广告信息", "阅读：细节同义改写", "阅读：长文段落关系", "阅读：找答案依据", "阅读：限时阅读"],
-    vocab: ["词汇语法：助词与语尾", "词汇语法：连接语尾", "词汇语法：近义词辨析", "词汇语法：固定搭配", "词汇语法：语境填空", "词汇语法：高频表达"],
-    grammar: ["词汇语法：助词与语尾", "词汇语法：连接语尾", "词汇语法：句子结构", "词汇语法：时态与敬语"],
-    consolidation: ["巩固练习：阶段检验", "巩固练习：错因预防", "巩固练习：混合题型", "巩固练习：限时综合", "巩固练习：知识回忆", "巩固练习：延迟检验"],
+    listening: ["听力：短对话理解", "听力：说话意图判断", "听力：原因理由定位", "听力：下一步行动判断", "听力：信息一致判断", "听力：否定时态辨认"],
+    writing: ["写作：图表开头句", "写作：趋势描述", "写作：观点理由展开", "写作：连接句子", "写作：短句改写", "写作：自查修改"],
+    reading: ["阅读：实用文信息读取", "阅读：句子顺序整理", "阅读：中心内容理解", "阅读：细节同义改写", "阅读：长文段落关系", "阅读：题干信息定位", "阅读：限时阅读"],
+    vocab: ["词汇语法：助词语尾基础", "词汇语法：连接表达", "词汇语法：近义表达辨析", "词汇语法：固定搭配", "词汇语法：语境填空", "词汇语法：主题词汇回忆"],
+    grammar: ["词汇语法：助词语尾基础", "词汇语法：连接表达", "词汇语法：句子结构", "词汇语法：时态与敬语"],
+    consolidation: ["巩固练习：阶段综合检验", "巩固练习：错因预防", "巩固练习：混合题型", "巩固练习：限时综合", "巩固练习：知识回忆", "巩固练习：延迟检验"],
     review: ["错题复盘：同类变式题", "错题复盘：到期题重做", "错题复盘：判断路径"],
     mock: ["阶段模拟：限时综合练习"]
   };
@@ -801,6 +802,12 @@ function renderCalendar() {
   const calendar = $("#weekCalendar");
   $("#consolidationLegend")?.classList.toggle("hidden", !tasks.some(task => task.category === "consolidation"));
   $("#reviewLegend")?.classList.toggle("hidden", !tasks.some(task => task.category === "review"));
+  $("#calendarLegend")?.classList.toggle("has-filter", activeCalendarFilter !== "all");
+  $$("[data-calendar-filter]").forEach(button => {
+    const active = button.dataset.calendarFilter === activeCalendarFilter;
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-pressed", active ? "true" : "false");
+  });
   calendar.innerHTML = days.map(day => {
     const dayTasks = tasks.filter(task => task.day === day.key);
     const total = dayTasks.reduce((sum, task) => sum + minutesBetween(task.start, task.end), 0);
@@ -814,7 +821,8 @@ function renderCalendar() {
         const meta = categoryMeta[task.category] || categoryMeta.consolidation;
         const duration = minutesBetween(task.start, task.end);
         const title = taskDisplayTitle(task, tasks.indexOf(task));
-        return `<div class="task-card ${meta.className} ${task.status}" data-task-id="${task.id}" tabindex="0" role="button">
+        const dimmed = activeCalendarFilter !== "all" && task.category !== activeCalendarFilter;
+        return `<div class="task-card ${meta.className} ${task.status} ${dimmed ? "dimmed" : ""}" data-task-id="${task.id}" tabindex="0" role="button">
           <div class="task-time"><span>◷ ${task.start}–${task.end}</span><span>${meta.label}</span></div>
           <h4>${title}</h4>
           <p>${task.note}</p>
@@ -829,6 +837,11 @@ function renderCalendar() {
     card.addEventListener("keydown", event => { if (event.key === "Enter") openTask(Number(card.dataset.taskId)); });
   });
   updateProgress();
+}
+
+function applyCalendarFilter(filter = "all") {
+  activeCalendarFilter = activeCalendarFilter === filter ? "all" : filter;
+  renderCalendar();
 }
 
 function updateProgress() {
@@ -1674,7 +1687,7 @@ async function commitPlanSettings(settings) {
     tasks = generatePlanFromSettings(settings);
   }
   localStorage.setItem("topikPrototypeTasks", JSON.stringify(tasks));
-  localStorage.setItem("topikPrototypePlanVersion", "8");
+  localStorage.setItem("topikPrototypePlanVersion", "9");
   renderCalendar();
   updateTomorrowFocus();
   $("#profileIntensity").textContent = settings.intensityLabel;
@@ -1970,6 +1983,9 @@ function initializeEvents() {
     $$(".import-choice").forEach(item => item.classList.remove("selected"));
     button.classList.add("selected");
   }));
+  $$("[data-calendar-filter]").forEach(button => button.addEventListener("click", () => {
+    applyCalendarFilter(button.dataset.calendarFilter);
+  }));
   $("#settingsForm").addEventListener("submit", event => {
     event.preventDefault();
     const exam = $('input[name="exam"]:checked').value;
@@ -2045,11 +2061,11 @@ if (savedSettings) {
   updateExamOptions(savedSettings.exam || "TOPIK", savedSettings.level || "I");
   updateTargetGradeOptions(savedSettings.level || "I", savedSettings.targetGrade || (savedSettings.level === "II" ? "4" : "2"));
   applyExamBrand(savedSettings.exam || "TOPIK", savedSettings.level || "I", savedSettings.targetGrade);
-  if (localStorage.getItem("topikPrototypePlanVersion") !== "8") {
+  if (localStorage.getItem("topikPrototypePlanVersion") !== "9") {
     const upgradedSettings = { exam: savedSettings.exam || "TOPIK", level: savedSettings.level || "I", foundation: savedSettings.foundation || "一般", weak: savedSettings.weak || ["听力", "阅读"], times: savedSettings.times || ["下午", "晚上"], ...savedSettings };
     tasks = generatePlanFromSettings(upgradedSettings);
     localStorage.setItem("topikPrototypeTasks", JSON.stringify(tasks));
-    localStorage.setItem("topikPrototypePlanVersion", "8");
+    localStorage.setItem("topikPrototypePlanVersion", "9");
     renderCalendar();
   }
 } else {

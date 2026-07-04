@@ -77,14 +77,14 @@
         </div>
 
         <div class="legend" id="calendarLegend">
-          <span class="legend-listening">听力</span>
-          <span class="legend-reading">阅读</span>
-          <span class="legend-vocab" id="vocabLegend">词汇 / 语法</span>
-          <span class="legend-writing hidden" id="writingLegend">写作</span>
-          <span class="legend-speaking hidden" id="speakingLegend">口语</span>
-          <span class="legend-mock">模拟测验</span>
-          <span class="legend-review hidden" id="consolidationLegend">巩固练习</span>
-          <span class="legend-review hidden" id="reviewLegend">错题复盘</span>
+          <button class="legend-listening" type="button" data-calendar-filter="listening">听力</button>
+          <button class="legend-reading" type="button" data-calendar-filter="reading">阅读</button>
+          <button class="legend-vocab" id="vocabLegend" type="button" data-calendar-filter="vocab">词汇 / 语法</button>
+          <button class="legend-writing hidden" id="writingLegend" type="button" data-calendar-filter="writing">写作</button>
+          <button class="legend-speaking hidden" id="speakingLegend" type="button" data-calendar-filter="speaking">口语</button>
+          <button class="legend-mock" type="button" data-calendar-filter="mock">模拟测验</button>
+          <button class="legend-review hidden" id="consolidationLegend" type="button" data-calendar-filter="consolidation">巩固练习</button>
+          <button class="legend-review hidden" id="reviewLegend" type="button" data-calendar-filter="review">错题复盘</button>
         </div>
 
         <div class="calendar-wrap">
@@ -343,6 +343,6 @@
   </div>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="app.js?v=20260704-varied-week-plan"></script>
+  <script src="app.js?v=20260704-clickable-labels"></script>
 </body>
 </html>
