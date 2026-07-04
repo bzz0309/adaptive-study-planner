@@ -482,7 +482,10 @@ const sampleErrorItems = [
     ]
   }
 ];
-const errorItems = [...(JSON.parse(localStorage.getItem("topikPrototypeImportedErrors") || "[]"))];
+const errorItems = [
+  ...(JSON.parse(localStorage.getItem("topikPrototypeImportedErrors") || "[]")),
+  ...(JSON.parse(localStorage.getItem("topikPrototypePracticeErrors") || "[]"))
+];
 let showingSampleErrors = false;
 
 const particleQuestions = [
@@ -697,6 +700,7 @@ function currentCloudState() {
   return {
     tasks,
     importedErrors: errorItems.filter(item => String(item.id).startsWith("imported-")),
+    practiceErrors: errorItems.filter(item => String(item.id).startsWith("practice-")),
     settings: JSON.parse(localStorage.getItem("topikPrototypeSettings") || "null"),
     onboarded: localStorage.getItem("topikPrototypeOnboarded") || "",
     planVersion: localStorage.getItem("topikPrototypePlanVersion") || "5",
@@ -710,6 +714,7 @@ function applyCloudState(data) {
   if (!data || typeof data !== "object") return;
   if (Array.isArray(data.tasks)) localStorage.setItem("topikPrototypeTasks", JSON.stringify(data.tasks));
   if (Array.isArray(data.importedErrors)) localStorage.setItem("topikPrototypeImportedErrors", JSON.stringify(data.importedErrors));
+  if (Array.isArray(data.practiceErrors)) localStorage.setItem("topikPrototypePracticeErrors", JSON.stringify(data.practiceErrors));
   if (data.settings) localStorage.setItem("topikPrototypeSettings", JSON.stringify(data.settings));
   if (data.onboarded) localStorage.setItem("topikPrototypeOnboarded", data.onboarded);
   if (data.planVersion) localStorage.setItem("topikPrototypePlanVersion", data.planVersion);
@@ -1563,6 +1568,50 @@ function practiceExplanationText(question = {}) {
   return question.explanationZh || question.explanation || "这道题要根据题干中的关键信息判断，正确选项和原文信息一致。";
 }
 
+function persistErrorItems() {
+  localStorage.setItem("topikPrototypeImportedErrors", JSON.stringify(errorItems.filter(item => String(item.id).startsWith("imported-"))));
+  localStorage.setItem("topikPrototypePracticeErrors", JSON.stringify(errorItems.filter(item => String(item.id).startsWith("practice-"))));
+}
+
+function createPracticeErrorItems(task, wrongResults = []) {
+  if (!task || !wrongResults.length) return [];
+  const taskIndex = tasks.indexOf(task);
+  const title = taskDisplayTitle(task, taskIndex);
+  const section = categoryMeta[task.category]?.label || "练习";
+  const timestamp = Date.now();
+  const created = wrongResults.map((result, index) => {
+    const question = result.question || {};
+    const correctOption = question.options?.[question.answer] || result.answer || "";
+    const correctOptionZh = question.answerZh || question.optionTranslations?.[question.answer] || result.answerZh || "";
+    const selectedOption = question.options?.[result.selected] || "";
+    const selectedOptionZh = question.optionTranslations?.[result.selected] || "";
+    const focus = question.questionType || question.sourceTitle || question.materialSetTitle || title;
+    const correctLine = [correctOption, correctOptionZh].filter(Boolean).join(" / ");
+    const selectedLine = selectedOption ? [selectedOption, selectedOptionZh].filter(Boolean).join(" / ") : "未作答";
+    return {
+      id: `practice-${task.id || "task"}-${timestamp}-${index}`,
+      filter: ["due"],
+      section,
+      title: `${title} · 第 ${result.index + 1} 题`,
+      source: "系统练习自动整理",
+      due: true,
+      focus: focus || "回看本题题干与正确答案依据。",
+      cause: `你的选择：${selectedLine}`,
+      reasoning: `正确答案：${answerLetter(question.answer)}. ${correctLine || "回看正确选项"}。${practiceExplanationText(question)}`,
+      habit: isListeningQuestion(question) ? "听到关键词后过早选答案，没等完整信息。" : "只抓到局部信息，没有逐项核对选项。",
+      action: isListeningQuestion(question) ? "复听原文，标出没听清的关键词。" : "先定位题干信息，再逐项排除不一致选项。",
+      progress: "待复盘 0 / 1题",
+      reviews: ["current", "", "", ""],
+      taskId: task.id || "",
+      question: question.stem || "",
+      createdAt: new Date().toISOString()
+    };
+  });
+  errorItems.unshift(...created);
+  persistErrorItems();
+  return created;
+}
+
 function renderPracticeFeedback(question = {}, correct = false) {
   const correctOption = question.options?.[question.answer] || "";
   const correctOptionZh = question.answerZh || question.optionTranslations?.[question.answer] || "";
@@ -2078,20 +2127,31 @@ function completePracticeSession() {
         ? `AI自动记录：错${wrongCount}题；${practiceWrongNotes.slice(0, 2).map(item => item.listeningMistake || item.explanationZh || item.explanation).join("；")}`
         : "AI自动记录：本组全部正确，建议按计划进行延迟复习。";
       task.status = "completed";
-      task.checkin = { correct: practiceCorrect, total, note: autoNote, reflection: resultReflection || task.checkin?.reflection || "", source: "系统练习自动统计", updatedAt: new Date().toISOString() };
+      const wrongResults = practiceResults
+        .map((item, index) => item && !item.correct ? { ...item, index } : null)
+        .filter(Boolean);
+      const createdErrors = practiceIsSample ? [] : createPracticeErrorItems(task, wrongResults);
+      task.checkin = {
+        correct: practiceCorrect,
+        total,
+        note: autoNote,
+        reflection: resultReflection || task.checkin?.reflection || "",
+        source: "系统练习自动统计",
+        updatedAt: new Date().toISOString(),
+        errorIds: createdErrors.map(item => item.id)
+      };
       localStorage.setItem("topikPrototypeTasks", JSON.stringify(tasks));
       renderCalendar();
       updateTomorrowFocus();
       recordCheckinReward(task);
+      renderErrors();
       scheduleCloudSave();
     }
   }
   const error = practiceIsSample ? null : errorItems.find(item => item.id === practiceErrorId);
   if (error) {
     error.progress = `本次练习 ${practiceCorrect} / ${total}题 · ${rate}%`;
-    if (String(error.id).startsWith("imported-")) {
-      localStorage.setItem("topikPrototypeImportedErrors", JSON.stringify(errorItems.filter(item => String(item.id).startsWith("imported-"))));
-    }
+    persistErrorItems();
     if (rate >= 80) recordSolvedErrorReward(rate);
     renderErrors();
     scheduleCloudSave();
@@ -2346,7 +2406,7 @@ function confirmImportedErrors() {
       progress: "待完成诊断 0 / 3题", reviews: ["current", "", "", ""]
     });
   });
-  localStorage.setItem("topikPrototypeImportedErrors", JSON.stringify(errorItems.filter(item => item.id.startsWith("imported-"))));
+  persistErrorItems();
   showingSampleErrors = false;
   scheduleCloudSave();
   renderErrors();
