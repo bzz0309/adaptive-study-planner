@@ -201,6 +201,10 @@ h2 { margin: 0; font-size: 25px; letter-spacing: -.025em; }
 .modal-category { display: inline-block; margin-bottom: 12px; color: var(--blue); background: var(--blue-bg); }
 .modal-panel h2 { font-size: 26px; }
 .modal-meta, .settings-intro { margin: 7px 0 20px; color: var(--muted); font-size: 12px; }
+.task-focus-box { display: grid; gap: 5px; margin: 16px 0 8px; padding: 13px 14px; border: 1px solid #e4e1d9; border-radius: 12px; background: #fbfaf5; }
+.task-focus-box span { color: #718093; font-size: 10px; font-weight: 850; }
+.task-focus-box strong { color: #172231; font-size: 16px; line-height: 1.35; }
+.task-focus-box p { margin: 0; color: #566371; font-size: 12px; line-height: 1.5; }
 .standard-box { margin: 18px 0; padding: 15px; border-radius: 14px; background: #f4f4ef; }
 .standard-box h3, .checkin-form h3 { margin: 0 0 10px; font-size: 13px; }
 .standard-box ul { margin: 0; padding-left: 19px; }

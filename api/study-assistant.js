@@ -20,10 +20,10 @@ const TOPIK_SOURCES = [
     note: "用于校准题型、难度和错题复盘；日常练习生成原创同型题。"
   },
   {
-    title: "TOPIK II 同型练习生成规则",
+    title: "TOPIK II 训练点生成规则",
     url: "",
-    type: "同型题参考",
-    note: "按公开题型结构生成原创练习，不把 AI 题冒充真题。"
+    type: "训练点参考",
+    note: "用考试模块和能力训练点生成原创练习；训练点不是官方分类。"
   }
 ];
 
@@ -720,7 +720,7 @@ async function handlePlan(settings = {}) {
 
 async function handleResearch(settings = {}) {
   return {
-    summary: `${getExamLabel(settings)} 将用官方入口、公开样题或用户自有材料校准题型；日常练习会生成原创同型题，不把 AI 题冒充真题。`,
+    summary: `${getExamLabel(settings)} 将用官方入口、公开样题或用户自有材料校准考试模块与难度；日常练习按训练点生成原创同型题，不把训练标签写成官方分类。`,
     sources: sourceList(settings).map(normalizeSource)
   };
 }

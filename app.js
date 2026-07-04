@@ -798,6 +798,15 @@ function taskDisplayTitle(task = {}, index = 0) {
   return `${examPrefix} ${options[displayIndex % options.length]}`;
 }
 
+function taskTrainingPoint(task = {}, index = 0) {
+  const title = taskDisplayTitle(task, index);
+  const parts = title.split("：");
+  const moduleName = parts[0]?.replace(/^TOPIK\s+[I]{1,2}\s+/, "").replace(/^IELTS\s+/, "").trim() || (categoryMeta[task.category]?.label || "练习");
+  const point = parts.slice(1).join("：") || String(task.title || "本组练习");
+  const note = String(task.note || "").replace(/^围绕目标\d级/, "目标训练：").replace(/^目标训练：/, "目标训练：");
+  return { moduleName, point, note };
+}
+
 function renderCalendar() {
   const calendar = $("#weekCalendar");
   $("#consolidationLegend")?.classList.toggle("hidden", !tasks.some(task => task.category === "consolidation"));
@@ -933,6 +942,8 @@ function openTask(id) {
   $("#taskModalCategory").className = `modal-category legend-${meta.className === "vocab" ? "vocab" : meta.className}`;
   $("#taskModalTitle").textContent = taskDisplayTitle(task, tasks.indexOf(task));
   $("#taskModalMeta").textContent = `${days.find(day => day.key === task.day).name} · ${task.start}–${task.end} · ${minutesBetween(task.start, task.end)}分钟`;
+  const focus = taskTrainingPoint(task, tasks.indexOf(task));
+  $("#taskFocusBox").innerHTML = `<span>${focus.moduleName}</span><strong>${focus.point}</strong><p>${focus.note || "系统会按这组训练点生成练习并记录结果。"}</p>`;
   const hasSeenTaskFlow = localStorage.getItem("topikPrototypeTaskFlowSeen") === "yes";
   $("#taskFlowIntro").classList.toggle("hidden", hasSeenTaskFlow);
   if (!hasSeenTaskFlow) localStorage.setItem("topikPrototypeTaskFlowSeen", "yes");
@@ -1124,7 +1135,7 @@ async function loadExamDrivenPractice(errorId, linkedTaskId, questionCount = 5) 
       weak: context.settings.weak || [],
       studyContent: context.settings.studyContent || "",
       requestedQuestionCount: questionCount,
-      sourcePolicy: "优先参考官方公开样题、公开真题题型和用户资料；生成同型练习题，不直接复刻受版权限制的整套真题。"
+      sourcePolicy: "优先参考官方公开样题、公开真题题型和用户资料来校准考试模块与难度；按当前训练点生成原创同型练习，不把训练标签写成官方分类，也不直接复刻受版权限制的整套真题。"
     }
   });
   return normalizePracticeQuestions(result?.questions || result?.practice?.questions, questionCount);
@@ -1461,7 +1472,7 @@ async function startPractice(errorId = "e1", linkedTaskId = null, isSample = fal
     <div>
       <p class="section-kicker">系统出题中</p>
       <h3>正在按你的考试目标生成 ${questionCount} 道题</h3>
-      <p>会参考当前考试类型、目标等级、任务目标和公开题型结构。题目生成完成后会自动进入第 1 题。</p>
+      <p>会参考考试模块、目标等级、本组训练点和已确认资料来出题。生成完成后会自动进入第 1 题。</p>
     </div>
   </div>`;
   if (!questionGraded) $("#practiceFeedback").className = "practice-feedback hidden";
@@ -1709,7 +1720,7 @@ function suggestedSourcesFor(settings) {
     { title: "TOPIK 官方网站", detail: "https://www.topik.go.kr/", type: "官方入口" },
     { title: "国立国际教育院 NIIED · TOPIK 主管机构", detail: "https://www.niied.go.kr/", type: "官方机构" },
     { title: "公开样题 / 用户自有材料", detail: "用于校准题型、难度和错题复盘", type: "校准材料" },
-    { title: "TOPIK II 同型练习生成规则", detail: "按公开题型结构生成原创练习，不冒充真题", type: "同型题参考" }
+    { title: "TOPIK II 训练点生成规则", detail: "按考试模块和能力训练点生成原创练习；训练点不是官方分类", type: "训练点参考" }
   ] : settings.exam === "IELTS" ? [
     { title: "IELTS 官方考试类型与结构", detail: "https://ielts.org/take-a-test/test-types", type: "官方入口" },
     { title: "IELTS 官方样题与备考资源", detail: "https://ielts.org/take-a-test/preparation-resources", type: "公开样题" },
@@ -1763,7 +1774,7 @@ async function showResourceConfirmation(settings) {
     $("#researchNoteText").textContent = text;
     updatePlanConfirmationState();
   };
-  if (settings.autoResearch) setResearchState("loading", "正在连接AI，核对官方考试说明、题型和用户资料…");
+  if (settings.autoResearch) setResearchState("loading", "正在连接AI，核对考试说明、公开样题和用户资料…");
   else {
     $("#researchNote").classList.remove("loading", "success", "error");
     $("#researchNoteText").textContent = "";
@@ -1789,12 +1800,12 @@ async function showResourceConfirmation(settings) {
         pendingSettings.suggestedSources = mergedSources;
         renderSourceChoices(mergedSources);
       }
-      setResearchState("success", result?.summary || "已整理官方入口、公开样题和同型题参考，请检查后再确认。");
+      setResearchState("success", result?.summary || "已整理考试资料和训练点参考，请检查后再确认。");
     } catch {
-      setResearchState("error", "实时核验暂不可用，当前显示内置官方来源；你仍可检查后继续生成计划。");
+      setResearchState("error", "实时核验暂不可用，当前显示内置资料来源；你仍可检查后继续生成计划。");
     }
   } else if (settings.autoResearch) {
-    setResearchState("error", "本地页面不能执行实时搜索，请使用在线版；当前显示内置官方来源预览。");
+    setResearchState("error", "本地页面不能执行实时搜索，请使用在线版；当前显示内置资料来源预览。");
   }
 }
 

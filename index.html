@@ -135,6 +135,7 @@
       <div class="modal-category" id="taskModalCategory">听力</div>
       <h2 id="taskModalTitle">听力短对话</h2>
       <p class="modal-meta" id="taskModalMeta"></p>
+      <div class="task-focus-box" id="taskFocusBox"></div>
       <div class="standard-box" id="taskFlowIntro">
         <h3>答题流程</h3>
         <ul>
@@ -253,8 +254,8 @@
       </div>
       <div class="research-note" id="researchNote">
         <div class="research-status-head"><span class="research-spinner" id="researchStatusIcon" aria-hidden="true"></span><strong>资料核验预览</strong><span class="research-status-chip" id="researchStatusChip">准备中</span></div>
-        <p id="researchNoteText" aria-live="polite">优先用官方入口、公开样题和你的自有材料校准题型，再生成原创同型练习。</p>
-        <div class="research-progress" id="researchProgress" aria-hidden="true"><span>连接AI</span><span>核对官方入口</span><span>整理同型题参考</span></div>
+        <p id="researchNoteText" aria-live="polite">优先用官方入口、公开样题和你的自有材料校准考试模块与难度，再按训练点生成原创同型练习。</p>
+        <div class="research-progress" id="researchProgress" aria-hidden="true"><span>连接AI</span><span>核对资料来源</span><span>整理训练点参考</span></div>
       </div>
       <div class="uncertainty-note">
         <div class="uncertainty-head"><b>!</b><span>生成前请确认</span><em>必选</em></div>
@@ -343,6 +344,6 @@
   </div>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="app.js?v=20260704-clickable-labels"></script>
+  <script src="app.js?v=20260704-training-labels"></script>
 </body>
 </html>
