@@ -1397,7 +1397,7 @@ async function loadExamDrivenPractice(errorId, linkedTaskId, questionCount = 5) 
       requestedQuestionCount: questionCount,
       sourcePolicy: "优先参考官方公开样题、公开真题题型和用户资料来校准考试模块与难度；按当前训练点生成原创同型练习，不把训练标签写成官方分类，也不直接复刻受版权限制的整套真题。"
     }
-  });
+  }, { timeoutMs: 6500 });
   return normalizePracticeQuestions(result?.questions || result?.practice?.questions, questionCount);
 }
 
@@ -1747,7 +1747,7 @@ async function startPractice(errorId = "e1", linkedTaskId = null, isSample = fal
     if (generated.length) activePractice = generated;
     else if (linkedTaskId) showToast("暂未生成新题，已使用本地兜底练习");
   } catch {
-    if (linkedTaskId) showToast("在线出题暂不可用，已使用本地兜底练习");
+    if (linkedTaskId) showToast("在线出题较慢，已先进入本地练习");
   }
   questionIndex = 0;
   selectedAnswer = null;
@@ -1894,16 +1894,23 @@ function showToast(message) {
 
 let pendingSettings = null;
 
-async function callStudyAssistant(action, settings) {
+async function callStudyAssistant(action, settings, options = {}) {
   if (location.protocol === "file:") return null;
-  const response = await fetch("/api/study-assistant", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ action, settings })
-  });
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(payload.detail || payload.error || `AI service unavailable: ${response.status}`);
-  return payload;
+  const controller = options.timeoutMs ? new AbortController() : null;
+  const timeoutId = options.timeoutMs ? setTimeout(() => controller.abort(), options.timeoutMs) : null;
+  try {
+    const response = await fetch("/api/study-assistant", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action, settings }),
+      signal: controller?.signal
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload.detail || payload.error || `AI service unavailable: ${response.status}`);
+    return payload;
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
 }
 
 function normalizeAiTasks(aiTasks, settings) {
