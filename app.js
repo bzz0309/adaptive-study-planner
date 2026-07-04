@@ -805,6 +805,7 @@ function renderProgressView() {
 
 function taskDisplayTitle(task = {}, index = 0) {
   const rawTitle = String(task.title || "");
+  if (task.customTitle && rawTitle) return rawTitle;
   if (/^(TOPIK|IELTS|雅思|学习)\s/.test(rawTitle)) return rawTitle;
   if (task.id < 1000 && !/target grade|listening|reading|writing|speaking|vocab|grammar|review|consolidation/i.test(rawTitle)) return rawTitle || "学习任务";
   const settings = JSON.parse(localStorage.getItem("topikPrototypeSettings") || "null") || {};
@@ -995,10 +996,68 @@ function openTask(id) {
   $("#cancelTaskPlan").classList.toggle("hidden", hasLearningRecord);
   $("#cancelTaskPlan").disabled = hasLearningRecord;
   $("#cancelTaskPlan").textContent = task.status === "cancelled" ? "恢复这个计划" : "取消这个计划";
+  $("#editTaskPlan").classList.toggle("hidden", hasLearningRecord);
+  $("#editTaskPlan").disabled = hasLearningRecord;
+  $("#taskEditPanel").classList.add("hidden");
+  fillTaskEditForm(task);
   $("#openPractice").classList.toggle("hidden", task.status === "cancelled");
   $("#openPractice").disabled = task.status === "cancelled";
   $("#openPractice").textContent = isMockTask ? "开始模拟" : "开始学习";
   openModal("taskModal");
+}
+
+function fillTaskEditForm(task) {
+  $("#editTaskDay").innerHTML = days.map(day => `<option value="${day.key}">${day.name}</option>`).join("");
+  $("#editTaskCategory").innerHTML = Object.entries(categoryMeta)
+    .filter(([key]) => key !== "speaking" || tasks.some(item => item.category === "speaking"))
+    .map(([key, meta]) => `<option value="${key}">${meta.label}</option>`).join("");
+  $("#editTaskDay").value = task.day;
+  $("#editTaskCategory").value = task.category;
+  $("#editTaskStart").value = task.start;
+  $("#editTaskEnd").value = task.end;
+  $("#editTaskTitle").value = taskDisplayTitle(task, tasks.indexOf(task));
+  $("#editTaskNote").value = task.note || "";
+}
+
+function toggleTaskEdit(forceOpen = null) {
+  const panel = $("#taskEditPanel");
+  const shouldOpen = forceOpen ?? panel.classList.contains("hidden");
+  panel.classList.toggle("hidden", !shouldOpen);
+  $("#editTaskPlan").textContent = shouldOpen ? "收起编辑" : "编辑计划";
+}
+
+function saveTaskEdit() {
+  const task = tasks.find(item => item.id === activeTaskId);
+  if (!task) return;
+  if (hasPracticeRecord(task)) return showToast("已完成的学习记录不能编辑");
+  const day = $("#editTaskDay").value;
+  const category = $("#editTaskCategory").value;
+  const start = $("#editTaskStart").value;
+  const end = $("#editTaskEnd").value;
+  const title = $("#editTaskTitle").value.trim();
+  const note = $("#editTaskNote").value.trim();
+  if (!days.some(item => item.key === day)) return showToast("请选择有效的学习日期");
+  if (!categoryMeta[category]) return showToast("请选择有效的任务类型");
+  if (!start || !end || start >= end) return showToast("请填写有效的开始和结束时间");
+  const startMinutes = clockToMinutes(start);
+  const endMinutes = clockToMinutes(end);
+  if (overlapsProtectedBreak(startMinutes, endMinutes)) return showToast("这个时间碰到午饭或晚饭，换一个时间会更稳");
+  if (!title) return showToast("请填写任务标题");
+  task.day = day;
+  task.category = category;
+  task.start = start;
+  task.end = end;
+  task.title = title.slice(0, 48);
+  task.customTitle = true;
+  task.note = note.slice(0, 120);
+  task.standards = completionStandards[category] || completionStandards.consolidation;
+  localStorage.setItem("topikPrototypeTasks", JSON.stringify(tasks));
+  renderCalendar();
+  updateTomorrowFocus();
+  scheduleCloudSave();
+  toggleTaskEdit(false);
+  openTask(task.id);
+  showToast("计划已更新，后续出题会按新内容执行");
 }
 
 function cancelActiveTaskPlan() {
@@ -1272,7 +1331,7 @@ function getPracticeContext(errorId, linkedTaskId) {
   const task = linkedTaskId ? tasks.find(item => item.id === linkedTaskId) : null;
   const examLabel = getExamPracticeLabel(settings);
   const category = task?.category || (errorId === "imported-1" ? "review" : "vocab");
-  const title = task?.title || (errorId === "imported-1" ? "导入错题诊断" : "错题变式复习");
+  const title = task ? taskDisplayTitle(task, tasks.indexOf(task)) : (errorId === "imported-1" ? "导入错题诊断" : "错题变式复习");
   return { settings, task, examLabel, category, title };
 }
 
@@ -2037,6 +2096,9 @@ function initializeEvents() {
   }));
   $("#saveReflection").addEventListener("click", saveReflection);
   $("#cancelTaskPlan").addEventListener("click", cancelActiveTaskPlan);
+  $("#editTaskPlan").addEventListener("click", () => toggleTaskEdit());
+  $("#discardTaskEdit").addEventListener("click", () => toggleTaskEdit(false));
+  $("#saveTaskEdit").addEventListener("click", saveTaskEdit);
   $("#openPractice").addEventListener("click", () => { const linkedTaskId = activeTaskId; closeModal("taskModal"); startPractice("e1", linkedTaskId); });
   $("#startDueReview").addEventListener("click", () => {
     const dueItem = errorItems.find(item => item.due && !item.mastered);

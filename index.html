@@ -165,8 +165,30 @@
         </div>
         <label id="reflectionField" class="hidden">完成后反思 <small>可选</small><textarea id="taskNote" rows="2" placeholder="完成答题后，可以补一句哪里卡住了"></textarea></label>
       </div>
+      <div class="task-edit-panel hidden" id="taskEditPanel">
+        <h3>编辑计划</h3>
+        <div class="form-split">
+          <label>学习日期
+            <select id="editTaskDay"></select>
+          </label>
+          <label>任务类型
+            <select id="editTaskCategory"></select>
+          </label>
+        </div>
+        <div class="form-split">
+          <label>开始时间<input id="editTaskStart" type="time" /></label>
+          <label>结束时间<input id="editTaskEnd" type="time" /></label>
+        </div>
+        <label>任务标题<input id="editTaskTitle" type="text" maxlength="48" /></label>
+        <label>任务说明<textarea id="editTaskNote" rows="2" maxlength="120"></textarea></label>
+        <div class="inline-actions">
+          <button class="secondary-button" id="discardTaskEdit" type="button">取消编辑</button>
+          <button class="primary-button" id="saveTaskEdit" type="button">保存修改</button>
+        </div>
+      </div>
       <div class="modal-actions">
         <button class="danger-button" id="cancelTaskPlan">取消这个计划</button>
+        <button class="secondary-button" id="editTaskPlan">编辑计划</button>
         <button class="primary-button" id="openPractice">开始学习</button>
         <button class="secondary-button hidden" id="saveReflection">保存反思</button>
       </div>
@@ -349,6 +371,6 @@
   </div>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="app.js?v=20260704-rest-aware-schedule"></script>
+  <script src="app.js?v=20260704-editable-schedule"></script>
 </body>
 </html>
