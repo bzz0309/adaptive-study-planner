@@ -128,12 +128,18 @@ function normalizeQuestion(item = {}) {
   return {
     stem: compact(item.stem || item.question),
     options,
+    optionTranslations: Array.isArray(item.optionTranslations || item.optionsZh)
+      ? (item.optionTranslations || item.optionsZh).map(option => compact(option)).slice(0, 4)
+      : [],
     answer: Number.isInteger(answer) ? answer : -1,
     explanation: compact(item.explanation || item.reason),
+    explanationZh: compact(item.explanationZh || item.explanationChinese || item.reasonZh || ""),
+    answerZh: compact(item.answerZh || item.correctAnswerZh || ""),
     source: compact(item.source || item.type || "Generated exam-type practice"),
     skill: compact(item.skill || item.questionType || ""),
     audioText,
     transcript: compact(item.transcript || audioText),
+    transcriptZh: compact(item.transcriptZh || item.transcriptChinese || item.audioTextZh || ""),
     reviewStatus: "pending"
   };
 }
@@ -236,51 +242,72 @@ function fallbackPractice(settings = {}) {
 
   if (exam === "TOPIK" && level === "II" && category === "listening") {
     const listeningScript = "남자: 수진 씨, 오늘 동아리 회의에 못 올 것 같아요. 갑자기 아르바이트 시간이 바뀌었거든요. 여자: 그래요? 그럼 내일 오전까지 의견을 문자로 보내 주세요. 회의에서 대신 말해 줄게요. 남자: 고마워요. 포스터 디자인에 대한 의견을 정리해서 보낼게요.";
+    const listeningScriptZh = "男：秀珍，我今天可能去不了社团会议了。突然打工时间变了。女：是吗？那请你明天上午之前把意见用短信发给我吧。我会在会议上替你说。男：谢谢。我会整理好关于海报设计的意见发过去。";
     return {
       questions: [
         {
           audioText: listeningScript,
           transcript: listeningScript,
+          transcriptZh: listeningScriptZh,
           stem: "남자가 오늘 동아리 회의에 못 가는 이유는 무엇입니까?",
           options: ["포스터를 아직 만들지 못해서", "아르바이트 시간이 바뀌어서", "의견을 정리하지 못해서", "내일 오전에 약속이 있어서"],
+          optionTranslations: ["因为还没做完海报", "因为打工时间变了", "因为还没整理好意见", "因为明天上午有约"],
           answer: 1,
           explanation: "남자는 갑자기 아르바이트 시간이 바뀌어서 오늘 동아리 회의에 못 간다고 말했습니다.",
+          explanationZh: "男生说自己突然打工时间变了，所以今天不能去社团会议。",
+          answerZh: "因为打工时间变了",
           source: "TOPIK II listening reason type"
         },
         {
           audioText: listeningScript,
           transcript: listeningScript,
+          transcriptZh: listeningScriptZh,
           stem: "여자는 남자에게 무엇을 하라고 했습니까?",
           options: ["회의에 늦게 오라고 했습니다", "포스터를 바로 만들라고 했습니다", "의견을 문자로 보내라고 했습니다", "아르바이트 시간을 바꾸라고 했습니다"],
+          optionTranslations: ["让他晚点来会议", "让他马上做海报", "让他把意见用短信发过去", "让他改打工时间"],
           answer: 2,
           explanation: "여자는 내일 오전까지 의견을 문자로 보내 달라고 했습니다.",
+          explanationZh: "女生让男生在明天上午之前把意见用短信发给她。",
+          answerZh: "让他把意见用短信发过去",
           source: "TOPIK II listening action type"
         },
         {
           audioText: listeningScript,
           transcript: listeningScript,
+          transcriptZh: listeningScriptZh,
           stem: "남자는 무엇에 대한 의견을 보내겠다고 했습니까?",
           options: ["회의 시간", "포스터 디자인", "동아리 장소", "아르바이트 일정"],
+          optionTranslations: ["会议时间", "海报设计", "社团地点", "打工日程"],
           answer: 1,
           explanation: "남자는 포스터 디자인에 대한 의견을 정리해서 보내겠다고 했습니다.",
+          explanationZh: "男生说会整理关于海报设计的意见并发过去。",
+          answerZh: "海报设计",
           source: "TOPIK II listening detail type"
         },
         {
           audioText: listeningScript,
           transcript: listeningScript,
+          transcriptZh: listeningScriptZh,
           stem: "대화 내용과 같은 것을 고르십시오.",
           options: ["남자는 회의에서 발표할 것입니다", "여자는 남자의 의견을 대신 말할 것입니다", "회의는 내일 오전에 열립니다", "포스터는 이미 완성되었습니다"],
+          optionTranslations: ["男生会在会议上发表", "女生会代替男生转达意见", "会议会在明天上午举行", "海报已经完成了"],
           answer: 1,
           explanation: "여자는 회의에서 남자의 의견을 대신 말해 주겠다고 했습니다.",
+          explanationZh: "女生说会在会议上替男生转达他的意见。",
+          answerZh: "女生会代替男生转达意见",
           source: "TOPIK II listening matching type"
         },
         {
           audioText: listeningScript,
           transcript: listeningScript,
+          transcriptZh: listeningScriptZh,
           stem: "이 대화에서 남자의 말하기 목적은 무엇입니까?",
           options: ["회의에 못 가는 상황을 설명하려고", "포스터 디자인을 칭찬하려고", "아르바이트를 소개하려고", "회의 장소를 확인하려고"],
+          optionTranslations: ["为了说明不能去会议的情况", "为了称赞海报设计", "为了介绍打工", "为了确认会议地点"],
           answer: 0,
           explanation: "남자는 아르바이트 시간이 바뀌어 회의에 못 간다는 상황을 설명하고 있습니다.",
+          explanationZh: "男生是在说明因为打工时间变动，所以不能参加会议。",
+          answerZh: "为了说明不能去会议的情况",
           source: "TOPIK II listening purpose type"
         }
       ],
@@ -369,10 +396,14 @@ function fallbackPractice(settings = {}) {
         {
           audioText: "남자: 수진 씨, 오늘 동아리 회의에 못 올 것 같아요. 갑자기 아르바이트 시간이 바뀌었거든요. 여자: 그래요? 그럼 내일 오전까지 의견을 문자로 보내 주세요. 회의에서 대신 말해 줄게요. 남자: 고마워요. 포스터 디자인에 대한 의견을 정리해서 보낼게요.",
           transcript: "남자: 수진 씨, 오늘 동아리 회의에 못 올 것 같아요. 갑자기 아르바이트 시간이 바뀌었거든요. 여자: 그래요? 그럼 내일 오전까지 의견을 문자로 보내 주세요. 회의에서 대신 말해 줄게요. 남자: 고마워요. 포스터 디자인에 대한 의견을 정리해서 보낼게요.",
+          transcriptZh: "男：秀珍，我今天可能去不了社团会议了。突然打工时间变了。女：是吗？那请你明天上午之前把意见用短信发给我吧。我会在会议上替你说。男：谢谢。我会整理好关于海报设计的意见发过去。",
           stem: "남자가 오늘 동아리 회의에 못 가는 이유는 무엇입니까?",
           options: ["포스터를 아직 만들지 못해서", "아르바이트 시간이 바뀌어서", "의견을 정리하지 못해서", "내일 오전에 약속이 있어서"],
+          optionTranslations: ["因为还没做完海报", "因为打工时间变了", "因为还没整理好意见", "因为明天上午有约"],
           answer: 1,
           explanation: "남자는 갑자기 아르바이트 시간이 바뀌어서 오늘 동아리 회의에 못 간다고 말했습니다.",
+          explanationZh: "男生说自己突然打工时间变了，所以今天不能去社团会议。",
+          answerZh: "因为打工时间变了",
           source: "TOPIK II listening intent type"
         },
         {
@@ -584,9 +615,10 @@ function buildPracticePrompt(settings = {}) {
     "You are a careful exam practice generator for a study planner.",
     "Generate original practice questions that follow public official sample-question types and user-provided context.",
     "Do not reproduce a copyrighted full exam paper or claim unverifiable sources.",
-    "Return strict JSON only with this shape: {\"questions\":[{\"stem\":\"...\",\"options\":[\"...\"],\"answer\":0,\"explanation\":\"...\",\"source\":\"...\",\"audioText\":\"...\",\"transcript\":\"...\"}],\"sources\":[\"...\"]}.",
+    "Return strict JSON only with this shape: {\"questions\":[{\"stem\":\"...\",\"options\":[\"...\"],\"optionTranslations\":[\"...\"],\"answer\":0,\"answerZh\":\"...\",\"explanation\":\"...\",\"explanationZh\":\"...\",\"source\":\"...\",\"audioText\":\"...\",\"transcript\":\"...\",\"transcriptZh\":\"...\"}],\"sources\":[\"...\"]}.",
     "Each question must have 4 options and a zero-based numeric answer.",
     "For listening questions, put the dialogue or monologue in audioText and transcript, and keep stem as only the question. Do not place the full listening script inside stem.",
+    "For Korean listening questions, include transcriptZh, answerZh, explanationZh, and optionTranslations in Simplified Chinese for review after answering.",
     "For non-listening questions, audioText and transcript may be empty.",
     `Exam: ${getExamLabel(settings)}.`,
     `Category: ${request.category || "mixed"}.`,

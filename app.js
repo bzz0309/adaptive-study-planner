@@ -428,12 +428,13 @@ const placeParticleQuestions = [
   { stem: "아침마다 공원___ 운동해요.", options: ["에", "에서", "의", "도"], answer: 1, explanation: "운동하다 是在公园发生的动作，动作场所用 에서。" }
 ];
 const listeningFallbackScript = "남자: 수진 씨, 오늘 동아리 회의에 못 올 것 같아요. 갑자기 아르바이트 시간이 바뀌었거든요. 여자: 그래요? 그럼 내일 오전까지 의견을 문자로 보내 주세요. 회의에서 대신 말해 줄게요. 남자: 고마워요. 포스터 디자인에 대한 의견을 정리해서 보낼게요.";
+const listeningFallbackScriptZh = "男：秀珍，我今天可能去不了社团会议了。突然打工时间变了。女：是吗？那请你明天上午之前把意见用短信发给我吧。我会在会议上替你说。男：谢谢。我会整理好关于海报设计的意见发过去。";
 const listeningFallbackQuestions = [
-  { audioText: listeningFallbackScript, transcript: listeningFallbackScript, stem: "남자가 오늘 동아리 회의에 못 가는 이유는 무엇입니까?", options: ["포스터를 아직 만들지 못해서", "아르바이트 시간이 바뀌어서", "의견을 정리하지 못해서", "내일 오전에 약속이 있어서"], answer: 1, explanation: "남자는 갑자기 아르바이트 시간이 바뀌어서 오늘 동아리 회의에 못 간다고 말했습니다.", source: "TOPIK II listening reason type" },
-  { audioText: listeningFallbackScript, transcript: listeningFallbackScript, stem: "여자는 남자에게 무엇을 하라고 했습니까?", options: ["회의에 늦게 오라고 했습니다", "포스터를 바로 만들라고 했습니다", "의견을 문자로 보내라고 했습니다", "아르바이트 시간을 바꾸라고 했습니다"], answer: 2, explanation: "여자는 내일 오전까지 의견을 문자로 보내 달라고 했습니다.", source: "TOPIK II listening action type" },
-  { audioText: listeningFallbackScript, transcript: listeningFallbackScript, stem: "남자는 무엇에 대한 의견을 보내겠다고 했습니까?", options: ["회의 시간", "포스터 디자인", "동아리 장소", "아르바이트 일정"], answer: 1, explanation: "남자는 포스터 디자인에 대한 의견을 정리해서 보내겠다고 했습니다.", source: "TOPIK II listening detail type" },
-  { audioText: listeningFallbackScript, transcript: listeningFallbackScript, stem: "대화 내용과 같은 것을 고르십시오.", options: ["남자는 회의에서 발표할 것입니다", "여자는 남자의 의견을 대신 말할 것입니다", "회의는 내일 오전에 열립니다", "포스터는 이미 완성되었습니다"], answer: 1, explanation: "여자는 회의에서 남자의 의견을 대신 말해 주겠다고 했습니다.", source: "TOPIK II listening matching type" },
-  { audioText: listeningFallbackScript, transcript: listeningFallbackScript, stem: "이 대화에서 남자의 말하기 목적은 무엇입니까?", options: ["회의에 못 가는 상황을 설명하려고", "포스터 디자인을 칭찬하려고", "아르바이트를 소개하려고", "회의 장소를 확인하려고"], answer: 0, explanation: "남자는 아르바이트 시간이 바뀌어 회의에 못 간다는 상황을 설명하고 있습니다.", source: "TOPIK II listening purpose type" }
+  { audioText: listeningFallbackScript, transcript: listeningFallbackScript, transcriptZh: listeningFallbackScriptZh, stem: "남자가 오늘 동아리 회의에 못 가는 이유는 무엇입니까?", options: ["포스터를 아직 만들지 못해서", "아르바이트 시간이 바뀌어서", "의견을 정리하지 못해서", "내일 오전에 약속이 있어서"], optionTranslations: ["因为还没做完海报", "因为打工时间变了", "因为还没整理好意见", "因为明天上午有约"], answer: 1, answerZh: "因为打工时间变了", explanation: "남자는 갑자기 아르바이트 시간이 바뀌어서 오늘 동아리 회의에 못 간다고 말했습니다.", explanationZh: "男生说自己突然打工时间变了，所以今天不能去社团会议。", source: "TOPIK II listening reason type" },
+  { audioText: listeningFallbackScript, transcript: listeningFallbackScript, transcriptZh: listeningFallbackScriptZh, stem: "여자는 남자에게 무엇을 하라고 했습니까?", options: ["회의에 늦게 오라고 했습니다", "포스터를 바로 만들라고 했습니다", "의견을 문자로 보내라고 했습니다", "아르바이트 시간을 바꾸라고 했습니다"], optionTranslations: ["让他晚点来会议", "让他马上做海报", "让他把意见用短信发过去", "让他改打工时间"], answer: 2, answerZh: "让他把意见用短信发过去", explanation: "여자는 내일 오전까지 의견을 문자로 보내 달라고 했습니다.", explanationZh: "女生让男生在明天上午之前把意见用短信发给她。", source: "TOPIK II listening action type" },
+  { audioText: listeningFallbackScript, transcript: listeningFallbackScript, transcriptZh: listeningFallbackScriptZh, stem: "남자는 무엇에 대한 의견을 보내겠다고 했습니까?", options: ["회의 시간", "포스터 디자인", "동아리 장소", "아르바이트 일정"], optionTranslations: ["会议时间", "海报设计", "社团地点", "打工日程"], answer: 1, answerZh: "海报设计", explanation: "남자는 포스터 디자인에 대한 의견을 정리해서 보내겠다고 했습니다.", explanationZh: "男生说会整理关于海报设计的意见并发过去。", source: "TOPIK II listening detail type" },
+  { audioText: listeningFallbackScript, transcript: listeningFallbackScript, transcriptZh: listeningFallbackScriptZh, stem: "대화 내용과 같은 것을 고르십시오.", options: ["남자는 회의에서 발표할 것입니다", "여자는 남자의 의견을 대신 말할 것입니다", "회의는 내일 오전에 열립니다", "포스터는 이미 완성되었습니다"], optionTranslations: ["男生会在会议上发表", "女生会代替男生转达意见", "会议会在明天上午举行", "海报已经完成了"], answer: 1, answerZh: "女生会代替男生转达意见", explanation: "여자는 회의에서 남자의 의견을 대신 말해 주겠다고 했습니다.", explanationZh: "女生说会在会议上替男生转达他的意见。", source: "TOPIK II listening matching type" },
+  { audioText: listeningFallbackScript, transcript: listeningFallbackScript, transcriptZh: listeningFallbackScriptZh, stem: "이 대화에서 남자의 말하기 목적은 무엇입니까?", options: ["회의에 못 가는 상황을 설명하려고", "포스터 디자인을 칭찬하려고", "아르바이트를 소개하려고", "회의 장소를 확인하려고"], optionTranslations: ["为了说明不能去会议的情况", "为了称赞海报设计", "为了介绍打工", "为了确认会议地点"], answer: 0, answerZh: "为了说明不能去会议的情况", explanation: "남자는 아르바이트 시간이 바뀌어 회의에 못 간다는 상황을 설명하고 있습니다.", explanationZh: "男生是在说明因为打工时间变动，所以不能参加会议。", source: "TOPIK II listening purpose type" }
 ];
 
 const examLabelMap = {
@@ -1065,11 +1066,15 @@ function normalizePracticeQuestions(items, limit = 5) {
     return {
       stem: String(item.stem || item.question || "").trim(),
       options,
+      optionTranslations: Array.isArray(item.optionTranslations || item.optionsZh) ? (item.optionTranslations || item.optionsZh).map(String).slice(0, 4) : [],
       answer: Number.isInteger(answer) ? answer : 0,
       explanation: String(item.explanation || item.reason || "系统会根据答案依据继续调整后续练习。").trim(),
+      explanationZh: String(item.explanationZh || item.explanationChinese || item.reasonZh || "").trim(),
+      answerZh: String(item.answerZh || item.correctAnswerZh || "").trim(),
       source: item.source ? String(item.source).slice(0, 120) : "",
       audioText,
       transcript: String(item.transcript || audioText).trim(),
+      transcriptZh: String(item.transcriptZh || item.transcriptChinese || item.audioTextZh || "").trim(),
       questionType: String(item.questionType || item.type || "").trim()
     };
   }).filter(item => item.stem && item.options.length >= 2 && item.answer >= 0 && item.answer < item.options.length).slice(0, limit);
@@ -1466,6 +1471,7 @@ function renderQuestion() {
   const question = activePractice[questionIndex];
   const listening = isListeningQuestion(question);
   const transcript = listeningTextFor(question);
+  const transcriptZh = String(question.transcriptZh || "").trim();
   const playCount = listeningPlayCounts[`${questionIndex}`] || 0;
   const remainingPlays = Math.max(0, 2 - playCount);
   $("#questionProgress").textContent = `${questionIndex + 1} / ${activePractice.length}`;
@@ -1473,12 +1479,12 @@ function renderQuestion() {
     <div><span>听力播放</span><strong>${questionGraded ? "复盘阶段可反复听" : `答题阶段剩余 ${remainingPlays} 次`}</strong></div>
     <button class="secondary-button compact" id="playListening" type="button" ${listeningIsSpeaking || (!questionGraded && remainingPlays <= 0) || !transcript ? "disabled" : ""}>${listeningIsSpeaking ? "播放中…" : "播放音频"}</button>
   </div>` : ""}
-  <p class="question-stem">${question.stem}</p><div class="answer-options">
+  <p class="question-stem">${escapeImportText(question.stem)}</p><div class="answer-options">
     ${question.options.map((option, index) => `<label class="answer-option ${selectedAnswer === index ? "selected" : ""}">
       <input type="radio" name="answer" value="${index}" />
-      <span class="answer-letter">${String.fromCharCode(65 + index)}</span><span>${option}</span>
+      <span class="answer-letter">${String.fromCharCode(65 + index)}</span><span>${escapeImportText(option)}</span>
     </label>`).join("")}
-  </div>${listening && questionGraded && transcript ? `<div class="transcript-box"><span>听力原文</span><p>${transcript}</p></div>` : ""}`;
+  </div>${listening && questionGraded && transcript ? `<div class="transcript-box"><span>听力原文</span><p>${escapeImportText(transcript)}</p>${transcriptZh ? `<span>中文翻译</span><p>${escapeImportText(transcriptZh)}</p>` : ""}</div>` : ""}`;
   if (!questionGraded) $("#practiceFeedback").className = "practice-feedback hidden";
   $("#nextQuestion").textContent = "提交答案";
   $("#prevQuestion").disabled = questionIndex === 0;
@@ -1500,9 +1506,13 @@ function advanceQuestion() {
     else practiceWrongNotes.push({ stem: question.stem, explanation: question.explanation, listeningMistake: isListeningQuestion(question) ? "需要复听原文，标记没听出的关键词" : "" });
     questionGraded = true;
     renderQuestion();
+    const answerText = question.options[question.answer] || "";
+    const answerZh = question.answerZh || question.optionTranslations?.[question.answer] || "";
+    const explanation = question.explanation || "系统会根据答案依据继续调整后续练习。";
+    const explanationZh = question.explanationZh || "";
     const feedback = $("#practiceFeedback");
     feedback.className = `practice-feedback ${correct ? "correct" : "wrong"}`;
-    feedback.innerHTML = `<strong>${correct ? "回答正确" : `正确答案：${question.options[question.answer]}`}</strong><br>${question.explanation}`;
+    feedback.innerHTML = `<strong>${correct ? "回答正确" : `正确答案：${escapeImportText(answerText)}`}</strong>${answerZh ? `<br><span>中文意思：${escapeImportText(answerZh)}</span>` : ""}<br>${escapeImportText(explanation)}${explanationZh ? `<br><span>中文解析：${escapeImportText(explanationZh)}</span>` : ""}`;
     $("#nextQuestion").textContent = questionIndex === activePractice.length - 1 ? "查看本组结果" : "下一题";
     return;
   }
