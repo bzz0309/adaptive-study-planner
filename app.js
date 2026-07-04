@@ -131,6 +131,27 @@ const completionStandards = {
 };
 
 const weakTokenMap = { "听力": "listening", "阅读": "reading", "词汇": "vocab", "语法": "grammar", "写作": "writing", "口语": "speaking" };
+const planSchemaVersion = "10";
+
+function selectedStudyTokens(settings = {}, fallbackTokens = []) {
+  const selected = [...new Set((settings.weak || []).map(item => weakTokenMap[item]).filter(Boolean))];
+  return selected.length ? selected : fallbackTokens;
+}
+
+function scopedConsolidationTemplates(tokens = []) {
+  const labels = tokens
+    .filter(token => !["consolidation", "mock", "review"].includes(token))
+    .map(token => categoryMeta[token === "grammar" ? "vocab" : token]?.label || "")
+    .filter(Boolean);
+  const scope = [...new Set(labels)].join("和") || "本周内容";
+  return [
+    ["阶段综合检验", `用本周${scope}做一组综合题`],
+    ["错因预防练习", "先看常见误区，再做同型题"],
+    ["延迟巩固练习", "不看笔记完成一组同型题"],
+    ["限时综合检验", "按学习节奏完成一组题"],
+    ["本日知识回忆", "不看笔记复述判断路径"]
+  ];
+}
 
 function minutesToClock(total) {
   const normalized = Math.max(0, total);
@@ -295,14 +316,14 @@ function generatePlanFromSettings(settings) {
   const targetMinutes = dailyTargetMinutes(settings);
   const blockMinutes = blockSizeForIntensity(settings);
   const blocksPerDay = Math.max(1, Math.ceil(targetMinutes / blockMinutes));
-  const weakTokens = [...new Set((settings.weak || []).map(item => weakTokenMap[item]).filter(Boolean))];
   const coreTokens = exam === "IELTS"
     ? ["listening", "reading", "writing", "speaking"]
     : exam === "OTHER"
-      ? (weakTokens.length ? [...new Set(weakTokens)] : ["reading", "vocab", "writing"])
+      ? ["reading", "vocab", "writing"]
       : ["listening", "reading", "vocab", "grammar", ...(level === "II" ? ["writing"] : [])];
+  const weakTokens = selectedStudyTokens(settings, coreTokens);
   const templateSource = exam === "IELTS" ? ieltsTemplates : (exam === "OTHER" ? genericTemplates : studyTemplates);
-  const rotation = [...new Set([...weakTokens, ...coreTokens, "consolidation", ...(settings.intensity === "高强度" ? ["mock"] : [])])];
+  const rotation = [...new Set([...weakTokens, "consolidation", ...(settings.intensity === "高强度" ? ["mock"] : [])])];
   const foundationOffset = { "入门": 0, "一般": 1, "较好": 2, "不确定": 0 }[settings.foundation] || 0;
   let sequence = 0;
   const categoryCounts = {};
@@ -313,12 +334,14 @@ function generatePlanFromSettings(settings) {
     const starts = dailyStudyStarts(settings, blocksPerDay, blockMinutes);
     starts.forEach((start, blockIndex) => {
       let token = rotation[(dayIndex * blocksPerDay + blockIndex) % rotation.length];
-      if (day.key === "sat" && blockIndex === blocksPerDay - 1) token = "mock";
-      if (day.key === "sun" && blockIndex === blocksPerDay - 1) token = "consolidation";
+      if (day.key === "sat" && blockIndex === blocksPerDay - 1 && rotation.includes("mock")) token = "mock";
+      if (day.key === "sun" && blockIndex === blocksPerDay - 1 && rotation.includes("consolidation")) token = "consolidation";
       const category = token === "grammar" ? "vocab" : token;
       const templates = exam === "IELTS" && level === "II" && token === "writing"
         ? ieltsGeneralWriting
-        : (templateSource[token] || studyTemplates[token]);
+        : token === "consolidation"
+          ? scopedConsolidationTemplates(weakTokens)
+          : (templateSource[token] || studyTemplates[token]);
       const categoryIndex = categoryCounts[category] || 0;
       categoryCounts[category] = categoryIndex + 1;
       const template = templates[(categoryIndex + foundationOffset) % templates.length];
@@ -2121,9 +2144,18 @@ function normalizeAiTasks(aiTasks, settings) {
   const allowedDays = new Set(settings.studyDays?.length ? settings.studyDays : days.map(day => day.key));
   const availableStart = settings.availableStart || "00:00";
   const availableEnd = settings.availableEnd || "23:59";
-  const allowed = settings.exam === "TOPIK"
-    ? ["listening", "reading", "vocab", "mock", "consolidation", "review", ...(settings.level === "II" ? ["writing"] : [])]
-    : Object.keys(categoryMeta);
+  const defaultTokens = settings.exam === "IELTS"
+    ? ["listening", "reading", "writing", "speaking"]
+    : settings.exam === "TOPIK"
+      ? ["listening", "reading", "vocab", "grammar", ...(settings.level === "II" ? ["writing"] : [])]
+      : Object.keys(categoryMeta).filter(key => !["mock", "consolidation", "review"].includes(key));
+  const selectedTokens = selectedStudyTokens(settings, defaultTokens).map(token => token === "grammar" ? "vocab" : token);
+  const allowed = [...new Set([
+    ...selectedTokens,
+    "consolidation",
+    "review",
+    ...(settings.intensity === "高强度" ? ["mock"] : [])
+  ])];
   const allowedCategories = new Set(allowed);
   return (aiTasks || []).filter(task => {
     const validClock = /^\d{2}:\d{2}$/.test(task.start || "") && /^\d{2}:\d{2}$/.test(task.end || "");
@@ -2178,7 +2210,7 @@ async function commitPlanSettings(settings) {
     tasks = generatePlanFromSettings(settings);
   }
   localStorage.setItem("topikPrototypeTasks", JSON.stringify(tasks));
-  localStorage.setItem("topikPrototypePlanVersion", "9");
+  localStorage.setItem("topikPrototypePlanVersion", planSchemaVersion);
   renderCalendar();
   updateTomorrowFocus();
   $("#profileIntensity").textContent = settings.intensityLabel;
@@ -2556,11 +2588,11 @@ if (savedSettings) {
   updateExamOptions(savedSettings.exam || "TOPIK", savedSettings.level || "I");
   updateTargetGradeOptions(savedSettings.level || "I", savedSettings.targetGrade || (savedSettings.level === "II" ? "4" : "2"));
   applyExamBrand(savedSettings.exam || "TOPIK", savedSettings.level || "I", savedSettings.targetGrade);
-  if (localStorage.getItem("topikPrototypePlanVersion") !== "9") {
+  if (localStorage.getItem("topikPrototypePlanVersion") !== planSchemaVersion) {
     const upgradedSettings = { exam: savedSettings.exam || "TOPIK", level: savedSettings.level || "I", foundation: savedSettings.foundation || "一般", weak: savedSettings.weak || ["听力", "阅读"], times: savedSettings.times || ["下午", "晚上"], ...savedSettings };
     tasks = generatePlanFromSettings(upgradedSettings);
     localStorage.setItem("topikPrototypeTasks", JSON.stringify(tasks));
-    localStorage.setItem("topikPrototypePlanVersion", "9");
+    localStorage.setItem("topikPrototypePlanVersion", planSchemaVersion);
     renderCalendar();
   }
 } else {

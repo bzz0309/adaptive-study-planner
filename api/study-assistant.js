@@ -678,17 +678,37 @@ function dailyStudyStarts(settings = {}, blocksPerDay = 1, blockMinutes = 45) {
   return starts.sort((a, b) => a - b);
 }
 
+function selectedPlanCategories(settings = {}, fallbackCategories = []) {
+  const weakMap = { "听力": "listening", "阅读": "reading", "词汇": "vocab", "语法": "vocab", "写作": "writing", "口语": "speaking" };
+  const selected = [...new Set((settings.weak || []).map(item => weakMap[item]).filter(Boolean))];
+  return selected.length ? selected : fallbackCategories;
+}
+
+function selectedPlanScope(categories = []) {
+  const labelMap = { listening: "听力", reading: "阅读", vocab: "词汇语法", writing: "写作", speaking: "口语" };
+  const labels = [...new Set(categories.map(category => labelMap[category]).filter(Boolean))];
+  return labels.join("和") || "本周内容";
+}
+
 function fallbackPlan(settings = {}) {
   const days = settings.studyDays?.length ? settings.studyDays : ["mon", "tue", "wed", "thu", "fri"];
-  const weakMap = { "听力": "listening", "阅读": "reading", "词汇": "vocab", "语法": "vocab", "写作": "writing", "口语": "speaking" };
-  const weakCategories = [...new Set((settings.weak || []).map(item => weakMap[item]).filter(Boolean))];
   const baseCategories = settings.exam === "TOPIK" && settings.level === "II"
-    ? ["listening", "writing", "reading", "vocab", "consolidation"]
+    ? ["listening", "writing", "reading", "vocab"]
     : settings.exam === "IELTS"
-      ? ["listening", "reading", "writing", "speaking", "consolidation"]
-      : ["listening", "reading", "vocab", "consolidation"];
-  const categories = [...new Set([...weakCategories, ...baseCategories, ...(settings.intensity === "高强度" ? ["mock"] : [])])];
+      ? ["listening", "reading", "writing", "speaking"]
+      : ["listening", "reading", "vocab"];
+  const selectedCategories = selectedPlanCategories(settings, baseCategories);
+  const categories = [...new Set([...selectedCategories, "consolidation", ...(settings.intensity === "高强度" ? ["mock"] : [])])];
   const copy = productTaskCopy(settings);
+  const scope = selectedPlanScope(selectedCategories);
+  copy.consolidation = [
+    taskCopy("巩固练习：阶段综合检验", `用本周${scope}做一组综合题`, ["完成本组系统练习", "系统统计正确率", "错题产生后进入错题集", "完成后可补一句反思"]),
+    taskCopy("巩固练习：错因预防", "先看常见误区，再完成一组同型题", ["完成本组系统练习", "系统统计正确率", "整理薄弱点", "完成后可补一句反思"]),
+    taskCopy("巩固练习：延迟检验", "不看笔记完成一组同型题", ["完成本组系统练习", "系统统计正确率", "错题产生后进入错题集", "完成后可补一句反思"])
+  ];
+  copy.mock = [
+    taskCopy("阶段模拟：限时综合练习", `围绕本周${scope}完成限时练习`, ["按时间完成本组综合练习", "系统统计正确率", "归类全部错题", "完成后可补一句反思"])
+  ];
   const targetMinutes = dailyTargetMinutes(settings);
   const blockMinutes = blockSizeForIntensity(settings);
   const blocksPerDay = Math.max(1, Math.ceil(targetMinutes / blockMinutes));
