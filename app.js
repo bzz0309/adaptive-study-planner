@@ -1986,7 +1986,7 @@ async function showResourceConfirmation(settings) {
   ].filter(Boolean);
   $("#confirmStudyScope").textContent = scopeParts.join("；") || "将根据考试目标整理核心科目";
   const dayNames = { mon: "周一", tue: "周二", wed: "周三", thu: "周四", fri: "周五", sat: "周六", sun: "周日" };
-  $("#confirmStudySchedule").textContent = `${(settings.studyDays || []).map(day => dayNames[day]).join("、") || "每天"} · 北京时间 ${settings.availableStart}–${settings.availableEnd} · 第一轮 ${settings.firstRoundWeeks} 周${settings.examDate ? ` · 考试日 ${settings.examDate}` : ""}`;
+  $("#confirmStudySchedule").textContent = `${(settings.studyDays || []).map(day => dayNames[day]).join("、") || "每天"} · ${settings.availableStart}–${settings.availableEnd} · 第一轮 ${settings.firstRoundWeeks} 周${settings.examDate ? ` · 考试日 ${settings.examDate}` : ""}`;
   const sources = suggestedSourcesFor(settings);
   renderSourceChoices(sources);
   $("#researchNote").classList.toggle("hidden", !settings.autoResearch);
@@ -2257,7 +2257,7 @@ function initializeEvents() {
     if (exam === "OTHER" && !studyContent && !resourceLinks.length && !materialFiles.length && !autoResearch) return showToast("请填写补充学习范围、添加资料，或允许AI搜索");
     if (!studyDays.length) return showToast("请至少选择一个学习日");
     if (!firstRoundWeeks) return showToast("请填写第一轮计划用时");
-    if (!availableStart || !availableEnd || availableStart >= availableEnd) return showToast("请填写有效的北京时间范围");
+    if (!availableStart || !availableEnd || availableStart >= availableEnd) return showToast("请填写有效的学习时间范围");
     if (intensity === "自定义" && minHours > maxHours) return showToast("每天最少时长不能大于最多时长");
     if (intensity === "自定义" && (!minHours || !maxHours)) return showToast("请填写完整的自定义时长");
     const intensityLabel = intensity === "自定义" ? `${minHours}–${maxHours}小时/天` : (intensity === "高强度" ? "高强度" : `${intensity}强度`);
