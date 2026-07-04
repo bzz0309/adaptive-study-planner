@@ -1041,7 +1041,7 @@ function saveTaskEdit() {
   if (!start || !end || start >= end) return showToast("请填写有效的开始和结束时间");
   const startMinutes = clockToMinutes(start);
   const endMinutes = clockToMinutes(end);
-  if (overlapsProtectedBreak(startMinutes, endMinutes)) return showToast("这个时间碰到午饭或晚饭，换一个时间会更稳");
+  if (overlapsProtectedBreak(startMinutes, endMinutes) && !window.confirm("这个时间会碰到午饭或晚饭。系统建议换一个时间，但如果这是你确定可学习的时间，也可以继续保存。")) return;
   if (!title) return showToast("请填写任务标题");
   task.day = day;
   task.category = category;
