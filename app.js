@@ -1595,7 +1595,7 @@ function scheduleDailyReminder() {
 }
 
 const rewardCatalog = {
-  "first-checkin": { badge: "DAY 1", visual: "taegg-lamp", title: "第一盏应援灯亮了", text: "给今天也在坚持学习的你亮一下", note: "今天的灯亮起来了。第一条记录已经留下，先陪你开始。" },
+  "first-checkin": { badge: "DAY 1", visual: "companion-day1", companionDay: 1, title: "第一盏应援灯亮了", text: "给今天也在坚持学习的你亮一下", note: "今天的灯亮起来了。第一条记录已经留下，先陪你开始。" },
   "checkin-7": { badge: "7", visual: "support-card", title: "一周安可", text: "你已经留下 7 天记录了。这周不一定每天都顺，但你还是把学习接住了。", note: "收下一张「本周没有断掉」应援小卡。" },
   "checkin-14": { badge: "14", visual: "lyric-card", title: "慢慢有节奏", text: "这两周不是突然变厉害，是一点点把节奏找回来了。", note: "这一段节奏，先替你收好。" },
   "checkin-30": { badge: "30", visual: "ticket", title: "一个月巡演站", text: "你已经陪自己走过一个月。回头看，这些记录都是你一点点做过来的痕迹。", note: "收下一张「一个月站」纪念票根。" },
@@ -1672,9 +1672,17 @@ function rewardVisualMarkup(reward) {
 
 function showReward(reward) {
   const rewardPanel = $("#rewardModal .reward-panel");
+  rewardPanel.classList.remove("companion-reward-panel");
   rewardPanel.classList.toggle("first-reward-panel", reward.visual === "taegg-lamp");
   rewardPanel.classList.remove("reward-video-ended");
   rewardPanel.classList.remove("reward-copy-visible");
+  if (reward.companionDay) {
+    rewardPanel.classList.add("companion-reward-panel");
+    rewardPanel.classList.remove("first-reward-panel");
+    $("#rewardVisual").innerHTML = `<iframe class="reward-companion-frame" title="${escapeImportText(reward.title)}" src="https://reward-companion-system.vercel.app/?rewardDay=${Number(reward.companionDay)}"></iframe>`;
+    openModal("rewardModal");
+    return;
+  }
   $("#rewardVisual").innerHTML = rewardVisualMarkup(reward);
   const lyricCard = $(".reward-lyric-card");
   if (lyricCard) {
@@ -1984,6 +1992,7 @@ function resetPracticeControls() {
 function openModal(id) { $("#" + id).classList.remove("hidden"); document.body.style.overflow = "hidden"; }
 function closeModal(id) {
   if (id === "practiceModal") stopListeningAudio();
+  if (id === "rewardModal") $("#rewardVisual").innerHTML = "";
   $("#" + id).classList.add("hidden");
   document.body.style.overflow = "";
 }
