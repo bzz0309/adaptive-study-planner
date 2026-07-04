@@ -456,6 +456,7 @@ let practiceCorrect = 0;
 let practiceTaskId = null;
 let practiceErrorId = null;
 let practiceWrongNotes = [];
+let practiceResults = [];
 let practiceIsSample = false;
 let practiceReviewMode = "learning";
 let listeningPlayCounts = {};
@@ -1099,6 +1100,94 @@ function reviewModeForTask(linkedTaskId) {
   return task?.category === "mock" ? "exam" : "learning";
 }
 
+function currentPracticeScore() {
+  return practiceResults.reduce((sum, item) => sum + (item?.correct ? 1 : 0), 0);
+}
+
+function syncPracticeWrongNotes() {
+  practiceWrongNotes = practiceResults
+    .filter(item => item && !item.correct)
+    .map(item => ({
+      stem: item.question?.stem || "",
+      explanation: item.explanation || item.question?.explanation || "",
+      explanationZh: item.explanationZh || item.question?.explanationZh || "",
+      answer: item.answer || item.question?.options?.[item.question?.answer] || "",
+      answerZh: item.answerZh || item.question?.answerZh || item.question?.optionTranslations?.[item.question?.answer] || "",
+      listeningMistake: isListeningQuestion(item.question) ? "需要复听原文，标记没听出的关键词" : ""
+    }));
+}
+
+function renderPracticeResultBoard() {
+  const total = activePractice.length;
+  const correct = currentPracticeScore();
+  const wrong = practiceResults.filter(item => item && !item.correct).length;
+  const unanswered = Math.max(0, total - practiceResults.filter(Boolean).length);
+  const wrongList = practiceResults
+    .map((item, index) => item && !item.correct ? { ...item, index } : null)
+    .filter(Boolean);
+  const firstWrong = wrongList[0];
+  const reviewAdvice = wrong
+    ? "建议先重做错题，再重做本组。错题会进入错题集，之后按复习节奏提醒。"
+    : "本组全部正确。可以继续下一组学习，之后按计划做延迟复习。";
+  const firstWrongLine = firstWrong
+    ? `<p><strong>先看第 ${firstWrong.index + 1} 题：</strong>${escapeImportText(firstWrong.answerZh || firstWrong.answer || "回看答案依据")}</p>`
+    : "";
+  $("#questionArea").innerHTML = `<div class="practice-result-board">
+    <p class="section-kicker">本组完成 · 系统自动记录</p>
+    <h2>${correct} / ${total} 题正确</h2>
+    <div class="result-legend">
+      <span><i class="is-correct"></i>答对 ${correct}</span>
+      <span><i class="is-wrong"></i>答错 ${wrong}</span>
+      <span><i class="is-unanswered"></i>未答 ${unanswered}</span>
+    </div>
+    <div class="question-status-grid" aria-label="本组题目状态">
+      ${activePractice.map((_, index) => {
+        const result = practiceResults[index];
+        const status = !result ? "unanswered" : (result.correct ? "correct" : "wrong");
+        const label = !result ? "未答" : (result.correct ? "答对" : "答错");
+        return `<button type="button" class="${status}" data-review-question="${index}" title="第 ${index + 1} 题：${label}">${index + 1}</button>`;
+      }).join("")}
+    </div>
+    <div class="result-review-note">
+      ${firstWrongLine}
+      <p><strong>复盘建议：</strong>${escapeImportText(reviewAdvice)}</p>
+    </div>
+    <div class="result-actions">
+      <button class="secondary-button" id="retryWrongQuestions" type="button" ${wrong ? "" : "disabled"}>重做错题</button>
+      <button class="secondary-button" id="retryAllQuestions" type="button">重做本组</button>
+    </div>
+  </div>`;
+  $("#practiceFeedback").className = "practice-feedback hidden";
+  $("#prevQuestion").style.display = "none";
+  $("#nextQuestion").textContent = "完成本组";
+  $("#nextQuestion").onclick = completePracticeSession;
+  $$("[data-review-question]").forEach(button => button.addEventListener("click", () => {
+    questionIndex = Number(button.dataset.reviewQuestion);
+    selectedAnswer = practiceResults[questionIndex]?.selected ?? null;
+    questionGraded = true;
+    renderQuestion();
+    $("#nextQuestion").textContent = "返回结果";
+    $("#nextQuestion").onclick = renderPracticeResultBoard;
+  }));
+  $("#retryWrongQuestions")?.addEventListener("click", () => restartPracticeWithQuestions(wrongList.map(item => item.question)));
+  $("#retryAllQuestions")?.addEventListener("click", () => restartPracticeWithQuestions(activePractice));
+}
+
+function restartPracticeWithQuestions(questions) {
+  const nextQuestions = questions.filter(Boolean);
+  if (!nextQuestions.length) return;
+  activePractice = nextQuestions;
+  practiceWrongNotes = [];
+  practiceResults = [];
+  practiceCorrect = 0;
+  questionIndex = 0;
+  selectedAnswer = null;
+  questionGraded = false;
+  listeningPlayCounts = {};
+  resetPracticeControls();
+  renderQuestion();
+}
+
 function normalizePracticeQuestions(items, limit = 5) {
   return (items || []).map((item, index) => {
     const options = Array.isArray(item.options) ? item.options.map(String).slice(0, 4) : [];
@@ -1467,6 +1556,7 @@ async function startPractice(errorId = "e1", linkedTaskId = null, isSample = fal
   practiceErrorId = linkedTaskId ? null : errorId;
   practiceIsSample = isSample;
   practiceWrongNotes = [];
+  practiceResults = [];
   listeningPlayCounts = {};
   stopListeningAudio();
   const context = getPracticeContext(errorId, linkedTaskId);
@@ -1504,6 +1594,7 @@ async function startPractice(errorId = "e1", linkedTaskId = null, isSample = fal
   questionGraded = false;
   practiceCorrect = 0;
   practiceWrongNotes = [];
+  practiceResults = [];
   $("#practiceTitle").textContent = context.title;
   $("#nextQuestion").disabled = false;
   renderQuestion();
@@ -1545,15 +1636,17 @@ function advanceQuestion() {
     if (selectedAnswer === null) return showToast("请先选择一个答案");
     const question = activePractice[questionIndex];
     const correct = selectedAnswer === question.answer;
-    if (correct) practiceCorrect += 1;
-    else practiceWrongNotes.push({
-      stem: question.stem,
-      explanation: question.explanation,
-      explanationZh: question.explanationZh || "",
+    practiceResults[questionIndex] = {
+      question,
+      selected: selectedAnswer,
+      correct,
       answer: question.options[question.answer] || "",
       answerZh: question.answerZh || question.optionTranslations?.[question.answer] || "",
-      listeningMistake: isListeningQuestion(question) ? "需要复听原文，标记没听出的关键词" : ""
-    });
+      explanation: question.explanation || "",
+      explanationZh: question.explanationZh || ""
+    };
+    practiceCorrect = currentPracticeScore();
+    syncPracticeWrongNotes();
     questionGraded = true;
     renderQuestion();
     if (practiceReviewMode === "exam") {
@@ -1579,22 +1672,7 @@ function advanceQuestion() {
     questionGraded = false;
     renderQuestion();
   } else {
-    const rate = Math.round(practiceCorrect / activePractice.length * 100);
-    const firstWrong = practiceWrongNotes[0];
-    const reviewReason = firstWrong
-      ? (firstWrong.explanationZh || firstWrong.explanation || "这组里有题目需要回看答案依据。")
-      : "本组暂未发现明显薄弱点。";
-    const reviewAnswer = firstWrong?.answer
-      ? `<p><strong>先看这一题：</strong>${escapeImportText(firstWrong.answer)}${firstWrong.answerZh ? `（${escapeImportText(firstWrong.answerZh)}）` : ""}</p>`
-      : "";
-    const reviewAdvice = practiceWrongNotes.length
-      ? (rate >= 80 ? "建议复听错题原文，确认没听出的关键词后再继续下一组。" : "建议先看错题解析，把关键词和句子结构补清楚后再继续练习。")
-      : "建议保持当前节奏，继续完成下一组计划。";
-    $("#questionArea").innerHTML = `<div class="standard-box"><p class="section-kicker">本组完成 · 系统自动记录</p><h2>${practiceCorrect} / ${activePractice.length} 题正确</h2>${reviewAnswer}<p><strong>中文解释：</strong>${escapeImportText(reviewReason)}</p><p><strong>复盘建议：</strong>${escapeImportText(reviewAdvice)}</p></div>`;
-    $("#practiceFeedback").className = "practice-feedback hidden";
-    $("#prevQuestion").style.display = "none";
-    $("#nextQuestion").textContent = "完成本组";
-    $("#nextQuestion").onclick = completePracticeSession;
+    renderPracticeResultBoard();
   }
 }
 
