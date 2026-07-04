@@ -1475,7 +1475,7 @@ function getPracticeContext(errorId, linkedTaskId) {
 async function loadExamDrivenPractice(errorId, linkedTaskId, questionCount = 5) {
   const context = getPracticeContext(errorId, linkedTaskId);
   if (location.protocol === "file:") return [];
-  const result = await callStudyAssistant("practice", {
+  const requestPayload = {
     ...context.settings,
     practiceRequest: {
       exam: context.settings.exam,
@@ -1490,8 +1490,21 @@ async function loadExamDrivenPractice(errorId, linkedTaskId, questionCount = 5) 
       requestedQuestionCount: questionCount,
       sourcePolicy: "优先参考官方公开样题、公开真题题型和用户资料来校准考试模块与难度；按当前训练点生成原创同型练习，不把训练标签写成官方分类，也不直接复刻受版权限制的整套真题。"
     }
-  }, { timeoutMs: 6500 });
-  return normalizePracticeQuestions(result?.questions || result?.practice?.questions, questionCount);
+  };
+  const timeoutMs = 60000;
+  let lastError = null;
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    try {
+      const result = await callStudyAssistant("practice", requestPayload, { timeoutMs });
+      const questions = normalizePracticeQuestions(result?.questions || result?.practice?.questions, questionCount);
+      if (questions.length) return questions;
+      lastError = new Error("No generated questions returned");
+    } catch (error) {
+      lastError = error;
+    }
+    if (attempt === 1 && linkedTaskId) showToast("在线出题还没完成，系统正在自动重试一次");
+  }
+  throw lastError || new Error("Practice generation failed");
 }
 
 function beijingDateKey(date = new Date()) {
@@ -1827,7 +1840,7 @@ async function startPractice(errorId = "e1", linkedTaskId = null, isSample = fal
     <div>
       <p class="section-kicker">系统出题中</p>
       <h3>正在按你的考试目标生成 ${questionCount} 道题</h3>
-      <p>会参考考试模块、目标等级、本组训练点和已确认资料来出题。生成完成后会自动进入第 1 题。</p>
+      <p>会参考考试模块、目标等级、本组训练点和已确认资料来出题。系统最多等待 1 分钟；如果失败会自动再试一次。</p>
     </div>
   </div>`;
   if (!questionGraded) $("#practiceFeedback").className = "practice-feedback hidden";
@@ -1840,7 +1853,7 @@ async function startPractice(errorId = "e1", linkedTaskId = null, isSample = fal
     if (generated.length) activePractice = generated;
     else if (linkedTaskId) showToast("暂未生成新题，已使用本地兜底练习");
   } catch {
-    if (linkedTaskId) showToast("在线出题较慢，已先进入本地练习");
+    if (linkedTaskId) showToast("在线出题两次失败，已进入本地兜底练习");
   }
   questionIndex = 0;
   selectedAnswer = null;
