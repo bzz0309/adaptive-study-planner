@@ -131,11 +131,18 @@ const completionStandards = {
 };
 
 const weakTokenMap = { "听力": "listening", "阅读": "reading", "词汇": "vocab", "语法": "grammar", "写作": "writing", "口语": "speaking" };
-const planSchemaVersion = "10";
+const planSchemaVersion = "11";
 
 function selectedStudyTokens(settings = {}, fallbackTokens = []) {
   const selected = [...new Set((settings.weak || []).map(item => weakTokenMap[item]).filter(Boolean))];
   return selected.length ? selected : fallbackTokens;
+}
+
+function defaultStudyTokens(settings = {}) {
+  if (settings.exam === "IELTS") return ["listening", "reading", "writing", "speaking"];
+  if (settings.exam === "OTHER") return ["reading", "vocab", "writing"];
+  if (settings.level === "II") return ["listening", "reading", "writing"];
+  return ["listening", "reading"];
 }
 
 function scopedConsolidationTemplates(tokens = []) {
@@ -316,11 +323,7 @@ function generatePlanFromSettings(settings) {
   const targetMinutes = dailyTargetMinutes(settings);
   const blockMinutes = blockSizeForIntensity(settings);
   const blocksPerDay = Math.max(1, Math.ceil(targetMinutes / blockMinutes));
-  const coreTokens = exam === "IELTS"
-    ? ["listening", "reading", "writing", "speaking"]
-    : exam === "OTHER"
-      ? ["reading", "vocab", "writing"]
-      : ["listening", "reading", "vocab", "grammar", ...(level === "II" ? ["writing"] : [])];
+  const coreTokens = defaultStudyTokens({ exam, level });
   const weakTokens = selectedStudyTokens(settings, coreTokens);
   const templateSource = exam === "IELTS" ? ieltsTemplates : (exam === "OTHER" ? genericTemplates : studyTemplates);
   const rotation = [...new Set([...weakTokens, "consolidation", ...(settings.intensity === "高强度" ? ["mock"] : [])])];
@@ -1569,7 +1572,7 @@ function renderPracticeFeedback(question = {}, correct = false) {
     ${correctOptionZh ? `<p>${escapeImportText(correctOptionZh)}</p>` : ""}
   </div>
   ${!correct && selectedLabel ? `<div class="feedback-mini-line"><span>你的选择</span><p>${escapeImportText(selectedLabel)}</p></div>` : ""}
-  <div class="feedback-mini-line"><span>题目内容</span><p>${escapeImportText(questionMeaningText(question))}</p></div>
+  <div class="feedback-mini-line"><span>题目要求</span><p>${escapeImportText(questionMeaningText(question))}</p></div>
   <div class="feedback-mini-line"><span>为什么选它</span><p>${escapeImportText(practiceExplanationText(question))}</p></div>`;
 }
 
@@ -2144,11 +2147,7 @@ function normalizeAiTasks(aiTasks, settings) {
   const allowedDays = new Set(settings.studyDays?.length ? settings.studyDays : days.map(day => day.key));
   const availableStart = settings.availableStart || "00:00";
   const availableEnd = settings.availableEnd || "23:59";
-  const defaultTokens = settings.exam === "IELTS"
-    ? ["listening", "reading", "writing", "speaking"]
-    : settings.exam === "TOPIK"
-      ? ["listening", "reading", "vocab", "grammar", ...(settings.level === "II" ? ["writing"] : [])]
-      : Object.keys(categoryMeta).filter(key => !["mock", "consolidation", "review"].includes(key));
+  const defaultTokens = defaultStudyTokens(settings);
   const selectedTokens = selectedStudyTokens(settings, defaultTokens).map(token => token === "grammar" ? "vocab" : token);
   const allowed = [...new Set([
     ...selectedTokens,
