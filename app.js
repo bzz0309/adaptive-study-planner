@@ -531,6 +531,78 @@ const topikIReadingFallbackQuestions = [
     source: "TOPIK I reading recruitment notice type"
   }
 ];
+const materialPracticeBank = [
+  {
+    id: "topik-i-reading-signs-v1",
+    exam: "TOPIK",
+    level: "I",
+    category: "reading",
+    title: "TOPIK I 阅读：标识与公告理解",
+    sourceTitle: "用户资料《完全掌握 TOPIK I 初级阅读》",
+    questions: [
+      {
+        materialImage: "assets/materials/topik1-reading/page-100.png",
+        stem: "다음을 읽고 내용과 다른 것을 고르십시오.",
+        stemZh: "阅读招聘广告，选择与内容不一致的一项。",
+        options: ["커피전문점에서 아르바이트 학생을 구합니다.", "고등학생도 일할 수 있습니다.", "일주일에 삼일 일합니다.", "남녀 모두 일할 수 있습니다."],
+        optionTranslations: ["咖啡专卖店正在招聘兼职学生。", "高中生也可以工作。", "一周工作三天。", "男女都可以工作。"],
+        answer: 1,
+        answerZh: "高中生也可以工作。",
+        explanation: "조건은 남녀 대학생이므로 고등학생도 일할 수 있다는 말은 맞지 않습니다.",
+        explanationZh: "广告条件写的是“男女大学生”，所以“高中生也可以工作”与原文不一致。",
+        source: "用户资料《完全掌握 TOPIK I 初级阅读》p.84 · 标识阅读"
+      },
+      {
+        materialImage: "assets/materials/topik1-reading/page-101.png",
+        stem: "다음을 읽고 내용과 다른 것을 고르십시오.",
+        stemZh: "阅读音乐会海报，选择与内容不一致的一项。",
+        options: ["서울 벚꽃 음악회는 3일 동안 열립니다.", "서울 벚꽃 음악회는 하루에 두 번씩 열립니다.", "서울 벚꽃 음악회는 4월에 열립니다.", "서울 벚꽃 음악회는 누구나 참여할 수 있습니다."],
+        optionTranslations: ["首尔樱花音乐会举办3天。", "首尔樱花音乐会每天举行两场。", "首尔樱花音乐会在4月举行。", "首尔樱花音乐会任何人都可以参加。"],
+        answer: 1,
+        answerZh: "首尔樱花音乐会每天举行两场。",
+        explanation: "4월 4일은 정오 1회, 4월 5일은 저녁 7시 1회, 4월 6일은 오후 4시와 저녁 7시 2회입니다.",
+        explanationZh: "海报中三天的场次不同，并不是每天都有两场，所以该选项不符合内容。",
+        source: "用户资料《完全掌握 TOPIK I 初级阅读》p.85 · 标识阅读"
+      },
+      {
+        materialImage: "assets/materials/topik1-reading/page-102.png",
+        stem: "다음을 읽고 내용과 다른 것을 고르십시오.",
+        stemZh: "阅读促销信息，选择与内容不一致的一项。",
+        options: ["수박을 시청 앞에서 팝니다.", "수박을 싸게 팝니다.", "수박을 먹어 볼 수 있습니다.", "5월 11일에는 열리지 않습니다."],
+        optionTranslations: ["在市政府前卖西瓜。", "西瓜卖得便宜。", "可以试吃西瓜。", "5月11日不举办。"],
+        answer: 3,
+        answerZh: "5月11日不举办。",
+        explanation: "기간은 5월 10일부터 3일 동안이므로 5월 11일에도 행사가 열립니다.",
+        explanationZh: "活动从5月10日起连续3天，所以5月11日也会举办，该选项不符合内容。",
+        source: "用户资料《完全掌握 TOPIK I 初级阅读》p.86 · 标识阅读"
+      },
+      {
+        materialImage: "assets/materials/topik1-reading/page-103.png",
+        stem: "다음을 읽고 내용과 다른 것을 고르십시오.",
+        stemZh: "阅读免费韩文教室公告，选择与内容不一致的一项。",
+        options: ["한글 수업은 10월부터 있습니다.", "9월 20일까지 신청해야 합니다.", "외국인도 참여할 수 있습니다.", "이 수업은 무료입니다."],
+        optionTranslations: ["韩文课从10月开始。", "需要在9月20日前申请。", "外国人也可以参加。", "这门课是免费的。"],
+        answer: 2,
+        answerZh: "外国人也可以参加。",
+        explanation: "대상은 한글을 배우고 싶은 성인 남녀이며, 외국인이라고 쓰여 있지 않습니다.",
+        explanationZh: "公告对象是“想学习韩文的成年男女”，没有写外国人也可以参加，所以该选项不符合内容。",
+        source: "用户资料《完全掌握 TOPIK I 初级阅读》p.87 · 标识阅读"
+      },
+      {
+        materialImage: "assets/materials/topik1-reading/page-104.png",
+        stem: "다음을 읽고 내용과 다른 것을 고르십시오.",
+        stemZh: "阅读便条内容，选择与内容不一致的一项。",
+        options: ["제인 씨는 오늘 학교에 안 왔습니다.", "제인 씨는 어제 학교에 왔습니다.", "밍밍 씨는 제인 씨를 걱정합니다.", "내일은 시험이 있습니다."],
+        optionTranslations: ["珍妮今天没有来学校。", "珍妮昨天来了学校。", "明明担心珍妮。", "明天有考试。"],
+        answer: 1,
+        answerZh: "珍妮昨天来了学校。",
+        explanation: "메모에는 이틀 동안 학교에 안 왔다고 되어 있습니다.",
+        explanationZh: "便条问“为什么这两天没有来学校”，所以“昨天来了学校”与内容不一致。",
+        source: "用户资料《完全掌握 TOPIK I 初级阅读》p.88 · 标识阅读"
+      }
+    ]
+  }
+];
 const listeningFallbackScript = "남자: 수진 씨, 오늘 동아리 회의에 못 올 것 같아요. 갑자기 아르바이트 시간이 바뀌었거든요. 여자: 그래요? 그럼 내일 오전까지 의견을 문자로 보내 주세요. 회의에서 대신 말해 줄게요. 남자: 고마워요. 포스터 디자인에 대한 의견을 정리해서 보낼게요.";
 const listeningFallbackScriptZh = "男：秀珍，我今天可能去不了社团会议了。突然打工时间变了。女：是吗？那请你明天上午之前把意见用短信发给我吧。我会在会议上替你说。男：谢谢。我会整理好关于海报设计的意见发过去。";
 const listeningFallbackQuestions = [
@@ -1257,9 +1329,21 @@ function fallbackPracticeQuestions(errorId) {
 }
 
 function localFallbackForContext(errorId, context) {
+  const materialPractice = materialPracticeForContext(context);
+  if (materialPractice.length) return materialPractice;
   if (context?.category === "listening") return listeningFallbackQuestions;
   if (context?.category === "reading") return topikIReadingFallbackQuestions;
   return fallbackPracticeQuestions(errorId);
+}
+
+function materialPracticeForContext(context = {}, limit = 5) {
+  const settings = context.settings || readStudySettings();
+  const match = materialPracticeBank.find(item =>
+    item.exam === settings.exam &&
+    item.level === settings.level &&
+    item.category === context.category
+  );
+  return match ? match.questions.slice(0, limit).map(question => ({ ...question, materialSetTitle: match.title, sourceTitle: match.sourceTitle })) : [];
 }
 
 function stopListeningAudio() {
@@ -1425,6 +1509,9 @@ function normalizePracticeQuestions(items, limit = 5) {
       explanationZh: String(item.explanationZh || item.explanationChinese || item.reasonZh || "").trim(),
       answerZh: String(item.answerZh || item.correctAnswerZh || "").trim(),
       source: item.source ? String(item.source).slice(0, 120) : "",
+      sourceTitle: String(item.sourceTitle || "").trim(),
+      materialSetTitle: String(item.materialSetTitle || "").trim(),
+      materialImage: String(item.materialImage || item.image || "").trim(),
       audioText,
       transcript: String(item.transcript || audioText).trim(),
       transcriptZh: String(item.transcriptZh || item.transcriptChinese || item.audioTextZh || "").trim(),
@@ -1474,6 +1561,8 @@ function getPracticeContext(errorId, linkedTaskId) {
 
 async function loadExamDrivenPractice(errorId, linkedTaskId, questionCount = 5) {
   const context = getPracticeContext(errorId, linkedTaskId);
+  const materialPractice = materialPracticeForContext(context, questionCount);
+  if (materialPractice.length) return materialPractice;
   if (location.protocol === "file:") return [];
   const requestPayload = {
     ...context.settings,
@@ -1882,11 +1971,14 @@ function renderQuestion() {
   const transcriptZh = String(question.transcriptZh || "").trim();
   const playCount = listeningPlayCounts[`${questionIndex}`] || 0;
   const remainingPlays = Math.max(0, 2 - playCount);
+  const materialLabel = question.materialSetTitle || question.sourceTitle || "";
   $("#questionProgress").textContent = `${questionIndex + 1} / ${activePractice.length}`;
   $("#questionArea").innerHTML = `${listening ? `<div class="listening-player">
     <div><span>听力播放</span><strong>${questionGraded ? (learningMode ? "复盘阶段可反复听" : "本题已记录，整组完成后复盘") : `答题阶段剩余 ${remainingPlays} 次`}</strong></div>
     <button class="secondary-button compact" id="playListening" type="button" ${listeningIsSpeaking || (!learningMode && questionGraded) || (!questionGraded && remainingPlays <= 0) || !transcript ? "disabled" : ""}>${listeningIsSpeaking ? "播放中…" : "播放音频"}</button>
   </div>` : ""}
+  ${materialLabel ? `<div class="material-source-pill">资料题 · ${escapeImportText(materialLabel)}</div>` : ""}
+  ${question.materialImage ? `<button class="question-material-image" type="button" id="openMaterialImage" aria-label="查看原始资料图"><img src="${escapeImportText(question.materialImage)}" alt="原始资料页" loading="lazy" /></button>` : ""}
   <p class="question-stem">${escapeImportText(question.stem)}</p><div class="answer-options">
     ${question.options.map((option, index) => `<label class="answer-option ${selectedAnswer === index ? "selected" : ""}">
       <input type="radio" name="answer" value="${index}" />

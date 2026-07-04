@@ -137,11 +137,106 @@ function normalizeQuestion(item = {}) {
     explanationZh: compact(item.explanationZh || item.explanationChinese || item.reasonZh || ""),
     answerZh: compact(item.answerZh || item.correctAnswerZh || ""),
     source: compact(item.source || item.type || "Generated exam-type practice"),
+    sourceTitle: compact(item.sourceTitle || ""),
+    materialSetTitle: compact(item.materialSetTitle || ""),
+    materialImage: compact(item.materialImage || item.image || ""),
     skill: compact(item.skill || item.questionType || ""),
     audioText,
     transcript: compact(item.transcript || audioText),
     transcriptZh: compact(item.transcriptZh || item.transcriptChinese || item.audioTextZh || ""),
     reviewStatus: "pending"
+  };
+}
+
+const MATERIAL_PRACTICE_BANK = [
+  {
+    exam: "TOPIK",
+    level: "I",
+    category: "reading",
+    title: "TOPIK I 阅读：标识与公告理解",
+    sourceTitle: "用户资料《完全掌握 TOPIK I 初级阅读》",
+    questions: [
+      {
+        materialImage: "assets/materials/topik1-reading/page-100.png",
+        stem: "다음을 읽고 내용과 다른 것을 고르십시오.",
+        stemZh: "阅读招聘广告，选择与内容不一致的一项。",
+        options: ["커피전문점에서 아르바이트 학생을 구합니다.", "고등학생도 일할 수 있습니다.", "일주일에 삼일 일합니다.", "남녀 모두 일할 수 있습니다."],
+        optionTranslations: ["咖啡专卖店正在招聘兼职学生。", "高中生也可以工作。", "一周工作三天。", "男女都可以工作。"],
+        answer: 1,
+        answerZh: "高中生也可以工作。",
+        explanation: "조건은 남녀 대학생이므로 고등학생도 일할 수 있다는 말은 맞지 않습니다.",
+        explanationZh: "广告条件写的是“男女大学生”，所以“高中生也可以工作”与原文不一致。",
+        source: "用户资料《完全掌握 TOPIK I 初级阅读》p.84 · 标识阅读"
+      },
+      {
+        materialImage: "assets/materials/topik1-reading/page-101.png",
+        stem: "다음을 읽고 내용과 다른 것을 고르십시오.",
+        stemZh: "阅读音乐会海报，选择与内容不一致的一项。",
+        options: ["서울 벚꽃 음악회는 3일 동안 열립니다.", "서울 벚꽃 음악회는 하루에 두 번씩 열립니다.", "서울 벚꽃 음악회는 4월에 열립니다.", "서울 벚꽃 음악회는 누구나 참여할 수 있습니다."],
+        optionTranslations: ["首尔樱花音乐会举办3天。", "首尔樱花音乐会每天举行两场。", "首尔樱花音乐会在4月举行。", "首尔樱花音乐会任何人都可以参加。"],
+        answer: 1,
+        answerZh: "首尔樱花音乐会每天举行两场。",
+        explanation: "날짜별 공연 횟수가 다르므로 하루에 두 번씩 열린다는 말은 맞지 않습니다.",
+        explanationZh: "海报中三天的场次不同，并不是每天都有两场，所以该选项不符合内容。",
+        source: "用户资料《完全掌握 TOPIK I 初级阅读》p.85 · 标识阅读"
+      },
+      {
+        materialImage: "assets/materials/topik1-reading/page-102.png",
+        stem: "다음을 읽고 내용과 다른 것을 고르십시오.",
+        stemZh: "阅读促销信息，选择与内容不一致的一项。",
+        options: ["수박을 시청 앞에서 팝니다.", "수박을 싸게 팝니다.", "수박을 먹어 볼 수 있습니다.", "5월 11일에는 열리지 않습니다."],
+        optionTranslations: ["在市政府前卖西瓜。", "西瓜卖得便宜。", "可以试吃西瓜。", "5月11日不举办。"],
+        answer: 3,
+        answerZh: "5月11日不举办。",
+        explanation: "기간은 5월 10일부터 3일 동안이므로 5월 11일에도 행사가 열립니다.",
+        explanationZh: "活动从5月10日起连续3天，所以5月11日也会举办，该选项不符合内容。",
+        source: "用户资料《完全掌握 TOPIK I 初级阅读》p.86 · 标识阅读"
+      },
+      {
+        materialImage: "assets/materials/topik1-reading/page-103.png",
+        stem: "다음을 읽고 내용과 다른 것을 고르십시오.",
+        stemZh: "阅读免费韩文教室公告，选择与内容不一致的一项。",
+        options: ["한글 수업은 10월부터 있습니다.", "9월 20일까지 신청해야 합니다.", "외국인도 참여할 수 있습니다.", "이 수업은 무료입니다."],
+        optionTranslations: ["韩文课从10月开始。", "需要在9月20日前申请。", "外国人也可以参加。", "这门课是免费的。"],
+        answer: 2,
+        answerZh: "外国人也可以参加。",
+        explanation: "대상은 한글을 배우고 싶은 성인 남녀이며, 외국인이라고 쓰여 있지 않습니다.",
+        explanationZh: "公告对象是“想学习韩文的成年男女”，没有写外国人也可以参加，所以该选项不符合内容。",
+        source: "用户资料《完全掌握 TOPIK I 初级阅读》p.87 · 标识阅读"
+      },
+      {
+        materialImage: "assets/materials/topik1-reading/page-104.png",
+        stem: "다음을 읽고 내용과 다른 것을 고르십시오.",
+        stemZh: "阅读便条内容，选择与内容不一致的一项。",
+        options: ["제인 씨는 오늘 학교에 안 왔습니다.", "제인 씨는 어제 학교에 왔습니다.", "밍밍 씨는 제인 씨를 걱정합니다.", "내일은 시험이 있습니다."],
+        optionTranslations: ["珍妮今天没有来学校。", "珍妮昨天来了学校。", "明明担心珍妮。", "明天有考试。"],
+        answer: 1,
+        answerZh: "珍妮昨天来了学校。",
+        explanation: "메모에는 이틀 동안 학교에 안 왔다고 되어 있습니다.",
+        explanationZh: "便条问“为什么这两天没有来学校”，所以“昨天来了学校”与内容不一致。",
+        source: "用户资料《完全掌握 TOPIK I 初级阅读》p.88 · 标识阅读"
+      }
+    ]
+  }
+];
+
+function materialPractice(settings = {}) {
+  const request = settings.practiceRequest || {};
+  const match = MATERIAL_PRACTICE_BANK.find(item =>
+    item.exam === (settings.exam || request.exam) &&
+    item.level === (settings.level || request.level) &&
+    item.category === request.category
+  );
+  if (!match) return null;
+  const count = requestedQuestionCount(settings);
+  return {
+    title: match.title,
+    questions: match.questions.slice(0, count).map(question => ({
+      ...question,
+      materialSetTitle: match.title,
+      sourceTitle: match.sourceTitle
+    })),
+    sources: [{ title: match.sourceTitle, type: "用户资料", note: "作为真实题库样板题来源。" }]
   };
 }
 
@@ -821,6 +916,8 @@ async function callOpenAiPractice(settings = {}) {
 }
 
 async function handlePractice(settings = {}) {
+  const material = materialPractice(settings);
+  if (material) return reviewPracticeSet(material, settings, "material");
   const aiPractice = await callOpenAiPractice(settings).catch(() => null);
   return reviewPracticeSet(aiPractice || fallbackPractice(settings), settings, aiPractice ? "generated" : "fallback");
 }
