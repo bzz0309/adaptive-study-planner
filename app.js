@@ -5,6 +5,7 @@ const categoryMeta = {
   writing: { label: "写作", className: "writing" },
   speaking: { label: "口语", className: "speaking" },
   mock: { label: "模拟测验", className: "mock" },
+  dictation: { label: "听写", className: "dictation" },
   consolidation: { label: "巩固练习", className: "review" },
   review: { label: "错题复盘", className: "review" }
 };
@@ -77,6 +78,9 @@ const studyTemplates = {
   writing: [
     ["句子补全", "对应TOPIK写作51题，练对话和句子空格"], ["短文逻辑补全", "对应TOPIK写作52题，练前后文逻辑"], ["图表说明", "对应TOPIK写作53题，练趋势、比较和总结"], ["议论文结构", "对应TOPIK写作54题，练观点、理由和例证"]
   ],
+  dictation: [
+    ["常见词听写", "听音后写出真题常见词和基础搭配"], ["短句背写", "听一句简单表达，再手写完整句子"], ["听错词巩固", "从听力和阅读错题里抽词背写"], ["助词句听写", "练 은/는、이/가、을/를 的短句"]
+  ],
   review: [
     ["到期错题复盘", "完成1、3、7、14天复习"], ["延迟变式检验", "正确作答并讲明思路"], ["本日知识回忆", "不看笔记复述判断路径"]
   ],
@@ -126,13 +130,61 @@ const completionStandards = {
   vocab: ["完成主动回忆和语境题", "正确率达到85%", "错词各造一个句子", "次日无提示复习"],
   writing: ["按题目要求限时完成", "检查结构、语法和连接", "修改至少一轮", "记录可复用表达"],
   speaking: ["按规定时间完成录音", "回答切题并展开理由", "复听标记停顿和重复", "重新录制一次"],
+  dictation: ["播放后完成手写", "核对原词、搭配和例句", "不熟词标记进复盘", "掌握词可从练习中消除"],
   consolidation: ["完成本组系统练习", "系统统计正确率", "错题产生后进入错题集", "完成后可补一句反思"],
   review: ["完成全部到期错题", "完成延迟变式题", "正确率达到90%", "能口头说明判断路径"],
   mock: ["全程不中断、不查词", "按规定时间完成", "记录各部分正确率", "归类全部错题"]
 };
 
 const weakTokenMap = { "听力": "listening", "阅读": "reading", "词汇": "vocab", "语法": "grammar", "写作": "writing", "口语": "speaking" };
-const planSchemaVersion = "15";
+const planSchemaVersion = "16";
+const dictationStorageKey = "topikPrototypeDictationState";
+const completeMasteryTopikIReadingSource = "完全掌握 TOPIK I 初级阅读 · 1-2 必背单词";
+const dictationItems = [
+  { id: "bag", pos: "名", text: "가방", zh: "包", pairing: "가방을 사다", pairingZh: "买包", example: "새 가방을 샀어요.", exampleZh: "我买了新包。", note: "TOPIK I 生活名词", source: completeMasteryTopikIReadingSource },
+  { id: "price", pos: "名", text: "값", zh: "价格", pairing: "값이 싸다", pairingZh: "价格便宜", example: "이 옷은 값이 싸요.", exampleZh: "这件衣服价格便宜。", note: "购物场景常见词", source: completeMasteryTopikIReadingSource },
+  { id: "building", pos: "名", text: "건물", zh: "建筑 / 楼", pairing: "학교 건물", pairingZh: "学校建筑", example: "저 건물이 도서관입니다.", exampleZh: "那栋楼是图书馆。", note: "地点信息常见词", source: completeMasteryTopikIReadingSource },
+  { id: "plan", pos: "名", text: "계획", zh: "计划", pairing: "여행 계획", pairingZh: "旅行计划", example: "주말 계획이 있어요.", exampleZh: "我有周末计划。", note: "日程安排常见词", source: completeMasteryTopikIReadingSource },
+  { id: "study", pos: "名/动", text: "공부", zh: "学习", pairing: "한국어 공부", pairingZh: "韩语学习", example: "저는 한국어를 공부해요.", exampleZh: "我学习韩语。", note: "学习场景核心词", source: completeMasteryTopikIReadingSource },
+  { id: "traffic", pos: "名", text: "교통", zh: "交通", pairing: "교통이 편리하다", pairingZh: "交通便利", example: "서울은 교통이 편리해요.", exampleZh: "首尔交通很便利。", note: "城市生活常见词", source: completeMasteryTopikIReadingSource },
+  { id: "dormitory", pos: "名", text: "기숙사", zh: "宿舍", pairing: "기숙사에 살다", pairingZh: "住在宿舍", example: "친구는 기숙사에 살아요.", exampleZh: "朋友住在宿舍。", note: "学校生活常见词", source: completeMasteryTopikIReadingSource },
+  { id: "basketball", pos: "名", text: "농구", zh: "篮球", pairing: "농구를 하다", pairingZh: "打篮球", example: "동생은 농구를 좋아해요.", exampleZh: "弟弟喜欢篮球。", note: "兴趣活动常见词", source: completeMasteryTopikIReadingSource },
+  { id: "class", pos: "名", text: "수업", zh: "课 / 上课", pairing: "수업을 듣다", pairingZh: "听课 / 上课", example: "오늘 수업이 있어요.", exampleZh: "今天有课。", note: "课程安排常见词", source: completeMasteryTopikIReadingSource },
+  { id: "homework", pos: "名", text: "숙제", zh: "作业", pairing: "숙제를 하다", pairingZh: "做作业", example: "숙제를 다 했어요.", exampleZh: "作业都做完了。", note: "学习任务常见词", source: completeMasteryTopikIReadingSource },
+  { id: "movie", pos: "名", text: "영화", zh: "电影", pairing: "영화를 보다", pairingZh: "看电影", example: "주말에 영화를 봤어요.", exampleZh: "周末看了电影。", note: "休闲活动常见词", source: completeMasteryTopikIReadingSource },
+  { id: "foreign-language", pos: "名", text: "외국어", zh: "外语", pairing: "외국어를 배우다", pairingZh: "学习外语", example: "외국어 공부가 재미있어요.", exampleZh: "外语学习很有意思。", note: "学习主题常见词", source: completeMasteryTopikIReadingSource },
+  { id: "diary", pos: "名", text: "일기", zh: "日记", pairing: "일기를 쓰다", pairingZh: "写日记", example: "매일 일기를 써요.", exampleZh: "我每天写日记。", note: "日常动作常见词", source: completeMasteryTopikIReadingSource },
+  { id: "eraser", pos: "名", text: "지우개", zh: "橡皮", pairing: "지우개가 필요하다", pairingZh: "需要橡皮", example: "지우개를 빌려 주세요.", exampleZh: "请借我橡皮。", note: "学习用品常见词", source: completeMasteryTopikIReadingSource },
+  { id: "book", pos: "名", text: "책", zh: "书", pairing: "책을 읽다", pairingZh: "读书", example: "도서관에서 책을 읽어요.", exampleZh: "在图书馆读书。", note: "阅读场景核心词", source: completeMasteryTopikIReadingSource },
+  { id: "soccer", pos: "名", text: "축구", zh: "足球", pairing: "축구를 하다", pairingZh: "踢足球", example: "친구와 축구를 했어요.", exampleZh: "和朋友踢了足球。", note: "运动活动常见词", source: completeMasteryTopikIReadingSource },
+  { id: "taxi", pos: "名", text: "택시", zh: "出租车", pairing: "택시를 타다", pairingZh: "坐出租车", example: "역까지 택시를 탔어요.", exampleZh: "坐出租车到了车站。", note: "交通场景常见词", source: completeMasteryTopikIReadingSource },
+  { id: "letter", pos: "名", text: "편지", zh: "信", pairing: "편지를 쓰다", pairingZh: "写信", example: "친구에게 편지를 썼어요.", exampleZh: "给朋友写了信。", note: "交流表达常见词", source: completeMasteryTopikIReadingSource },
+  { id: "ticket", pos: "名", text: "표", zh: "票", pairing: "표를 사다", pairingZh: "买票", example: "영화 표를 샀어요.", exampleZh: "买了电影票。", note: "购票场景常见词", source: completeMasteryTopikIReadingSource },
+  { id: "meeting", pos: "名", text: "회의", zh: "会议", pairing: "회의에 가다", pairingZh: "去开会", example: "오후에 회의가 있어요.", exampleZh: "下午有会议。", note: "日程安排常见词", source: completeMasteryTopikIReadingSource },
+  { id: "cannot-go-meeting", pos: "短句", text: "회의에 못 갈 것 같아요.", zh: "我可能去不了会议。", pairing: "못 가다", pairingZh: "去不了", example: "오늘 동아리 회의에 못 갈 것 같아요.", exampleZh: "今天可能去不了社团会议。", note: "听力理由表达", source: "TOPIK 听力同型短句 · 样板" },
+  { id: "send-opinion", pos: "短句", text: "의견을 문자로 보내 주세요.", zh: "请用短信发送意见。", pairing: "문자로 보내다", pairingZh: "用短信发送", example: "내일 오전까지 의견을 문자로 보내 주세요.", exampleZh: "请明天上午前把意见用短信发来。", note: "听力请求表达", source: "TOPIK 听力同型短句 · 样板" }
+];
+
+function readDictationState() {
+  const fallback = { index: 0, revealed: false, weakIds: [], knownIds: [] };
+  try {
+    return { ...fallback, ...(JSON.parse(localStorage.getItem(dictationStorageKey) || "null") || {}) };
+  } catch {
+    return fallback;
+  }
+}
+
+function writeDictationState(patch = {}) {
+  const current = readDictationState();
+  const next = { ...current, ...patch };
+  localStorage.setItem(dictationStorageKey, JSON.stringify(next));
+  return next;
+}
+
+function currentDictationItem(state = readDictationState()) {
+  const index = Math.max(0, Math.min(dictationItems.length - 1, Number(state.index) || 0));
+  return dictationItems[index] || dictationItems[0];
+}
 
 function selectedStudyTokens(settings = {}, fallbackTokens = []) {
   const selected = [...new Set((settings.weak || []).map(item => weakTokenMap[item]).filter(Boolean))];
@@ -1003,6 +1055,7 @@ function taskDisplayTitle(task = {}, index = 0) {
     reading: ["通知公告阅读", "促销广告阅读", "短文大意理解", "题干关键词定位", "图表信息读取", "句子连接判断", "限时阅读"],
     vocab: ["生活场景词汇", "基础助词辨析", "动词形容词变形", "连接语尾基础", "固定搭配训练", "语境填空", "易混词辨析"],
     grammar: ["基础助词辨析", "连接语尾基础", "句子结构判断", "时态与敬语"],
+    dictation: ["听写：常见词", "听写：短句背写", "听写：听错词巩固", "听写：助词句"],
     consolidation: ["错因预防练习", "延迟巩固练习", "混合题型串联", "限时综合练习", "本日知识回忆"],
     review: ["错题复盘：同类变式题", "错题复盘：到期题重做", "错题复盘：判断路径"],
     mock: ["阶段模拟：限时综合练习"]
@@ -1034,6 +1087,188 @@ function taskTrainingPoint(task = {}, index = 0) {
   const point = hasModulePrefix ? parts.slice(1).join("：") : title;
   const note = taskDisplayNote(task, index).replace(/^围绕目标\d级/, "目标训练：").replace(/^目标训练：/, "目标训练：");
   return { moduleName, point, note };
+}
+
+function speakDictationText(text) {
+  if (!("speechSynthesis" in window)) return showToast("当前浏览器不支持朗读");
+  window.speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = "ko-KR";
+  utterance.rate = 0.82;
+  utterance.pitch = 1;
+  window.speechSynthesis.speak(utterance);
+}
+
+function clearDictationCanvas() {
+  const canvas = $("#dictationCanvas");
+  if (!canvas) return;
+  const context = canvas.getContext("2d");
+  context.clearRect(0, 0, canvas.width, canvas.height);
+}
+
+function setupDictationCanvas() {
+  const canvas = $("#dictationCanvas");
+  if (!canvas) return;
+  const rect = canvas.getBoundingClientRect();
+  const scale = window.devicePixelRatio || 1;
+  canvas.width = Math.max(1, Math.floor(rect.width * scale));
+  canvas.height = Math.max(1, Math.floor(rect.height * scale));
+  const context = canvas.getContext("2d");
+  context.scale(scale, scale);
+  context.lineWidth = 4;
+  context.lineCap = "round";
+  context.lineJoin = "round";
+  context.strokeStyle = "#17202b";
+  let drawing = false;
+  const point = event => {
+    const bounds = canvas.getBoundingClientRect();
+    return { x: event.clientX - bounds.left, y: event.clientY - bounds.top };
+  };
+  canvas.onpointerdown = event => {
+    event.preventDefault();
+    drawing = true;
+    canvas.setPointerCapture(event.pointerId);
+    const current = point(event);
+    context.beginPath();
+    context.moveTo(current.x, current.y);
+  };
+  canvas.onpointermove = event => {
+    if (!drawing) return;
+    event.preventDefault();
+    const current = point(event);
+    context.lineTo(current.x, current.y);
+    context.stroke();
+  };
+  const stopDrawing = event => {
+    if (!drawing) return;
+    drawing = false;
+    try { canvas.releasePointerCapture(event.pointerId); } catch {}
+  };
+  canvas.onpointerup = stopDrawing;
+  canvas.onpointercancel = stopDrawing;
+  canvas.onpointerleave = stopDrawing;
+}
+
+function renderDictationView() {
+  const view = $("#dictationView");
+  if (!view) return;
+  const state = readDictationState();
+  const item = currentDictationItem(state);
+  const index = dictationItems.findIndex(entry => entry.id === item.id);
+  const safeIndex = Math.max(0, index);
+  const revealed = Boolean(state.revealed);
+  const weakIds = new Set(state.weakIds || []);
+  const knownIds = new Set(state.knownIds || []);
+  view.innerHTML = `<div class="page-heading dictation-heading">
+    <div>
+      <p class="section-kicker">听写训练 · 手写记忆</p>
+      <h2>听写</h2>
+      <p>先听音，再手写一遍。适合 iPad、手机和触控板。</p>
+    </div>
+    <div class="score-pill">
+      <small>当前</small><strong>${safeIndex + 1} / ${dictationItems.length}</strong><span>${weakIds.size} 个不熟</span>
+    </div>
+  </div>
+  <div class="dictation-layout">
+    <article class="dictation-workbench">
+      <div class="dictation-token">
+        <span>${escapeImportText(item.note)}</span>
+        <div><strong>${revealed ? escapeImportText(item.text) : "先听，再写"}</strong><em>${escapeImportText(item.pos)}</em></div>
+        <p>${revealed ? `中文：${escapeImportText(item.zh)}` : "核对前不显示答案，先凭声音写。"}</p>
+        <small>${escapeImportText(item.source || "系统听写词库")}</small>
+      </div>
+      <div class="dictation-audio-row">
+        <button class="dictation-audio-button" type="button" data-dictation-speak="${escapeImportText(item.text)}">播放原词</button>
+        <button class="dictation-audio-button" type="button" ${revealed ? "" : "disabled"} data-dictation-speak="${escapeImportText(item.pairing)}">搭配</button>
+        <button class="dictation-audio-button" type="button" ${revealed ? "" : "disabled"} data-dictation-speak="${escapeImportText(item.example)}">例句</button>
+      </div>
+      <div class="dictation-board">
+        <canvas id="dictationCanvas" aria-label="听写手写区"></canvas>
+        <span class="dictation-write-line"></span>
+        <small>可以用手指、Apple Pencil 或触控板书写</small>
+      </div>
+      ${revealed ? `<div class="dictation-answer-card">
+        <span>原词 / 原句</span>
+        <strong>${escapeImportText(item.text)}</strong>
+        <p>中文：${escapeImportText(item.zh)}</p>
+        <p>搭配：${escapeImportText(item.pairing)} · ${escapeImportText(item.pairingZh)}</p>
+        <p>例句：${escapeImportText(item.example)} · ${escapeImportText(item.exampleZh)}</p>
+        <p>来源：${escapeImportText(item.source || "系统听写词库")}</p>
+        <div class="dictation-answer-actions">
+          <button class="secondary-button compact" type="button" id="markDictationWeak">标记不熟</button>
+          <button class="secondary-button compact" type="button" id="markDictationKnown">已经掌握</button>
+        </div>
+      </div>` : `<div class="dictation-hint-card">听完后先手写，不确定也先写下来。核对时再看中文、搭配和例句。</div>`}
+      <div class="dictation-actions">
+        <button class="secondary-button" type="button" id="prevDictationItem">上一条</button>
+        <button class="secondary-button" type="button" id="clearDictationCanvas">清空</button>
+        <button class="primary-button" type="button" id="${revealed ? "nextDictationItem" : "revealDictationAnswer"}">${revealed ? "下一条" : "核对"}</button>
+      </div>
+    </article>
+    <aside class="dictation-side">
+      <section class="dictation-side-card">
+        <span>单词消除</span>
+        <h3>已经会的词淡化显示</h3>
+        <div class="word-bank">
+          ${dictationItems.map(entry => `<button class="word-chip ${entry.id === item.id ? "is-current" : ""} ${knownIds.has(entry.id) ? "is-known" : ""}" type="button" data-dictation-jump="${entry.id}">
+            ${escapeImportText(entry.text)}
+          </button>`).join("")}
+        </div>
+      </section>
+      <section class="dictation-side-card">
+        <span>不熟词</span>
+        <h3>${weakIds.size ? "下次优先复盘" : "暂时没有"}</h3>
+        <div class="dictation-weak-list">
+          ${dictationItems.filter(entry => weakIds.has(entry.id)).map(entry => `<button type="button" data-dictation-jump="${entry.id}"><strong>${escapeImportText(entry.text)}</strong><small>${escapeImportText(entry.zh)}</small></button>`).join("") || "<p>核对后可以把卡住的词标记在这里。</p>"}
+        </div>
+      </section>
+    </aside>
+  </div>`;
+  bindDictationEvents();
+  requestAnimationFrame(setupDictationCanvas);
+}
+
+function bindDictationEvents() {
+  $$("[data-dictation-speak]").forEach(button => button.addEventListener("click", () => speakDictationText(button.dataset.dictationSpeak || "")));
+  $("#revealDictationAnswer")?.addEventListener("click", () => {
+    writeDictationState({ revealed: true });
+    renderDictationView();
+  });
+  $("#nextDictationItem")?.addEventListener("click", () => {
+    const state = readDictationState();
+    const nextIndex = ((Number(state.index) || 0) + 1) % dictationItems.length;
+    writeDictationState({ index: nextIndex, revealed: false });
+    renderDictationView();
+  });
+  $("#prevDictationItem")?.addEventListener("click", () => {
+    const state = readDictationState();
+    const previousIndex = ((Number(state.index) || 0) - 1 + dictationItems.length) % dictationItems.length;
+    writeDictationState({ index: previousIndex, revealed: false });
+    renderDictationView();
+  });
+  $("#clearDictationCanvas")?.addEventListener("click", clearDictationCanvas);
+  $("#markDictationWeak")?.addEventListener("click", () => {
+    const state = readDictationState();
+    const item = currentDictationItem(state);
+    const weakIds = [...new Set([...(state.weakIds || []), item.id])];
+    const knownIds = (state.knownIds || []).filter(id => id !== item.id);
+    writeDictationState({ weakIds, knownIds });
+    renderDictationView();
+  });
+  $("#markDictationKnown")?.addEventListener("click", () => {
+    const state = readDictationState();
+    const item = currentDictationItem(state);
+    const knownIds = [...new Set([...(state.knownIds || []), item.id])];
+    const weakIds = (state.weakIds || []).filter(id => id !== item.id);
+    writeDictationState({ knownIds, weakIds });
+    renderDictationView();
+  });
+  $$("[data-dictation-jump]").forEach(button => button.addEventListener("click", () => {
+    const index = dictationItems.findIndex(entry => entry.id === button.dataset.dictationJump);
+    if (index < 0) return;
+    writeDictationState({ index, revealed: false });
+    renderDictationView();
+  }));
 }
 
 function renderCalendar() {
@@ -1379,6 +1614,16 @@ function localFallbackForContext(errorId, context) {
   return fallbackPracticeQuestions(errorId);
 }
 
+function safeMaterialImagePath(path = "") {
+  const imagePath = String(path || "").trim();
+  if (!imagePath) return "";
+  if (imagePath.includes("/block-cn/")) {
+    return imagePath.replace("/block-cn/block-", "/question/question-");
+  }
+  if (!imagePath.includes("/question/")) return "";
+  return imagePath;
+}
+
 function materialPracticeForContext(context = {}, limit = 5) {
   const settings = context.settings || readStudySettings();
   const match = materialPracticeBank.find(item =>
@@ -1543,7 +1788,7 @@ function normalizePracticeQuestions(items, limit = 5) {
       source: item.source ? String(item.source).slice(0, 120) : "",
       sourceTitle: String(item.sourceTitle || "").trim(),
       materialSetTitle: String(item.materialSetTitle || "").trim(),
-      materialImage: String(item.materialImage || item.image || "").trim(),
+      materialImage: safeMaterialImagePath(item.materialImage || item.image || ""),
       passageZh: String(item.passageZh || item.passageChinese || item.sourceTextZh || "").trim(),
       audioText,
       transcript: String(item.transcript || audioText).trim(),
@@ -2423,9 +2668,12 @@ function confirmImportedErrors() {
 }
 
 function switchView(view) {
+  const target = $("#" + view + "View");
+  if (!target) return;
   $$(".tab").forEach(tab => tab.classList.toggle("active", tab.dataset.view === view));
   $$(".view").forEach(section => section.classList.remove("active"));
-  $("#" + view + "View").classList.add("active");
+  target.classList.add("active");
+  if (view === "dictation") renderDictationView();
   if (view === "progress") renderProgressView();
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
@@ -2454,7 +2702,17 @@ function initializeEvents() {
   $("#editTaskPlan").addEventListener("click", () => toggleTaskEdit());
   $("#discardTaskEdit").addEventListener("click", () => toggleTaskEdit(false));
   $("#saveTaskEdit").addEventListener("click", saveTaskEdit);
-  $("#openPractice").addEventListener("click", () => { const linkedTaskId = activeTaskId; closeModal("taskModal"); startPractice("e1", linkedTaskId); });
+  $("#openPractice").addEventListener("click", () => {
+    const linkedTaskId = activeTaskId;
+    const task = tasks.find(item => item.id === linkedTaskId);
+    closeModal("taskModal");
+    if (task?.category === "dictation") {
+      writeDictationState({ revealed: false });
+      switchView("dictation");
+      return;
+    }
+    startPractice("e1", linkedTaskId);
+  });
   $("#startDueReview").addEventListener("click", () => {
     const dueItem = errorItems.find(item => item.due && !item.mastered);
     if (!dueItem) return showToast("目前没有到期错题");

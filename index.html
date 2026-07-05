@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#f6f5ef" />
   <title>TOPIK 学习计划</title>
-  <link rel="stylesheet" href="styles.css?v=20260705-p1-feedback-copy" />
+  <link rel="stylesheet" href="styles.css?v=20260705-dictation-module" />
 </head>
 <body>
   <div class="app-shell">
@@ -30,6 +30,7 @@
 
     <nav class="main-tabs" aria-label="主要页面">
       <button class="tab active" data-view="calendar"><span>▦</span> 周计划</button>
+      <button class="tab" data-view="dictation"><span>✎</span> 听写</button>
       <button class="tab" data-view="errors"><span>◎</span> 错题集 <b id="errorBadge">0</b></button>
       <button class="tab" data-view="progress"><span>↗</span> 学习进度</button>
     </nav>
@@ -83,6 +84,7 @@
           <button class="legend-writing hidden" id="writingLegend" type="button" data-calendar-filter="writing">写作</button>
           <button class="legend-speaking hidden" id="speakingLegend" type="button" data-calendar-filter="speaking">口语</button>
           <button class="legend-mock" type="button" data-calendar-filter="mock">模拟测验</button>
+          <button class="legend-dictation hidden" id="dictationLegend" type="button" data-calendar-filter="dictation">听写</button>
           <button class="legend-review hidden" id="consolidationLegend" type="button" data-calendar-filter="consolidation">巩固练习</button>
           <button class="legend-review hidden" id="reviewLegend" type="button" data-calendar-filter="review">错题复盘</button>
         </div>
@@ -91,6 +93,8 @@
           <div class="week-calendar" id="weekCalendar" aria-label="本周课程表"></div>
         </div>
       </section>
+
+      <section class="view" id="dictationView" aria-live="polite"></section>
 
       <section class="view" id="errorsView">
         <div class="page-heading">
@@ -371,6 +375,6 @@
   </div>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="app.js?v=20260705-p1-feedback-copy"></script>
+  <script src="app.js?v=20260705-dictation-module"></script>
 </body>
 </html>
