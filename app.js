@@ -66,7 +66,7 @@ const studyTemplates = {
     ["听人物和地点", "短对话里先抓谁、在哪里、正在做什么"], ["听下一步行动", "练“接下来做什么”和请求表达"], ["听原因和理由", "抓 못 가요、바뀌었어요 等理由线索"], ["听数字和时间", "练日期、价格、时间和数量"], ["听内容一致", "核对选项是否和原文相同"], ["听否定和时态", "听清 안、못、过去和将来"], ["看图听关键词", "先看图中差异，再听对应词"], ["听后复述", "复听、影子跟读、用中文说出大意"]
   ],
   reading: [
-    ["公告信息读取", "练日期、地点、对象和目的"], ["广告信息读取", "练价格、时间、活动和条件"], ["短文大意理解", "找重复关键词和中心句"], ["题干关键词定位", "先看题干，再回原文找依据"], ["图表信息读取", "读表格、时间表和简单说明"], ["句子连接判断", "看前后句的因果、转折和顺序"], ["限时阅读", "控制速度，同时标出答案依据"]
+    ["通知公告阅读", "练日期、地点、对象和规则"], ["促销广告阅读", "练价格、时间、活动和条件"], ["短文大意理解", "找重复关键词和中心句"], ["题干关键词定位", "先看题干，再回原文找依据"], ["图表信息读取", "读表格、时间表和简单说明"], ["句子连接判断", "看前后句的因果、转折和顺序"], ["限时阅读", "控制速度，同时标出答案依据"]
   ],
   vocab: [
     ["生活场景词汇", "学校、交通、购物和日常活动"], ["基础助词辨析", "은/는、이/가、을/를 的句中作用"], ["动词形容词变形", "现在、过去、将来和敬语形式"], ["连接语尾基础", "原因、转折、顺序和条件表达"], ["固定搭配训练", "动词、名词和常见表达搭配"], ["语境填空", "根据句意选择合适词语或语尾"], ["易混词辨析", "把意思相近的词放进句子里区分"]
@@ -132,7 +132,7 @@ const completionStandards = {
 };
 
 const weakTokenMap = { "听力": "listening", "阅读": "reading", "词汇": "vocab", "语法": "grammar", "写作": "writing", "口语": "speaking" };
-const planSchemaVersion = "14";
+const planSchemaVersion = "15";
 
 function selectedStudyTokens(settings = {}, fallbackTokens = []) {
   const selected = [...new Set((settings.weak || []).map(item => weakTokenMap[item]).filter(Boolean))];
@@ -574,6 +574,7 @@ const materialPracticeBank = [
         materialImage: "assets/materials/topik1-reading/question/question-100.png",
         stem: "다음을 읽고 내용과 다른 것을 고르십시오.",
         stemZh: "阅读招聘广告，选择与内容不一致的一项。",
+        passageZh: "咖啡专卖店招聘兼职学生。工作时间是周一、周三、周五上午10点到下午4点，薪水是每小时6000韩元，条件是男女大学生。",
         options: ["커피전문점에서 아르바이트 학생을 구합니다.", "고등학생도 일할 수 있습니다.", "일주일에 삼일 일합니다.", "남녀 모두 일할 수 있습니다."],
         optionTranslations: ["咖啡专卖店正在招聘兼职学生。", "高中生也可以工作。", "一周工作三天。", "男女都可以工作。"],
         answer: 1,
@@ -586,6 +587,7 @@ const materialPracticeBank = [
         materialImage: "assets/materials/topik1-reading/question/question-101.png",
         stem: "다음을 읽고 내용과 다른 것을 고르십시오.",
         stemZh: "阅读音乐会海报，选择与内容不一致的一项。",
+        passageZh: "首尔樱花音乐会在4月4日到4月6日举行。不同日期的演出时间不同，其中4月6日有下午4点和晚上7点两场。",
         options: ["서울 벚꽃 음악회는 3일 동안 열립니다.", "서울 벚꽃 음악회는 하루에 두 번씩 열립니다.", "서울 벚꽃 음악회는 4월에 열립니다.", "서울 벚꽃 음악회는 누구나 참여할 수 있습니다."],
         optionTranslations: ["首尔樱花音乐会举办3天。", "首尔樱花音乐会每天举行两场。", "首尔樱花音乐会在4月举行。", "首尔樱花音乐会任何人都可以参加。"],
         answer: 1,
@@ -598,6 +600,7 @@ const materialPracticeBank = [
         materialImage: "assets/materials/topik1-reading/question/question-102.png",
         stem: "다음을 읽고 내용과 다른 것을 고르십시오.",
         stemZh: "阅读促销信息，选择与内容不一致的一项。",
+        passageZh: "昌原西瓜促销从5月10日起连续3天，在市政府前广场举行。西瓜比原价便宜10%，现场还有免费试吃会。",
         options: ["수박을 시청 앞에서 팝니다.", "수박을 싸게 팝니다.", "수박을 먹어 볼 수 있습니다.", "5월 11일에는 열리지 않습니다."],
         optionTranslations: ["在市政府前卖西瓜。", "西瓜卖得便宜。", "可以试吃西瓜。", "5月11日不举办。"],
         answer: 3,
@@ -610,6 +613,7 @@ const materialPracticeBank = [
         materialImage: "assets/materials/topik1-reading/question/question-103.png",
         stem: "다음을 읽고 내용과 다른 것을 고르십시오.",
         stemZh: "阅读免费韩文教室公告，选择与内容不一致的一项。",
+        passageZh: "免费韩文教室面向想学习韩文的成年男女，课程从10月开始，需要在9月20日前申请。",
         options: ["한글 수업은 10월부터 있습니다.", "9월 20일까지 신청해야 합니다.", "외국인도 참여할 수 있습니다.", "이 수업은 무료입니다."],
         optionTranslations: ["韩文课从10月开始。", "需要在9月20日前申请。", "外国人也可以参加。", "这门课是免费的。"],
         answer: 2,
@@ -622,6 +626,7 @@ const materialPracticeBank = [
         materialImage: "assets/materials/topik1-reading/question/question-104.png",
         stem: "다음을 읽고 내용과 다른 것을 고르십시오.",
         stemZh: "阅读便条内容，选择与内容不一致的一项。",
+        passageZh: "明明写给珍妮的便条里说，珍妮这两天都没有来学校，明明担心她是不是生病了；因为明天有考试，所以希望珍妮来学校。",
         options: ["제인 씨는 오늘 학교에 안 왔습니다.", "제인 씨는 어제 학교에 왔습니다.", "밍밍 씨는 제인 씨를 걱정합니다.", "내일은 시험이 있습니다."],
         optionTranslations: ["珍妮今天没有来学校。", "珍妮昨天来了学校。", "明明担心珍妮。", "明天有考试。"],
         answer: 1,
@@ -995,7 +1000,7 @@ function taskDisplayTitle(task = {}, index = 0) {
   const titleMap = {
     listening: ["听人物和地点", "听下一步行动", "听原因和理由", "听数字和时间", "听内容一致", "听否定和时态", "看图听关键词", "听后复述"],
     writing: ["写作：句子补全", "写作：短文逻辑补全", "写作：图表说明", "写作：议论文结构"],
-    reading: ["公告信息读取", "广告信息读取", "短文大意理解", "题干关键词定位", "图表信息读取", "句子连接判断", "限时阅读"],
+    reading: ["通知公告阅读", "促销广告阅读", "短文大意理解", "题干关键词定位", "图表信息读取", "句子连接判断", "限时阅读"],
     vocab: ["生活场景词汇", "基础助词辨析", "动词形容词变形", "连接语尾基础", "固定搭配训练", "语境填空", "易混词辨析"],
     grammar: ["基础助词辨析", "连接语尾基础", "句子结构判断", "时态与敬语"],
     consolidation: ["错因预防练习", "延迟巩固练习", "混合题型串联", "限时综合练习", "本日知识回忆"],
@@ -1461,15 +1466,9 @@ function renderPracticeResultBoard() {
   const wrongList = practiceResults
     .map((item, index) => item && !item.correct ? { ...item, index } : null)
     .filter(Boolean);
-  const firstWrong = wrongList[0];
   const reviewAdvice = wrong
-    ? "建议先把错题重做一遍。错题会进入错题集，之后按复习节奏提醒。"
+    ? "错题已进入错题集，可以直接重做错题。"
     : "本组全部正确。可以继续下一组学习，之后按计划做延迟复习。";
-  const firstWrongLine = firstWrong
-    ? `<p><strong>先看第 ${firstWrong.index + 1} 题：</strong>${escapeImportText(firstWrong.answerZh || firstWrong.answer || "回看答案依据")}</p>`
-    : "";
-  const linkedTask = practiceTaskId ? tasks.find(item => item.id === practiceTaskId) : null;
-  const reflectionValue = linkedTask?.checkin?.reflection || "";
   $("#questionArea").innerHTML = `<div class="practice-result-board">
     <p class="section-kicker">本组完成 · 系统自动记录</p>
     <h2>${correct} / ${total} 题正确</h2>
@@ -1487,13 +1486,8 @@ function renderPracticeResultBoard() {
       }).join("")}
     </div>
     <div class="result-review-note">
-      ${firstWrongLine}
       <p><strong>复盘建议：</strong>${escapeImportText(reviewAdvice)}</p>
     </div>
-    ${linkedTask ? `<label class="result-reflection-field">
-      <span>补一句反思 <small>可选</small></span>
-      <textarea id="practiceReflectionNote" rows="2" placeholder="比如：哪里卡住了、下次想先复习什么">${escapeImportText(reflectionValue)}</textarea>
-    </label>` : ""}
     <div class="result-actions">
       ${wrong
         ? `<button class="secondary-button" id="retryWrongQuestions" type="button">重做错题</button>`
@@ -1550,6 +1544,7 @@ function normalizePracticeQuestions(items, limit = 5) {
       sourceTitle: String(item.sourceTitle || "").trim(),
       materialSetTitle: String(item.materialSetTitle || "").trim(),
       materialImage: String(item.materialImage || item.image || "").trim(),
+      passageZh: String(item.passageZh || item.passageChinese || item.sourceTextZh || "").trim(),
       audioText,
       transcript: String(item.transcript || audioText).trim(),
       transcriptZh: String(item.transcriptZh || item.transcriptChinese || item.audioTextZh || "").trim(),
@@ -1567,6 +1562,14 @@ function questionMeaningText(question = {}) {
   if (question.transcriptZh) return `听力原文大意：${question.transcriptZh}`;
   if (question.stem) return question.stem;
   return "当前题目内容暂未返回中文说明。";
+}
+
+function originalMeaningText(question = {}) {
+  if (question.passageZh) return question.passageZh;
+  if (question.transcriptZh) return question.transcriptZh;
+  if (question.stemZh) return question.stemZh;
+  if (question.stem) return question.stem;
+  return "当前题目暂未返回原文释义。";
 }
 
 function practiceExplanationText(question = {}) {
@@ -1620,16 +1623,14 @@ function createPracticeErrorItems(task, wrongResults = []) {
 function renderPracticeFeedback(question = {}, correct = false) {
   const correctOption = question.options?.[question.answer] || "";
   const correctOptionZh = question.answerZh || question.optionTranslations?.[question.answer] || "";
-  const selectedOption = question.options?.[selectedAnswer] || "";
-  const selectedLabel = selectedAnswer === null ? "" : `${answerLetter(selectedAnswer)}. ${selectedOption}`;
   return `<div class="feedback-answer-line">
     <span>${correct ? "回答正确" : "正确答案"}</span>
     <strong>${answerLetter(question.answer)}. ${escapeImportText(correctOption)}</strong>
     ${correctOptionZh ? `<p>${escapeImportText(correctOptionZh)}</p>` : ""}
   </div>
-  ${!correct && selectedLabel ? `<div class="feedback-mini-line"><span>你的选择</span><p>${escapeImportText(selectedLabel)}</p></div>` : ""}
   <div class="feedback-mini-line"><span>题目要求</span><p>${escapeImportText(questionMeaningText(question))}</p></div>
-  <div class="feedback-mini-line"><span>为什么选它</span><p>${escapeImportText(practiceExplanationText(question))}</p></div>`;
+  <div class="feedback-mini-line"><span>原题释义</span><p>${escapeImportText(originalMeaningText(question))}</p></div>
+  <div class="feedback-mini-line"><span>答题解析</span><p>${escapeImportText(practiceExplanationText(question))}</p></div>`;
 }
 
 function getPracticeContext(errorId, linkedTaskId) {
