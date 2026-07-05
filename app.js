@@ -132,7 +132,7 @@ const completionStandards = {
 };
 
 const weakTokenMap = { "听力": "listening", "阅读": "reading", "词汇": "vocab", "语法": "grammar", "写作": "writing", "口语": "speaking" };
-const planSchemaVersion = "13";
+const planSchemaVersion = "14";
 
 function selectedStudyTokens(settings = {}, fallbackTokens = []) {
   const selected = [...new Set((settings.weak || []).map(item => weakTokenMap[item]).filter(Boolean))];
@@ -328,7 +328,7 @@ function generatePlanFromSettings(settings) {
   const coreTokens = defaultStudyTokens({ exam, level });
   const weakTokens = selectedStudyTokens(settings, coreTokens);
   const templateSource = exam === "IELTS" ? ieltsTemplates : (exam === "OTHER" ? genericTemplates : studyTemplates);
-  const rotation = [...new Set([...weakTokens, "consolidation", ...(settings.intensity === "高强度" ? ["mock"] : [])])];
+  const rotation = [...new Set([...weakTokens, "consolidation"])];
   const foundationOffset = { "入门": 0, "一般": 1, "较好": 2, "不确定": 0 }[settings.foundation] || 0;
   let sequence = 0;
   const categoryCounts = {};
@@ -339,7 +339,6 @@ function generatePlanFromSettings(settings) {
     const starts = dailyStudyStarts(settings, blocksPerDay, blockMinutes);
     starts.forEach((start, blockIndex) => {
       let token = rotation[(dayIndex * blocksPerDay + blockIndex) % rotation.length];
-      if (day.key === "sat" && blockIndex === blocksPerDay - 1 && rotation.includes("mock")) token = "mock";
       if (day.key === "sun" && blockIndex === blocksPerDay - 1 && rotation.includes("consolidation")) token = "consolidation";
       const category = normalizeStudyCategory(token);
       const templates = exam === "IELTS" && level === "II" && token === "writing"
@@ -2220,8 +2219,7 @@ function normalizeAiTasks(aiTasks, settings) {
   const allowed = [...new Set([
     ...selectedTokens,
     "consolidation",
-    "review",
-    ...(settings.intensity === "高强度" ? ["mock"] : [])
+    "review"
   ])];
   const allowedCategories = new Set(allowed);
   return (aiTasks || []).filter(task => {
