@@ -130,7 +130,7 @@ const completionStandards = {
   vocab: ["完成主动回忆和语境题", "正确率达到85%", "错词各造一个句子", "次日无提示复习"],
   writing: ["按题目要求限时完成", "检查结构、语法和连接", "修改至少一轮", "记录可复用表达"],
   speaking: ["按规定时间完成录音", "回答切题并展开理由", "复听标记停顿和重复", "重新录制一次"],
-  dictation: ["播放后完成手写", "核对原词、搭配和例句", "不熟词标记进复盘", "掌握词可从练习中消除"],
+  dictation: ["播放后完成手写", "核对原词、搭配和例句", "不熟词标记进复盘", "确认掌握后进入下一条"],
   consolidation: ["完成本组系统练习", "系统统计正确率", "错题产生后进入错题集", "按错因进入后续复盘"],
   review: ["完成全部到期错题", "完成延迟变式题", "正确率达到90%", "能口头说明判断路径"],
   mock: ["全程不中断、不查词", "按规定时间完成", "记录各部分正确率", "归类全部错题"]
@@ -139,6 +139,7 @@ const completionStandards = {
 const weakTokenMap = { "听力": "listening", "阅读": "reading", "词汇": "vocab", "语法": "grammar", "写作": "writing", "口语": "speaking" };
 const planSchemaVersion = "16";
 const dictationStorageKey = "topikPrototypeDictationState";
+const wordEliminationStorageKey = "topikPrototypeWordEliminationState";
 const completeMasteryTopikIReadingSource = "完全掌握 TOPIK I 初级阅读 · 1-2 必背单词";
 const dictationItems = [
   { id: "bag", pos: "名", text: "가방", zh: "包", pairing: "가방을 사다", pairingZh: "买包", example: "새 가방을 샀어요.", exampleZh: "我买了新包。", note: "TOPIK I 生活名词", source: completeMasteryTopikIReadingSource },
@@ -183,6 +184,26 @@ function writeDictationState(patch = {}) {
 
 function dictationPracticeItems() {
   return dictationItems.filter(item => item.pos !== "短句" && !/\s/.test(item.text));
+}
+
+function readWordEliminationState() {
+  const fallback = { selectedWordId: "", selectedMeaningId: "", clearedIds: [] };
+  try {
+    return { ...fallback, ...(JSON.parse(localStorage.getItem(wordEliminationStorageKey) || "null") || {}) };
+  } catch {
+    return fallback;
+  }
+}
+
+function writeWordEliminationState(patch = {}) {
+  const current = readWordEliminationState();
+  const next = { ...current, ...patch };
+  localStorage.setItem(wordEliminationStorageKey, JSON.stringify(next));
+  return next;
+}
+
+function wordEliminationMeaningItems(items = dictationPracticeItems()) {
+  return [...items].sort((a, b) => a.zh.localeCompare(b.zh, "zh-CN") || a.text.localeCompare(b.text, "ko"));
 }
 
 function currentDictationItem(state = readDictationState()) {
@@ -1256,7 +1277,6 @@ function renderDictationView() {
   const hasInput = Boolean(inputText.trim());
   const isCorrect = isDictationAnswerCorrect(inputText, item.text);
   const weakIds = new Set(state.weakIds || []);
-  const knownIds = new Set(state.knownIds || []);
   view.innerHTML = `<div class="page-heading dictation-heading">
     <div>
       <p class="section-kicker">听写训练 · 手写记忆</p>
@@ -1313,15 +1333,6 @@ function renderDictationView() {
     </article>
     <aside class="dictation-side">
       <section class="dictation-side-card">
-        <span>单词消除</span>
-        <h3>已经会的词淡化显示</h3>
-        <div class="word-bank">
-          ${practiceItems.map(entry => `<button class="word-chip ${entry.id === item.id ? "is-current" : ""} ${knownIds.has(entry.id) ? "is-known" : ""}" type="button" data-dictation-jump="${entry.id}">
-            ${escapeImportText(entry.text)}
-          </button>`).join("")}
-        </div>
-      </section>
-      <section class="dictation-side-card">
         <span>不熟词</span>
         <h3>${weakIds.size ? "下次优先复盘" : "暂时没有"}</h3>
         <div class="dictation-weak-list">
@@ -1332,6 +1343,92 @@ function renderDictationView() {
   </div>`;
   bindDictationEvents();
   requestAnimationFrame(setupDictationCanvas);
+}
+
+function renderWordEliminationView() {
+  const view = $("#wordEliminationView");
+  if (!view) return;
+  const state = readWordEliminationState();
+  const items = dictationPracticeItems();
+  const clearedIds = new Set(state.clearedIds || []);
+  const remainingWords = items.filter(item => !clearedIds.has(item.id));
+  const remainingMeanings = wordEliminationMeaningItems(items).filter(item => !clearedIds.has(item.id));
+  view.innerHTML = `<div class="page-heading">
+    <div>
+      <p class="section-kicker">词义配对 · 消除练习</p>
+      <h2>单词消除</h2>
+      <p>左边点韩语单词，右边点对应中文释义。配对正确后，这组词会消失。</p>
+    </div>
+    <div class="score-pill">
+      <small>已消除</small><strong>${clearedIds.size} / ${items.length}</strong><span>${remainingWords.length ? "继续配对" : "全部完成"}</span>
+    </div>
+  </div>
+  <div class="word-elimination-panel">
+    <div class="word-elimination-header">
+      <div>
+        <strong>韩语单词 + 中文释义</strong>
+        <p>适合把听写里已经认识的词快速过一遍，不和听写混在一起。</p>
+      </div>
+      <button class="secondary-button compact" type="button" id="resetWordElimination">重新开始</button>
+    </div>
+    ${remainingWords.length ? `<div class="word-elimination-grid">
+      <section class="elimination-column">
+        <span>韩语单词</span>
+        <div class="elimination-list">
+          ${remainingWords.map(item => `<button class="elimination-option ${state.selectedWordId === item.id ? "is-selected" : ""}" type="button" data-elimination-word="${item.id}">
+            <strong>${escapeImportText(item.text)}</strong><small>${escapeImportText(item.pos)}</small>
+          </button>`).join("")}
+        </div>
+      </section>
+      <section class="elimination-column">
+        <span>中文释义</span>
+        <div class="elimination-list">
+          ${remainingMeanings.map(item => `<button class="elimination-option ${state.selectedMeaningId === item.id ? "is-selected" : ""}" type="button" data-elimination-meaning="${item.id}">
+            <strong>${escapeImportText(item.zh)}</strong><small>${escapeImportText(item.note)}</small>
+          </button>`).join("")}
+        </div>
+      </section>
+    </div>` : `<div class="elimination-empty">
+      <strong>这一轮词都消除了</strong>
+      <p>可以重新开始，或者回到听写继续练不熟词。</p>
+    </div>`}
+  </div>`;
+  bindWordEliminationEvents();
+}
+
+function resolveWordEliminationPair(patch = {}) {
+  const current = readWordEliminationState();
+  const next = { ...current, ...patch };
+  if (!next.selectedWordId || !next.selectedMeaningId) {
+    writeWordEliminationState(next);
+    renderWordEliminationView();
+    return;
+  }
+  if (next.selectedWordId === next.selectedMeaningId) {
+    writeWordEliminationState({
+      selectedWordId: "",
+      selectedMeaningId: "",
+      clearedIds: [...new Set([...(current.clearedIds || []), next.selectedWordId])]
+    });
+    showToast("配对正确，已消除");
+  } else {
+    writeWordEliminationState({ ...next, selectedMeaningId: "" });
+    showToast("不是这一组，再试一次");
+  }
+  renderWordEliminationView();
+}
+
+function bindWordEliminationEvents() {
+  $$("[data-elimination-word]").forEach(button => button.addEventListener("click", () => {
+    resolveWordEliminationPair({ selectedWordId: button.dataset.eliminationWord || "" });
+  }));
+  $$("[data-elimination-meaning]").forEach(button => button.addEventListener("click", () => {
+    resolveWordEliminationPair({ selectedMeaningId: button.dataset.eliminationMeaning || "" });
+  }));
+  $("#resetWordElimination")?.addEventListener("click", () => {
+    writeWordEliminationState({ selectedWordId: "", selectedMeaningId: "", clearedIds: [] });
+    renderWordEliminationView();
+  });
 }
 
 function bindDictationEvents() {
@@ -2854,6 +2951,7 @@ function switchView(view) {
   $$(".view").forEach(section => section.classList.remove("active"));
   target.classList.add("active");
   if (view === "dictation") renderDictationView();
+  if (view === "wordElimination") renderWordEliminationView();
   if (view === "progress") renderProgressView();
   window.scrollTo({ top: 0, behavior: "smooth" });
 }

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#f6f5ef" />
   <title>TOPIK 学习计划</title>
-  <link rel="stylesheet" href="styles.css?v=20260705-dictation-module" />
+  <link rel="stylesheet" href="styles.css?v=20260707-word-elimination" />
 </head>
 <body>
   <div class="app-shell">
@@ -31,6 +31,7 @@
     <nav class="main-tabs" aria-label="主要页面">
       <button class="tab active" data-view="calendar"><span>▦</span> 周计划</button>
       <button class="tab" data-view="dictation"><span>✎</span> 听写</button>
+      <button class="tab" data-view="wordElimination"><span>消</span> 单词消除</button>
       <button class="tab" data-view="errors"><span>◎</span> 错题集 <b id="errorBadge">0</b></button>
       <button class="tab" data-view="progress"><span>↗</span> 学习进度</button>
     </nav>
@@ -95,6 +96,7 @@
       </section>
 
       <section class="view" id="dictationView" aria-live="polite"></section>
+      <section class="view" id="wordEliminationView" aria-live="polite"></section>
 
       <section class="view" id="errorsView">
         <div class="page-heading">
@@ -375,6 +377,6 @@
   </div>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="app.js?v=20260705-dictation-module"></script>
+  <script src="app.js?v=20260707-word-elimination"></script>
 </body>
 </html>
