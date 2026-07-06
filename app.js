@@ -191,6 +191,10 @@ function selectedStudyTokens(settings = {}, fallbackTokens = []) {
   return selected.length ? selected : fallbackTokens;
 }
 
+function userSelectedStudyTokens(settings = {}) {
+  return [...new Set((settings.weak || []).map(item => weakTokenMap[item]).filter(Boolean).map(normalizeStudyCategory))];
+}
+
 function normalizeStudyCategory(token) {
   return token === "grammar" ? "vocab" : token;
 }
@@ -200,6 +204,24 @@ function defaultStudyTokens(settings = {}) {
   if (settings.exam === "OTHER") return ["reading", "vocab", "writing"];
   if (settings.level === "II") return ["listening", "reading", "writing"];
   return ["listening", "reading"];
+}
+
+function hasActualReviewNeed() {
+  return errorItems.some(item => String(item.id || "").startsWith("practice-") || String(item.id || "").startsWith("imported-"));
+}
+
+function taskMentionsUnselectedScope(task = {}, selectedTokens = []) {
+  if (!selectedTokens.length) return false;
+  const selected = new Set(selectedTokens.map(normalizeStudyCategory));
+  const text = `${task.title || ""} ${task.note || ""} ${(task.standards || []).join(" ")}`;
+  const moduleKeywords = {
+    listening: /听力|听懂|听人|听下一步|听原因|听数字|听内容|듣기/i,
+    reading: /阅读|公告|广告|短文|图表|信息读取|읽기/i,
+    vocab: /词汇|语法|助词|语尾|单词|grammar|vocab/i,
+    writing: /写作|作文|句子补全|短文逻辑|图表说明|议论文|쓰기/i,
+    speaking: /口语|说话|speaking/i
+  };
+  return Object.entries(moduleKeywords).some(([token, matcher]) => !selected.has(token) && matcher.test(text));
 }
 
 function scopedConsolidationTemplates(tokens = []) {
@@ -391,7 +413,6 @@ function generatePlanFromSettings(settings) {
     const starts = dailyStudyStarts(settings, blocksPerDay, blockMinutes);
     starts.forEach((start, blockIndex) => {
       let token = rotation[(dayIndex * blocksPerDay + blockIndex) % rotation.length];
-      if (day.key === "sun" && blockIndex === blocksPerDay - 1 && rotation.includes("consolidation")) token = "consolidation";
       const category = normalizeStudyCategory(token);
       const templates = exam === "IELTS" && level === "II" && token === "writing"
         ? ieltsGeneralWriting
@@ -2495,17 +2516,21 @@ function normalizeAiTasks(aiTasks, settings) {
   const availableStart = settings.availableStart || "00:00";
   const availableEnd = settings.availableEnd || "23:59";
   const defaultTokens = defaultStudyTokens(settings);
-  const selectedTokens = selectedStudyTokens(settings, defaultTokens).map(normalizeStudyCategory);
+  const explicitTokens = userSelectedStudyTokens(settings);
+  const selectedTokens = (explicitTokens.length ? explicitTokens : selectedStudyTokens(settings, defaultTokens)).map(normalizeStudyCategory);
   const allowed = [...new Set([
     ...selectedTokens,
     "consolidation",
     "review"
   ])];
   const allowedCategories = new Set(allowed);
+  const hasReviewNeed = hasActualReviewNeed();
   return (aiTasks || []).filter(task => {
     const category = normalizeStudyCategory(task.category);
     const validClock = /^\d{2}:\d{2}$/.test(task.start || "") && /^\d{2}:\d{2}$/.test(task.end || "");
     if (!validClock) return false;
+    if (category === "review" && !hasReviewNeed) return false;
+    if (taskMentionsUnselectedScope(task, explicitTokens)) return false;
     const startMinutes = clockToMinutes(task.start);
     const endMinutes = clockToMinutes(task.end);
     return allowedDays.has(task.day)

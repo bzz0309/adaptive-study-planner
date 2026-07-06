@@ -740,7 +740,6 @@ function fallbackPlan(settings = {}) {
   const tasks = days.flatMap((day, dayIndex) => dailyStudyStarts(settings, blocksPerDay, blockMinutes).map((start, index) => {
     let category = categories[(dayIndex + index) % categories.length];
     if (day === "sat" && index === blocksPerDay - 1 && categories.includes("mock")) category = "mock";
-    if (day === "sun" && index === blocksPerDay - 1) category = "consolidation";
     const categoryIndex = categoryCounts[category] || 0;
     categoryCounts[category] = categoryIndex + 1;
     const item = copy[category]?.[categoryIndex % copy[category].length] || copy.consolidation?.[0] || copy.review[0];
