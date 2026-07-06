@@ -199,6 +199,52 @@ function normalizeStudyCategory(token) {
   return token === "grammar" ? "vocab" : token;
 }
 
+function categoryLabel(category) {
+  return categoryMeta[normalizeStudyCategory(category)]?.label || "练习";
+}
+
+function taskWrongCount(task = {}) {
+  return Math.max(0, Number(task.checkin?.total || 0) - Number(task.checkin?.correct || 0));
+}
+
+function studyPerformanceProfile(records = completedPracticeTasks()) {
+  const stats = {};
+  records.forEach(task => {
+    const category = normalizeStudyCategory(task.category);
+    if (["review", "consolidation", "mock"].includes(category)) return;
+    stats[category] ||= { category, total: 0, correct: 0, wrong: 0 };
+    stats[category].total += Number(task.checkin?.total || 0);
+    stats[category].correct += Number(task.checkin?.correct || 0);
+    stats[category].wrong += taskWrongCount(task);
+  });
+  const weak = Object.values(stats)
+    .filter(item => item.total > 0)
+    .sort((a, b) => {
+      const accuracyDiff = (a.correct / a.total) - (b.correct / b.total);
+      if (accuracyDiff !== 0) return accuracyDiff;
+      return b.wrong - a.wrong;
+    })[0] || null;
+  const today = beijingDateKey();
+  const todayWrongTask = [...records].reverse().find(task =>
+    taskWrongCount(task) > 0 &&
+    task.checkin?.updatedAt &&
+    beijingDateKey(new Date(task.checkin.updatedAt)) === today
+  ) || null;
+  return {
+    records,
+    weakCategory: weak?.category || "",
+    weakAccuracy: weak ? Math.round((weak.correct / weak.total) * 100) : null,
+    weakWrong: weak?.wrong || 0,
+    todayWrongTask
+  };
+}
+
+function prioritizedStudyTokens(tokens = [], profile = studyPerformanceProfile()) {
+  const normalized = [...new Set(tokens.map(normalizeStudyCategory))];
+  if (!profile.weakCategory || !normalized.includes(profile.weakCategory)) return normalized;
+  return [...new Set([profile.weakCategory, ...normalized])];
+}
+
 function defaultStudyTokens(settings = {}) {
   if (settings.exam === "IELTS") return ["listening", "reading", "writing", "speaking"];
   if (settings.exam === "OTHER") return ["reading", "vocab", "writing"];
@@ -402,7 +448,7 @@ function generatePlanFromSettings(settings) {
   const coreTokens = defaultStudyTokens({ exam, level });
   const weakTokens = selectedStudyTokens(settings, coreTokens);
   const templateSource = exam === "IELTS" ? ieltsTemplates : (exam === "OTHER" ? genericTemplates : studyTemplates);
-  const rotation = [...new Set([...weakTokens, "consolidation"])];
+  const rotation = [...new Set([...prioritizedStudyTokens(weakTokens), "consolidation"])];
   const foundationOffset = { "入门": 0, "一般": 1, "较好": 2, "不确定": 0 }[settings.foundation] || 0;
   let sequence = 0;
   const categoryCounts = {};
@@ -1580,24 +1626,37 @@ function taskFocusLabel(task) {
   return task ? `「${taskDisplayTitle(task, tasks.indexOf(task))}」` : "";
 }
 
-function tomorrowPlanFocus() {
-  const tomorrowKey = nextStudyDayKey();
-  const tomorrowTasks = tasks.filter(task => task.day === tomorrowKey);
-  if (!tomorrowTasks.length) return defaultTomorrowFocus();
-  const hasWrongRecords = errorItems.some(item => !item.mastered);
-  const priority = hasWrongRecords ? (tomorrowTasks.find(task => task.category === "review") || tomorrowTasks[0]) : tomorrowTasks[0];
-  const moreCount = Math.max(0, tomorrowTasks.length - 1);
-  return moreCount
-    ? `明天按计划先做${taskFocusLabel(priority)}，再完成另外 ${moreCount} 组学习任务。`
-    : `明天按计划完成${taskFocusLabel(priority)}。`;
+function tomorrowPriorityTask(tomorrowTasks = [], profile = studyPerformanceProfile()) {
+  const available = tomorrowTasks.filter(task => task.status !== "cancelled" && !hasPracticeRecord(task));
+  if (!available.length) return null;
+  if (profile.weakCategory) {
+    const direct = available.find(task => normalizeStudyCategory(task.category) === profile.weakCategory);
+    if (direct) return direct;
+    const consolidation = available.find(task => ["consolidation", "review"].includes(normalizeStudyCategory(task.category)));
+    if (consolidation) return consolidation;
+  }
+  return available[0];
 }
 
-function todayWrongFocus() {
-  const today = beijingDateKey();
-  const todayTasks = tasks.filter(task => hasPracticeRecord(task) && beijingDateKey(task.checkin?.updatedAt ? new Date(task.checkin.updatedAt) : new Date()) === today);
-  const wrongTask = todayTasks.find(task => Number(task.checkin.correct || 0) < Number(task.checkin.total || 0));
+function tomorrowPlanFocus(profile = studyPerformanceProfile()) {
+  const tomorrowKey = nextStudyDayKey();
+  const tomorrowTasks = tasks.filter(task => task.day === tomorrowKey && task.status !== "cancelled");
+  if (!tomorrowTasks.length) return defaultTomorrowFocus();
+  const priority = tomorrowPriorityTask(tomorrowTasks, profile) || tomorrowTasks[0];
+  const moreCount = Math.max(0, tomorrowTasks.filter(task => task !== priority && !hasPracticeRecord(task)).length);
+  const weakPrefix = profile.weakCategory && profile.weakAccuracy !== null && profile.weakWrong > 0
+    ? `最近${categoryLabel(profile.weakCategory)}正确率 ${profile.weakAccuracy}%`
+    : "";
+  const action = moreCount
+    ? `明天先做${taskFocusLabel(priority)}，再完成另外 ${moreCount} 组学习任务。`
+    : `明天先做${taskFocusLabel(priority)}。`;
+  return weakPrefix ? `${weakPrefix}，${action}` : `按 T+1 学习计划，${action}`;
+}
+
+function todayWrongFocus(profile = studyPerformanceProfile()) {
+  const wrongTask = profile.todayWrongTask;
   if (!wrongTask) return "";
-  const wrongCount = Number(wrongTask.checkin.total || 0) - Number(wrongTask.checkin.correct || 0);
+  const wrongCount = taskWrongCount(wrongTask);
   const note = String(wrongTask.checkin.note || wrongTask.checkin.reflection || "").replace(/^AI自动记录：/, "").slice(0, 36);
   return note
     ? `先复盘今天${taskFocusLabel(wrongTask)}的 ${wrongCount} 道错题：${note}。`
@@ -1605,8 +1664,9 @@ function todayWrongFocus() {
 }
 
 function buildTomorrowFocus() {
-  const wrongFocus = todayWrongFocus();
-  const planFocus = tomorrowPlanFocus();
+  const profile = studyPerformanceProfile();
+  const wrongFocus = todayWrongFocus(profile);
+  const planFocus = tomorrowPlanFocus(profile);
   return wrongFocus ? `${wrongFocus}${planFocus}` : planFocus;
 }
 
@@ -1759,9 +1819,9 @@ function renderPracticeResultBoard() {
   const wrongList = practiceResults
     .map((item, index) => item && !item.correct ? { ...item, index } : null)
     .filter(Boolean);
-  const reviewAdvice = wrong
-    ? "错题已进入错题集，可以直接重做错题。"
-    : "本组全部正确。可以继续下一组学习，之后按计划做延迟复习。";
+  const resultNote = wrong
+    ? `${wrong} 道错题已进入错题集。`
+    : "本组全部正确。";
   $("#questionArea").innerHTML = `<div class="practice-result-board">
     <p class="section-kicker">本组完成 · 系统自动记录</p>
     <h2>${correct} / ${total} 题正确</h2>
@@ -1779,14 +1839,11 @@ function renderPracticeResultBoard() {
       }).join("")}
     </div>
     <div class="result-review-note">
-      <p><strong>复盘建议：</strong>${escapeImportText(reviewAdvice)}</p>
+      <p>${escapeImportText(resultNote)}</p>
     </div>
-    <div class="result-actions">
-      ${wrong
-        ? `<button class="secondary-button" id="retryWrongQuestions" type="button">重做错题</button>`
-        : `<button class="secondary-button" id="retryAllQuestions" type="button">再练一组</button>`
-      }
-    </div>
+    ${wrong ? `<div class="result-actions">
+      <button class="secondary-button" id="retryWrongQuestions" type="button">重做错题</button>
+    </div>` : ""}
   </div>`;
   $("#practiceFeedback").className = "practice-feedback hidden";
   $("#prevQuestion").style.display = "none";
@@ -1801,7 +1858,6 @@ function renderPracticeResultBoard() {
     $("#nextQuestion").onclick = renderPracticeResultBoard;
   }));
   $("#retryWrongQuestions")?.addEventListener("click", () => restartPracticeWithQuestions(wrongList.map(item => item.question)));
-  $("#retryAllQuestions")?.addEventListener("click", () => restartPracticeWithQuestions(activePractice));
 }
 
 function restartPracticeWithQuestions(questions) {
