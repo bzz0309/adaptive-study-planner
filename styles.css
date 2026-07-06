@@ -214,6 +214,10 @@ h2 { margin: 0; font-size: 25px; letter-spacing: -.025em; }
 .dictation-audio-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 14px 0; }
 .dictation-audio-button { min-height: 42px; border: 1px solid var(--line); border-radius: 12px; background: #fff; cursor: pointer; font-size: 12px; font-weight: 850; }
 .dictation-audio-button:disabled { opacity: .42; cursor: not-allowed; }
+.dictation-input-card { display: block; margin: 14px 0; padding: 15px 16px; border: 1px solid var(--line); border-radius: 16px; background: #fff; }
+.dictation-input-card span { display: block; color: var(--muted); font-size: 10px; font-weight: 850; }
+.dictation-input-card input { width: 100%; margin-top: 10px; border: 0; border-bottom: 2px solid #283342; outline: 0; background: transparent; font-size: clamp(32px, 4.5vw, 48px); font-weight: 850; line-height: 1.35; letter-spacing: 0; text-align: center; }
+.dictation-input-card small { display: block; margin-top: 9px; color: var(--muted); font-size: 10px; line-height: 1.6; text-align: center; }
 .dictation-board { position: relative; height: 260px; overflow: hidden; border: 1px solid #ddd9d0; border-radius: 18px; background: linear-gradient(180deg, #fff, #fbfaf6); }
 .dictation-board canvas { display: block; width: 100%; height: 100%; touch-action: none; }
 .dictation-write-line { position: absolute; left: 28px; right: 28px; bottom: 74px; border-bottom: 2px solid #283342; pointer-events: none; }
@@ -224,6 +228,8 @@ h2 { margin: 0; font-size: 25px; letter-spacing: -.025em; }
 .dictation-answer-card span { display: block; color: #52705d; font-size: 10px; font-weight: 850; }
 .dictation-answer-card strong { display: block; margin: 4px 0 6px; font-size: 22px; }
 .dictation-answer-card p { margin: 4px 0; }
+.dictation-answer-card .dictation-correct { color: #28764b; }
+.dictation-answer-card .dictation-wrong { color: #a54643; }
 .dictation-answer-actions, .dictation-actions { display: flex; align-items: center; gap: 9px; margin-top: 13px; }
 .dictation-actions { justify-content: flex-end; }
 .dictation-actions .secondary-button:first-child { margin-right: auto; }

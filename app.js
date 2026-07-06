@@ -166,7 +166,7 @@ const dictationItems = [
 ];
 
 function readDictationState() {
-  const fallback = { index: 0, revealed: false, weakIds: [], knownIds: [] };
+  const fallback = { index: 0, revealed: false, inputText: "", weakIds: [], knownIds: [] };
   try {
     return { ...fallback, ...(JSON.parse(localStorage.getItem(dictationStorageKey) || "null") || {}) };
   } catch {
@@ -181,9 +181,25 @@ function writeDictationState(patch = {}) {
   return next;
 }
 
+function dictationPracticeItems() {
+  return dictationItems.filter(item => item.pos !== "短句" && !/\s/.test(item.text));
+}
+
 function currentDictationItem(state = readDictationState()) {
-  const index = Math.max(0, Math.min(dictationItems.length - 1, Number(state.index) || 0));
-  return dictationItems[index] || dictationItems[0];
+  const items = dictationPracticeItems();
+  const index = Math.max(0, Math.min(items.length - 1, Number(state.index) || 0));
+  return items[index] || items[0];
+}
+
+function normalizeDictationAnswer(value = "") {
+  return String(value)
+    .normalize("NFC")
+    .toLowerCase()
+    .replace(/[.,!?！？。、“”‘’'"()[\]{}·…~\-—_\s]/g, "");
+}
+
+function isDictationAnswerCorrect(input = "", answer = "") {
+  return Boolean(input.trim()) && normalizeDictationAnswer(input) === normalizeDictationAnswer(answer);
 }
 
 function selectedStudyTokens(settings = {}, fallbackTokens = []) {
@@ -1231,10 +1247,14 @@ function renderDictationView() {
   const view = $("#dictationView");
   if (!view) return;
   const state = readDictationState();
+  const practiceItems = dictationPracticeItems();
   const item = currentDictationItem(state);
-  const index = dictationItems.findIndex(entry => entry.id === item.id);
+  const index = practiceItems.findIndex(entry => entry.id === item.id);
   const safeIndex = Math.max(0, index);
   const revealed = Boolean(state.revealed);
+  const inputText = String(state.inputText || "");
+  const hasInput = Boolean(inputText.trim());
+  const isCorrect = isDictationAnswerCorrect(inputText, item.text);
   const weakIds = new Set(state.weakIds || []);
   const knownIds = new Set(state.knownIds || []);
   view.innerHTML = `<div class="page-heading dictation-heading">
@@ -1244,14 +1264,14 @@ function renderDictationView() {
       <p>先听音，再手写一遍。适合 iPad、手机和触控板。</p>
     </div>
     <div class="score-pill">
-      <small>当前</small><strong>${safeIndex + 1} / ${dictationItems.length}</strong><span>${weakIds.size} 个不熟</span>
+      <small>当前</small><strong>${safeIndex + 1} / ${practiceItems.length}</strong><span>${weakIds.size} 个不熟</span>
     </div>
   </div>
   <div class="dictation-layout">
     <article class="dictation-workbench">
       <div class="dictation-token">
         <span>${escapeImportText(item.note)}</span>
-        <div><strong>${revealed ? escapeImportText(item.text) : "先听，再写"}</strong><em>${escapeImportText(item.pos)}</em></div>
+        <div><strong>${revealed ? escapeImportText(item.text) : "先听，再写单词"}</strong><em>${escapeImportText(item.pos)}</em></div>
         <p>${revealed ? `中文：${escapeImportText(item.zh)}` : "核对前不显示答案，先凭声音写。"}</p>
         <small>${escapeImportText(item.source || "系统听写词库")}</small>
       </div>
@@ -1260,12 +1280,20 @@ function renderDictationView() {
         <button class="dictation-audio-button" type="button" ${revealed ? "" : "disabled"} data-dictation-speak="${escapeImportText(item.pairing)}">搭配</button>
         <button class="dictation-audio-button" type="button" ${revealed ? "" : "disabled"} data-dictation-speak="${escapeImportText(item.example)}">例句</button>
       </div>
+      <label class="dictation-input-card">
+        <span>你的答案</span>
+        <input id="dictationInput" lang="ko" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" value="${escapeImportText(inputText)}" placeholder="用韩文键盘/手写输入这里" />
+        <small>iPad / iPhone 可切到韩文手写键盘，写完会变成普通韩文字。</small>
+      </label>
       <div class="dictation-board">
         <canvas id="dictationCanvas" aria-label="听写手写区"></canvas>
         <span class="dictation-write-line"></span>
-        <small>可以用手指、Apple Pencil 或触控板书写</small>
+        <small>草稿区：可以用 Apple Pencil 先写一遍，但判题以“你的答案”输入框为准</small>
       </div>
       ${revealed ? `<div class="dictation-answer-card">
+        <span>核对结果</span>
+        <strong class="${isCorrect ? "dictation-correct" : "dictation-wrong"}">${isCorrect ? "写对了" : "再对照一次"}</strong>
+        <p>你的答案：${hasInput ? escapeImportText(inputText) : "未输入"}</p>
         <span>原词 / 原句</span>
         <strong>${escapeImportText(item.text)}</strong>
         <p>中文：${escapeImportText(item.zh)}</p>
@@ -1276,7 +1304,7 @@ function renderDictationView() {
           <button class="secondary-button compact" type="button" id="markDictationWeak">标记不熟</button>
           <button class="secondary-button compact" type="button" id="markDictationKnown">已经掌握</button>
         </div>
-      </div>` : `<div class="dictation-hint-card">听完后先手写，不确定也先写下来。核对时再看中文、搭配和例句。</div>`}
+      </div>` : `<div class="dictation-hint-card">先听音，再把韩文写进输入框。下面手写区只当草稿纸，系统不会把画布自动识别成文字。</div>`}
       <div class="dictation-actions">
         <button class="secondary-button" type="button" id="prevDictationItem">上一条</button>
         <button class="secondary-button" type="button" id="clearDictationCanvas">清空</button>
@@ -1288,7 +1316,7 @@ function renderDictationView() {
         <span>单词消除</span>
         <h3>已经会的词淡化显示</h3>
         <div class="word-bank">
-          ${dictationItems.map(entry => `<button class="word-chip ${entry.id === item.id ? "is-current" : ""} ${knownIds.has(entry.id) ? "is-known" : ""}" type="button" data-dictation-jump="${entry.id}">
+          ${practiceItems.map(entry => `<button class="word-chip ${entry.id === item.id ? "is-current" : ""} ${knownIds.has(entry.id) ? "is-known" : ""}" type="button" data-dictation-jump="${entry.id}">
             ${escapeImportText(entry.text)}
           </button>`).join("")}
         </div>
@@ -1297,7 +1325,7 @@ function renderDictationView() {
         <span>不熟词</span>
         <h3>${weakIds.size ? "下次优先复盘" : "暂时没有"}</h3>
         <div class="dictation-weak-list">
-          ${dictationItems.filter(entry => weakIds.has(entry.id)).map(entry => `<button type="button" data-dictation-jump="${entry.id}"><strong>${escapeImportText(entry.text)}</strong><small>${escapeImportText(entry.zh)}</small></button>`).join("") || "<p>核对后可以把卡住的词标记在这里。</p>"}
+          ${practiceItems.filter(entry => weakIds.has(entry.id)).map(entry => `<button type="button" data-dictation-jump="${entry.id}"><strong>${escapeImportText(entry.text)}</strong><small>${escapeImportText(entry.zh)}</small></button>`).join("") || "<p>核对后可以把卡住的词标记在这里。</p>"}
         </div>
       </section>
     </aside>
@@ -1308,20 +1336,39 @@ function renderDictationView() {
 
 function bindDictationEvents() {
   $$("[data-dictation-speak]").forEach(button => button.addEventListener("click", () => speakDictationText(button.dataset.dictationSpeak || "")));
+  $("#dictationInput")?.addEventListener("input", event => {
+    writeDictationState({ inputText: event.target.value });
+  });
   $("#revealDictationAnswer")?.addEventListener("click", () => {
-    writeDictationState({ revealed: true });
+    const state = readDictationState();
+    const item = currentDictationItem(state);
+    const inputText = ($("#dictationInput")?.value || "").trim();
+    if (!inputText) {
+      showToast("先把听到的韩文写进输入框，再核对");
+      return;
+    }
+    const isCorrect = isDictationAnswerCorrect(inputText, item.text);
+    const weakIds = isCorrect
+      ? (state.weakIds || []).filter(id => id !== item.id)
+      : [...new Set([...(state.weakIds || []), item.id])];
+    const knownIds = isCorrect
+      ? [...new Set([...(state.knownIds || []), item.id])]
+      : (state.knownIds || []).filter(id => id !== item.id);
+    writeDictationState({ inputText, revealed: true, weakIds, knownIds });
     renderDictationView();
   });
   $("#nextDictationItem")?.addEventListener("click", () => {
     const state = readDictationState();
-    const nextIndex = ((Number(state.index) || 0) + 1) % dictationItems.length;
-    writeDictationState({ index: nextIndex, revealed: false });
+    const items = dictationPracticeItems();
+    const nextIndex = ((Number(state.index) || 0) + 1) % items.length;
+    writeDictationState({ index: nextIndex, revealed: false, inputText: "" });
     renderDictationView();
   });
   $("#prevDictationItem")?.addEventListener("click", () => {
     const state = readDictationState();
-    const previousIndex = ((Number(state.index) || 0) - 1 + dictationItems.length) % dictationItems.length;
-    writeDictationState({ index: previousIndex, revealed: false });
+    const items = dictationPracticeItems();
+    const previousIndex = ((Number(state.index) || 0) - 1 + items.length) % items.length;
+    writeDictationState({ index: previousIndex, revealed: false, inputText: "" });
     renderDictationView();
   });
   $("#clearDictationCanvas")?.addEventListener("click", clearDictationCanvas);
@@ -1342,9 +1389,9 @@ function bindDictationEvents() {
     renderDictationView();
   });
   $$("[data-dictation-jump]").forEach(button => button.addEventListener("click", () => {
-    const index = dictationItems.findIndex(entry => entry.id === button.dataset.dictationJump);
+    const index = dictationPracticeItems().findIndex(entry => entry.id === button.dataset.dictationJump);
     if (index < 0) return;
-    writeDictationState({ index, revealed: false });
+    writeDictationState({ index, revealed: false, inputText: "" });
     renderDictationView();
   }));
 }
@@ -1626,6 +1673,23 @@ function taskFocusLabel(task) {
   return task ? `「${taskDisplayTitle(task, tasks.indexOf(task))}」` : "";
 }
 
+function uniqueTextParts(parts = []) {
+  const seen = new Set();
+  return parts
+    .map(part => String(part || "").trim())
+    .filter(part => {
+      if (!part) return false;
+      const key = part.replace(/\s+/g, "");
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+}
+
+function compactRepeatedClauses(text = "") {
+  return uniqueTextParts(String(text).split(/[；;]+/)).join("；");
+}
+
 function tomorrowPriorityTask(tomorrowTasks = [], profile = studyPerformanceProfile()) {
   const available = tomorrowTasks.filter(task => task.status !== "cancelled" && !hasPracticeRecord(task));
   if (!available.length) return null;
@@ -1657,7 +1721,7 @@ function todayWrongFocus(profile = studyPerformanceProfile()) {
   const wrongTask = profile.todayWrongTask;
   if (!wrongTask) return "";
   const wrongCount = taskWrongCount(wrongTask);
-  const note = String(wrongTask.checkin.note || wrongTask.checkin.reflection || "").replace(/^AI自动记录：/, "").slice(0, 36);
+  const note = compactRepeatedClauses(String(wrongTask.checkin.note || wrongTask.checkin.reflection || "").replace(/^AI自动记录：/, "")).slice(0, 36);
   return note
     ? `先复盘今天${taskFocusLabel(wrongTask)}的 ${wrongCount} 道错题：${note}。`
     : `先复盘今天${taskFocusLabel(wrongTask)}的 ${wrongCount} 道错题。`;
@@ -2485,8 +2549,9 @@ function completePracticeSession() {
   if (practiceTaskId) {
     const task = tasks.find(item => item.id === practiceTaskId);
     if (task) {
+      const wrongNoteParts = uniqueTextParts(practiceWrongNotes.map(item => item.listeningMistake || item.explanationZh || item.explanation)).slice(0, 2);
       const autoNote = wrongCount
-        ? `AI自动记录：错${wrongCount}题；${practiceWrongNotes.slice(0, 2).map(item => item.listeningMistake || item.explanationZh || item.explanation).join("；")}`
+        ? `AI自动记录：错${wrongCount}题${wrongNoteParts.length ? `；${wrongNoteParts.join("；")}` : ""}`
         : "AI自动记录：本组全部正确，建议按计划进行延迟复习。";
       task.status = "completed";
       const wrongResults = practiceResults
