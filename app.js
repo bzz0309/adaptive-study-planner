@@ -47,11 +47,11 @@ const defaultTasks = [
   { id: 1, day: "mon", start: "11:00", end: "11:40", category: "listening", title: "短对话诊断", note: "辨认场所、人物与行动", status: "completed", standards: ["首遍不暂停完成15题", "正确率达到80%", "错题复听并写下漏听关键词", "次日重做错题"] },
   { id: 2, day: "mon", start: "19:30", end: "20:10", category: "vocab", title: "生活场景高频词", note: "交通、购物、时间", status: "completed", standards: ["学习30个高频词", "完成韩中辨认和例句填空", "当天正确率达到90%", "次日无提示回忆率达到85%"] },
   { id: 3, day: "tue", start: "11:00", end: "11:45", category: "reading", title: "助词与句子结构", note: "은/는、이/가、을/를", status: "progress", standards: ["25分钟内完成20题", "正确率达到80%", "错题标注为词汇、语法或理解错误", "在句子中圈出判断依据"] },
-  { id: 4, day: "tue", start: "20:00", end: "20:35", category: "consolidation", title: "否定表达巩固练习", note: "안、못、-지 않다", status: "planned", standards: ["完成本组系统练习", "系统统计正确率", "错题产生后进入错题集", "完成后可补一句反思"] },
+  { id: 4, day: "tue", start: "20:00", end: "20:35", category: "consolidation", title: "否定表达巩固练习", note: "안、못、-지 않다", status: "planned", standards: ["完成本组系统练习", "系统统计正确率", "错题产生后进入错题集", "按错因进入后续复盘"] },
   { id: 5, day: "wed", start: "11:00", end: "11:45", category: "listening", title: "场景对话训练", note: "商店、餐厅、医院", status: "planned", standards: ["首遍不暂停完成15题", "每题记录场所关键词", "错题至少复听2遍", "正确率达到80%"] },
   { id: 6, day: "wed", start: "19:30", end: "20:10", category: "reading", title: "短文信息定位", note: "公告、广告、便条", status: "planned", standards: ["30分钟完成4篇短文共16题", "标出每题答案依据", "正确率达到80%", "每篇用一句中文概括主旨"] },
   { id: 7, day: "thu", start: "11:00", end: "11:40", category: "vocab", title: "动词与形容词变形", note: "现在、过去、将来", status: "planned", standards: ["完成24道变形题", "限时25分钟", "正确率达到85%", "错题各造一个新句子"] },
-  { id: 8, day: "thu", start: "20:00", end: "20:35", category: "consolidation", title: "词汇隔日回忆", note: "不看词表主动回忆", status: "planned", standards: ["无提示回忆周一30词", "系统统计正确率", "薄弱词放入新语境", "完成后可补一句反思"] },
+  { id: 8, day: "thu", start: "20:00", end: "20:35", category: "consolidation", title: "词汇隔日回忆", note: "不看词表主动回忆", status: "planned", standards: ["无提示回忆周一30词", "系统统计正确率", "薄弱词放入新语境", "按错因进入后续复盘"] },
   { id: 9, day: "fri", start: "11:00", end: "11:45", category: "listening", title: "说话意图判断", note: "为什么这样说、想表达什么", status: "planned", standards: ["完成15题，首遍不暂停", "写下决定答案的动词", "正确率达到80%", "错题完成近义变式"] },
   { id: 10, day: "fri", start: "19:30", end: "20:15", category: "reading", title: "句子排序与衔接", note: "连接词、指代关系", status: "planned", standards: ["35分钟完成15题", "圈出连接词和指代词", "正确率达到80%", "错题复述排序依据"] },
   { id: 11, day: "sat", start: "14:00", end: "15:40", category: "mock", title: "半套限时模拟", note: "听力15题＋阅读20题", status: "planned", standards: ["全程不中断、不查词", "按规定时间完成35题", "分别记录听力和阅读正确率", "归类全部错题"] },
@@ -131,7 +131,7 @@ const completionStandards = {
   writing: ["按题目要求限时完成", "检查结构、语法和连接", "修改至少一轮", "记录可复用表达"],
   speaking: ["按规定时间完成录音", "回答切题并展开理由", "复听标记停顿和重复", "重新录制一次"],
   dictation: ["播放后完成手写", "核对原词、搭配和例句", "不熟词标记进复盘", "掌握词可从练习中消除"],
-  consolidation: ["完成本组系统练习", "系统统计正确率", "错题产生后进入错题集", "完成后可补一句反思"],
+  consolidation: ["完成本组系统练习", "系统统计正确率", "错题产生后进入错题集", "按错因进入后续复盘"],
   review: ["完成全部到期错题", "完成延迟变式题", "正确率达到90%", "能口头说明判断路径"],
   mock: ["全程不中断、不查词", "按规定时间完成", "记录各部分正确率", "归类全部错题"]
 };
@@ -696,7 +696,7 @@ const realMaterialQuestionBank = [
     questions: [
       {
         materialQuestionId: "topik-i-reading-signs-v1-q100",
-        materialImage: "assets/materials/topik1-reading/question/question-100.png",
+        materialImage: "assets/materials/topik1-reading/question/question-100-korean.png",
         stem: "다음을 읽고 내용과 다른 것을 고르십시오.",
         stemZh: "阅读招聘广告，选择与内容不一致的一项。",
         passageZh: "咖啡专卖店招聘兼职学生。工作时间是周一、周三、周五上午10点到下午4点，薪水是每小时6000韩元，条件是男女大学生。",
@@ -710,7 +710,7 @@ const realMaterialQuestionBank = [
       },
       {
         materialQuestionId: "topik-i-reading-signs-v1-q101",
-        materialImage: "assets/materials/topik1-reading/question/question-101.png",
+        materialImage: "assets/materials/topik1-reading/question/question-101-korean.png",
         stem: "다음을 읽고 내용과 다른 것을 고르십시오.",
         stemZh: "阅读音乐会海报，选择与内容不一致的一项。",
         passageZh: "首尔樱花音乐会在4月4日到4月6日举行。不同日期的演出时间不同，其中4月6日有下午4点和晚上7点两场。",
@@ -724,7 +724,7 @@ const realMaterialQuestionBank = [
       },
       {
         materialQuestionId: "topik-i-reading-signs-v1-q102",
-        materialImage: "assets/materials/topik1-reading/question/question-102.png",
+        materialImage: "assets/materials/topik1-reading/question/question-102-korean.png",
         stem: "다음을 읽고 내용과 다른 것을 고르십시오.",
         stemZh: "阅读促销信息，选择与内容不一致的一项。",
         passageZh: "昌原西瓜促销从5月10日起连续3天，在市政府前广场举行。西瓜比原价便宜10%，现场还有免费试吃会。",
@@ -738,7 +738,7 @@ const realMaterialQuestionBank = [
       },
       {
         materialQuestionId: "topik-i-reading-signs-v1-q103",
-        materialImage: "assets/materials/topik1-reading/question/question-103.png",
+        materialImage: "assets/materials/topik1-reading/question/question-103-korean.png",
         stem: "다음을 읽고 내용과 다른 것을 고르십시오.",
         stemZh: "阅读免费韩文教室公告，选择与内容不一致的一项。",
         passageZh: "免费韩文教室面向想学习韩文的成年男女，课程从10月开始，需要在9月20日前申请。",
@@ -752,7 +752,7 @@ const realMaterialQuestionBank = [
       },
       {
         materialQuestionId: "topik-i-reading-signs-v1-q104",
-        materialImage: "assets/materials/topik1-reading/question/question-104.png",
+        materialImage: "assets/materials/topik1-reading/question/question-104-korean.png",
         stem: "다음을 읽고 내용과 다른 것을 고르십시오.",
         stemZh: "阅读便条内容，选择与内容不一致的一项。",
         passageZh: "明明写给珍妮的便条里说，珍妮这两天都没有来学校，明明担心她是不是生病了；因为明天有考试，所以希望珍妮来学校。",
@@ -1710,7 +1710,7 @@ function safeMaterialImagePath(path = "") {
   const imagePath = String(path || "").trim();
   if (!imagePath) return "";
   if (imagePath.includes("/block-cn/")) {
-    return imagePath.replace("/block-cn/block-", "/question/question-");
+    return imagePath.replace("/block-cn/block-", "/question/question-").replace(/\.png$/i, "-korean.png");
   }
   if (!imagePath.includes("/question/")) return "";
   return imagePath;
