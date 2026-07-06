@@ -126,6 +126,9 @@ function normalizeQuestion(item = {}) {
   const answer = Number(item.answer);
   const audioText = compact(item.audioText || item.audio || item.transcript);
   return {
+    questionId: compact(item.questionId || item.id || ""),
+    materialQuestionId: compact(item.materialQuestionId || ""),
+    materialSetId: compact(item.materialSetId || ""),
     stem: compact(item.stem || item.question),
     stemZh: compact(item.stemZh || item.questionZh || item.stemChinese || ""),
     options,
@@ -137,9 +140,13 @@ function normalizeQuestion(item = {}) {
     explanationZh: compact(item.explanationZh || item.explanationChinese || item.reasonZh || ""),
     answerZh: compact(item.answerZh || item.correctAnswerZh || ""),
     source: compact(item.source || item.type || "Generated exam-type practice"),
+    sourceType: compact(item.sourceType || ""),
+    sourceDetail: compact(item.sourceDetail || ""),
     sourceTitle: compact(item.sourceTitle || ""),
     materialSetTitle: compact(item.materialSetTitle || ""),
     materialImage: compact(item.materialImage || item.image || ""),
+    skillLabel: compact(item.skillLabel || ""),
+    trainingPoint: compact(item.trainingPoint || ""),
     skill: compact(item.skill || item.questionType || ""),
     audioText,
     transcript: compact(item.transcript || audioText),
@@ -150,14 +157,21 @@ function normalizeQuestion(item = {}) {
 
 const MATERIAL_PRACTICE_BANK = [
   {
+    id: "topik-i-reading-signs-v1",
+    sourceType: "user-material",
     exam: "TOPIK",
     level: "I",
     category: "reading",
     title: "TOPIK I 阅读：标识与公告理解",
+    skillLabel: "标识与公告理解",
+    trainingPoint: "从广告、公告和便条中核对时间、对象、条件和活动信息",
     sourceTitle: "用户资料《完全掌握 TOPIK I 初级阅读》",
+    sourceDetail: "标识/公告阅读样本 · 5题",
+    usage: "daily-practice",
     questions: [
       {
-        materialImage: "assets/materials/topik1-reading/block-cn/block-100.png",
+        materialQuestionId: "topik-i-reading-signs-v1-q100",
+        materialImage: "assets/materials/topik1-reading/question/question-100.png",
         stem: "다음을 읽고 내용과 다른 것을 고르십시오.",
         stemZh: "阅读招聘广告，选择与内容不一致的一项。",
         options: ["커피전문점에서 아르바이트 학생을 구합니다.", "고등학생도 일할 수 있습니다.", "일주일에 삼일 일합니다.", "남녀 모두 일할 수 있습니다."],
@@ -169,7 +183,8 @@ const MATERIAL_PRACTICE_BANK = [
         source: "用户资料《完全掌握 TOPIK I 初级阅读》p.84 · 标识阅读"
       },
       {
-        materialImage: "assets/materials/topik1-reading/block-cn/block-101.png",
+        materialQuestionId: "topik-i-reading-signs-v1-q101",
+        materialImage: "assets/materials/topik1-reading/question/question-101.png",
         stem: "다음을 읽고 내용과 다른 것을 고르십시오.",
         stemZh: "阅读音乐会海报，选择与内容不一致的一项。",
         options: ["서울 벚꽃 음악회는 3일 동안 열립니다.", "서울 벚꽃 음악회는 하루에 두 번씩 열립니다.", "서울 벚꽃 음악회는 4월에 열립니다.", "서울 벚꽃 음악회는 누구나 참여할 수 있습니다."],
@@ -181,7 +196,8 @@ const MATERIAL_PRACTICE_BANK = [
         source: "用户资料《完全掌握 TOPIK I 初级阅读》p.85 · 标识阅读"
       },
       {
-        materialImage: "assets/materials/topik1-reading/block-cn/block-102.png",
+        materialQuestionId: "topik-i-reading-signs-v1-q102",
+        materialImage: "assets/materials/topik1-reading/question/question-102.png",
         stem: "다음을 읽고 내용과 다른 것을 고르십시오.",
         stemZh: "阅读促销信息，选择与内容不一致的一项。",
         options: ["수박을 시청 앞에서 팝니다.", "수박을 싸게 팝니다.", "수박을 먹어 볼 수 있습니다.", "5월 11일에는 열리지 않습니다."],
@@ -193,7 +209,8 @@ const MATERIAL_PRACTICE_BANK = [
         source: "用户资料《完全掌握 TOPIK I 初级阅读》p.86 · 标识阅读"
       },
       {
-        materialImage: "assets/materials/topik1-reading/block-cn/block-103.png",
+        materialQuestionId: "topik-i-reading-signs-v1-q103",
+        materialImage: "assets/materials/topik1-reading/question/question-103.png",
         stem: "다음을 읽고 내용과 다른 것을 고르십시오.",
         stemZh: "阅读免费韩文教室公告，选择与内容不一致的一项。",
         options: ["한글 수업은 10월부터 있습니다.", "9월 20일까지 신청해야 합니다.", "외국인도 참여할 수 있습니다.", "이 수업은 무료입니다."],
@@ -205,7 +222,8 @@ const MATERIAL_PRACTICE_BANK = [
         source: "用户资料《完全掌握 TOPIK I 初级阅读》p.87 · 标识阅读"
       },
       {
-        materialImage: "assets/materials/topik1-reading/block-cn/block-104.png",
+        materialQuestionId: "topik-i-reading-signs-v1-q104",
+        materialImage: "assets/materials/topik1-reading/question/question-104.png",
         stem: "다음을 읽고 내용과 다른 것을 고르십시오.",
         stemZh: "阅读便条内容，选择与内容不一致的一项。",
         options: ["제인 씨는 오늘 학교에 안 왔습니다.", "제인 씨는 어제 학교에 왔습니다.", "밍밍 씨는 제인 씨를 걱정합니다.", "내일은 시험이 있습니다."],
@@ -233,8 +251,14 @@ function materialPractice(settings = {}) {
     title: match.title,
     questions: match.questions.slice(0, count).map(question => ({
       ...question,
+      materialSetId: match.id,
       materialSetTitle: match.title,
-      sourceTitle: match.sourceTitle
+      sourceType: match.sourceType,
+      sourceTitle: match.sourceTitle,
+      sourceDetail: match.sourceDetail,
+      skillLabel: match.skillLabel,
+      trainingPoint: match.trainingPoint,
+      questionType: question.questionType || match.skillLabel
     })),
     sources: [{ title: match.sourceTitle, type: "用户资料", note: "作为真实题库样板题来源。" }]
   };

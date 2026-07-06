@@ -613,16 +613,22 @@ const topikIReadingFallbackQuestions = [
     source: "TOPIK I reading recruitment notice type"
   }
 ];
-const materialPracticeBank = [
+const realMaterialQuestionBank = [
   {
     id: "topik-i-reading-signs-v1",
+    sourceType: "user-material",
     exam: "TOPIK",
     level: "I",
     category: "reading",
     title: "TOPIK I 阅读：标识与公告理解",
+    skillLabel: "标识与公告理解",
+    trainingPoint: "从广告、公告和便条中核对时间、对象、条件和活动信息",
     sourceTitle: "用户资料《完全掌握 TOPIK I 初级阅读》",
+    sourceDetail: "标识/公告阅读样本 · 5题",
+    usage: "daily-practice",
     questions: [
       {
+        materialQuestionId: "topik-i-reading-signs-v1-q100",
         materialImage: "assets/materials/topik1-reading/question/question-100.png",
         stem: "다음을 읽고 내용과 다른 것을 고르십시오.",
         stemZh: "阅读招聘广告，选择与内容不一致的一项。",
@@ -636,6 +642,7 @@ const materialPracticeBank = [
         source: "用户资料《完全掌握 TOPIK I 初级阅读》p.84 · 标识阅读"
       },
       {
+        materialQuestionId: "topik-i-reading-signs-v1-q101",
         materialImage: "assets/materials/topik1-reading/question/question-101.png",
         stem: "다음을 읽고 내용과 다른 것을 고르십시오.",
         stemZh: "阅读音乐会海报，选择与内容不一致的一项。",
@@ -649,6 +656,7 @@ const materialPracticeBank = [
         source: "用户资料《完全掌握 TOPIK I 初级阅读》p.85 · 标识阅读"
       },
       {
+        materialQuestionId: "topik-i-reading-signs-v1-q102",
         materialImage: "assets/materials/topik1-reading/question/question-102.png",
         stem: "다음을 읽고 내용과 다른 것을 고르십시오.",
         stemZh: "阅读促销信息，选择与内容不一致的一项。",
@@ -662,6 +670,7 @@ const materialPracticeBank = [
         source: "用户资料《完全掌握 TOPIK I 初级阅读》p.86 · 标识阅读"
       },
       {
+        materialQuestionId: "topik-i-reading-signs-v1-q103",
         materialImage: "assets/materials/topik1-reading/question/question-103.png",
         stem: "다음을 읽고 내용과 다른 것을 고르십시오.",
         stemZh: "阅读免费韩文教室公告，选择与内容不一致的一项。",
@@ -675,6 +684,7 @@ const materialPracticeBank = [
         source: "用户资料《完全掌握 TOPIK I 初级阅读》p.87 · 标识阅读"
       },
       {
+        materialQuestionId: "topik-i-reading-signs-v1-q104",
         materialImage: "assets/materials/topik1-reading/question/question-104.png",
         stem: "다음을 읽고 내용과 다른 것을 고르십시오.",
         stemZh: "阅读便条内容，选择与内容不一致的一项。",
@@ -690,6 +700,7 @@ const materialPracticeBank = [
     ]
   }
 ];
+const materialPracticeBank = realMaterialQuestionBank;
 const listeningFallbackScript = "남자: 수진 씨, 오늘 동아리 회의에 못 올 것 같아요. 갑자기 아르바이트 시간이 바뀌었거든요. 여자: 그래요? 그럼 내일 오전까지 의견을 문자로 보내 주세요. 회의에서 대신 말해 줄게요. 남자: 고마워요. 포스터 디자인에 대한 의견을 정리해서 보낼게요.";
 const listeningFallbackScriptZh = "男：秀珍，我今天可能去不了社团会议了。突然打工时间变了。女：是吗？那请你明天上午之前把意见用短信发给我吧。我会在会议上替你说。男：谢谢。我会整理好关于海报设计的意见发过去。";
 const listeningFallbackQuestions = [
@@ -1624,14 +1635,30 @@ function safeMaterialImagePath(path = "") {
   return imagePath;
 }
 
-function materialPracticeForContext(context = {}, limit = 5) {
+function questionBankMatchesContext(bank, settings, context = {}) {
+  return bank.exam === settings.exam &&
+    bank.level === settings.level &&
+    bank.category === context.category;
+}
+
+function realMaterialQuestionsForContext(context = {}, limit = 5) {
   const settings = context.settings || readStudySettings();
-  const match = materialPracticeBank.find(item =>
-    item.exam === settings.exam &&
-    item.level === settings.level &&
-    item.category === context.category
-  );
-  return match ? match.questions.slice(0, limit).map(question => ({ ...question, materialSetTitle: match.title, sourceTitle: match.sourceTitle })) : [];
+  const match = realMaterialQuestionBank.find(item => questionBankMatchesContext(item, settings, context));
+  return match ? match.questions.slice(0, limit).map(question => ({
+    ...question,
+    materialSetId: match.id,
+    materialSetTitle: match.title,
+    sourceType: match.sourceType,
+    sourceTitle: match.sourceTitle,
+    sourceDetail: match.sourceDetail,
+    skillLabel: match.skillLabel,
+    trainingPoint: match.trainingPoint,
+    questionType: question.questionType || match.skillLabel
+  })) : [];
+}
+
+function materialPracticeForContext(context = {}, limit = 5) {
+  return realMaterialQuestionsForContext(context, limit);
 }
 
 function stopListeningAudio() {
@@ -1785,15 +1812,22 @@ function normalizePracticeQuestions(items, limit = 5) {
       explanation: String(item.explanation || item.reason || "系统会根据答案依据继续调整后续练习。").trim(),
       explanationZh: String(item.explanationZh || item.explanationChinese || item.reasonZh || "").trim(),
       answerZh: String(item.answerZh || item.correctAnswerZh || "").trim(),
+      questionId: String(item.questionId || item.materialQuestionId || "").trim(),
+      materialQuestionId: String(item.materialQuestionId || item.questionId || "").trim(),
+      materialSetId: String(item.materialSetId || "").trim(),
       source: item.source ? String(item.source).slice(0, 120) : "",
+      sourceType: String(item.sourceType || "").trim(),
       sourceTitle: String(item.sourceTitle || "").trim(),
+      sourceDetail: String(item.sourceDetail || "").trim(),
       materialSetTitle: String(item.materialSetTitle || "").trim(),
       materialImage: safeMaterialImagePath(item.materialImage || item.image || ""),
       passageZh: String(item.passageZh || item.passageChinese || item.sourceTextZh || "").trim(),
       audioText,
       transcript: String(item.transcript || audioText).trim(),
       transcriptZh: String(item.transcriptZh || item.transcriptChinese || item.audioTextZh || "").trim(),
-      questionType: String(item.questionType || item.type || "").trim()
+      questionType: String(item.questionType || item.type || "").trim(),
+      skillLabel: String(item.skillLabel || "").trim(),
+      trainingPoint: String(item.trainingPoint || "").trim()
     };
   }).filter(item => item.stem && item.options.length >= 2 && item.answer >= 0 && item.answer < item.options.length).slice(0, limit);
 }
@@ -2299,7 +2333,7 @@ function renderQuestion() {
   const transcriptZh = String(question.transcriptZh || "").trim();
   const playCount = listeningPlayCounts[`${questionIndex}`] || 0;
   const remainingPlays = Math.max(0, 2 - playCount);
-  const materialLabel = question.materialSetTitle || question.sourceTitle || "";
+  const materialLabel = question.skillLabel || question.materialSetTitle || question.sourceTitle || "";
   $("#questionProgress").textContent = `${questionIndex + 1} / ${activePractice.length}`;
   $("#questionArea").innerHTML = `${listening ? `<div class="listening-player">
     <div><span>听力播放</span><strong>${questionGraded ? (learningMode ? "复盘阶段可反复听" : "本题已记录，整组完成后复盘") : `答题阶段剩余 ${remainingPlays} 次`}</strong></div>

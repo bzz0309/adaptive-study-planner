@@ -1,0 +1,87 @@
+[
+  {
+    "id": "topik-i-reading-signs-v1",
+    "sourceType": "user-material",
+    "sourceTitle": "用户资料《完全掌握 TOPIK I 初级阅读》",
+    "sourceDetail": "标识/公告阅读样本 · 5题",
+    "exam": "TOPIK",
+    "level": "I",
+    "category": "reading",
+    "title": "TOPIK I 阅读：标识与公告理解",
+    "skillLabel": "标识与公告理解",
+    "trainingPoint": "从广告、公告和便条中核对时间、对象、条件和活动信息",
+    "usage": "daily-practice",
+    "questions": [
+      {
+        "materialQuestionId": "topik-i-reading-signs-v1-q100",
+        "materialImage": "assets/materials/topik1-reading/question/question-100.png",
+        "stem": "다음을 읽고 내용과 다른 것을 고르십시오.",
+        "stemZh": "阅读招聘广告，选择与内容不一致的一项。",
+        "passageZh": "咖啡专卖店招聘兼职学生。工作时间是周一、周三、周五上午10点到下午4点，薪水是每小时6000韩元，条件是男女大学生。",
+        "options": ["커피전문점에서 아르바이트 학생을 구합니다.", "고등학생도 일할 수 있습니다.", "일주일에 삼일 일합니다.", "남녀 모두 일할 수 있습니다."],
+        "optionTranslations": ["咖啡专卖店正在招聘兼职学生。", "高中生也可以工作。", "一周工作三天。", "男女都可以工作。"],
+        "answer": 1,
+        "answerZh": "高中生也可以工作。",
+        "explanation": "조건은 남녀 대학생이므로 고등학생도 일할 수 있다는 말은 맞지 않습니다.",
+        "explanationZh": "广告条件写的是“男女大学生”，所以“高中生也可以工作”与原文不一致。",
+        "source": "用户资料《完全掌握 TOPIK I 初级阅读》p.84 · 标识阅读"
+      },
+      {
+        "materialQuestionId": "topik-i-reading-signs-v1-q101",
+        "materialImage": "assets/materials/topik1-reading/question/question-101.png",
+        "stem": "다음을 읽고 내용과 다른 것을 고르십시오.",
+        "stemZh": "阅读音乐会海报，选择与内容不一致的一项。",
+        "passageZh": "首尔樱花音乐会在4月4日到4月6日举行。不同日期的演出时间不同，其中4月6日有下午4点和晚上7点两场。",
+        "options": ["서울 벚꽃 음악회는 3일 동안 열립니다.", "서울 벚꽃 음악회는 하루에 두 번씩 열립니다.", "서울 벚꽃 음악회는 4월에 열립니다.", "서울 벚꽃 음악회는 누구나 참여할 수 있습니다."],
+        "optionTranslations": ["首尔樱花音乐会举办3天。", "首尔樱花音乐会每天举行两场。", "首尔樱花音乐会在4月举行。", "首尔樱花音乐会任何人都可以参加。"],
+        "answer": 1,
+        "answerZh": "首尔樱花音乐会每天举行两场。",
+        "explanation": "4월 4일은 정오 1회, 4월 5일은 저녁 7시 1회, 4월 6일은 오후 4시와 저녁 7시 2회입니다.",
+        "explanationZh": "海报中三天的场次不同，并不是每天都有两场，所以该选项不符合内容。",
+        "source": "用户资料《完全掌握 TOPIK I 初级阅读》p.85 · 标识阅读"
+      },
+      {
+        "materialQuestionId": "topik-i-reading-signs-v1-q102",
+        "materialImage": "assets/materials/topik1-reading/question/question-102.png",
+        "stem": "다음을 읽고 내용과 다른 것을 고르십시오.",
+        "stemZh": "阅读促销信息，选择与内容不一致的一项。",
+        "passageZh": "昌原西瓜促销从5月10日起连续3天，在市政府前广场举行。西瓜比原价便宜10%，现场还有免费试吃会。",
+        "options": ["수박을 시청 앞에서 팝니다.", "수박을 싸게 팝니다.", "수박을 먹어 볼 수 있습니다.", "5월 11일에는 열리지 않습니다."],
+        "optionTranslations": ["在市政府前卖西瓜。", "西瓜卖得便宜。", "可以试吃西瓜。", "5月11日不举办。"],
+        "answer": 3,
+        "answerZh": "5月11日不举办。",
+        "explanation": "기간은 5월 10일부터 3일 동안이므로 5월 11일에도 행사가 열립니다.",
+        "explanationZh": "活动从5月10日起连续3天，所以5月11日也会举办，该选项不符合内容。",
+        "source": "用户资料《完全掌握 TOPIK I 初级阅读》p.86 · 标识阅读"
+      },
+      {
+        "materialQuestionId": "topik-i-reading-signs-v1-q103",
+        "materialImage": "assets/materials/topik1-reading/question/question-103.png",
+        "stem": "다음을 읽고 내용과 다른 것을 고르십시오.",
+        "stemZh": "阅读免费韩文教室公告，选择与内容不一致的一项。",
+        "passageZh": "免费韩文教室面向想学习韩文的成年男女，课程从10月开始，需要在9月20日前申请。",
+        "options": ["한글 수업은 10월부터 있습니다.", "9월 20일까지 신청해야 합니다.", "외국인도 참여할 수 있습니다.", "이 수업은 무료입니다."],
+        "optionTranslations": ["韩文课从10月开始。", "需要在9月20日前申请。", "外国人也可以参加。", "这门课是免费的。"],
+        "answer": 2,
+        "answerZh": "外国人也可以参加。",
+        "explanation": "대상은 한글을 배우고 싶은 성인 남녀이며, 외국인이라고 쓰여 있지 않습니다.",
+        "explanationZh": "公告对象是“想学习韩文的成年男女”，没有写外国人也可以参加，所以该选项不符合内容。",
+        "source": "用户资料《完全掌握 TOPIK I 初级阅读》p.87 · 标识阅读"
+      },
+      {
+        "materialQuestionId": "topik-i-reading-signs-v1-q104",
+        "materialImage": "assets/materials/topik1-reading/question/question-104.png",
+        "stem": "다음을 읽고 내용과 다른 것을 고르십시오.",
+        "stemZh": "阅读便条内容，选择与内容不一致的一项。",
+        "passageZh": "明明写给珍妮的便条里说，珍妮这两天都没有来学校，明明担心她是不是生病了；因为明天有考试，所以希望珍妮来学校。",
+        "options": ["제인 씨는 오늘 학교에 안 왔습니다.", "제인 씨는 어제 학교에 왔습니다.", "밍밍 씨는 제인 씨를 걱정합니다.", "내일은 시험이 있습니다."],
+        "optionTranslations": ["珍妮今天没有来学校。", "珍妮昨天来了学校。", "明明担心珍妮。", "明天有考试。"],
+        "answer": 1,
+        "answerZh": "珍妮昨天来了学校。",
+        "explanation": "메모에는 이틀 동안 학교에 안 왔다고 되어 있습니다.",
+        "explanationZh": "便条问“为什么这两天没有来学校”，所以“昨天来了学校”与内容不一致。",
+        "source": "用户资料《完全掌握 TOPIK I 初级阅读》p.88 · 标识阅读"
+      }
+    ]
+  }
+]

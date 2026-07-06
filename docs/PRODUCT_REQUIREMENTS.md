@@ -83,7 +83,22 @@
 
 错题系统内容以此文档为主。
 
-## 5. 变更记录
+## 5. 真实资料题库规格
+
+阅读：[REAL_MATERIAL_QUESTION_BANK.md](./REAL_MATERIAL_QUESTION_BANK.md)
+
+负责内容：
+
+- 真题 / 教材 / 用户资料题库结构
+- 图片题、原题、原选项、标准答案
+- 中文释义、答题解析、错因归纳
+- OCR / 人工结构化导入流程
+- OpenAI 主审 + DeepSeek 复核的未来校验规则
+- AI 同型补充题的边界
+
+真实资料题库内容以此文档为主。
+
+## 6. 变更记录
 
 阅读：[CHANGELOG.md](./CHANGELOG.md)
 
@@ -98,6 +113,7 @@
 - Day1 / Day7 产品文档统一
 - PWA 版本
 - `streakDays` 奖励规则版本
+- Real Material Question Bank v1
 - 三条奖励线版本
 - 轻反馈组件版本
 
