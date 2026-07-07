@@ -1253,14 +1253,47 @@ function taskTrainingPoint(task = {}, index = 0) {
   return { moduleName, point, note };
 }
 
-function speakDictationText(text) {
-  if (!("speechSynthesis" in window)) return showToast("当前浏览器不支持朗读");
+function getKoreanSpeechVoice() {
+  if (!("speechSynthesis" in window)) return null;
+  const voices = window.speechSynthesis.getVoices?.() || [];
+  return voices.find(voice => /^ko([-_]|$)/i.test(voice.lang))
+    || voices.find(voice => /korean|한국|Yuna|Sora/i.test(`${voice.name} ${voice.lang}`))
+    || null;
+}
+
+function speakKoreanText(text, options = {}) {
+  if (!("speechSynthesis" in window)) {
+    showToast("当前浏览器不支持朗读");
+    options.onError?.();
+    return false;
+  }
+  const content = String(text || "").trim();
+  if (!content) {
+    options.onError?.();
+    return false;
+  }
   window.speechSynthesis.cancel();
-  const utterance = new SpeechSynthesisUtterance(text);
+  const utterance = new SpeechSynthesisUtterance(content);
+  const voice = getKoreanSpeechVoice();
   utterance.lang = "ko-KR";
-  utterance.rate = 0.82;
-  utterance.pitch = 1;
+  utterance.rate = options.rate || 0.86;
+  utterance.pitch = options.pitch || 1;
+  utterance.volume = 1;
+  if (voice) utterance.voice = voice;
+  utterance.onstart = () => options.onStart?.();
+  utterance.onend = () => options.onEnd?.();
+  utterance.onerror = () => {
+    showToast("音频没有成功播放，请确认设备音量和浏览器语音权限");
+    options.onError?.();
+  };
+  window.speechSynthesis.resume?.();
   window.speechSynthesis.speak(utterance);
+  setTimeout(() => window.speechSynthesis.resume?.(), 80);
+  return true;
+}
+
+function speakDictationText(text) {
+  speakKoreanText(text, { rate: 0.82 });
 }
 
 function clearDictationCanvas() {
@@ -1979,21 +2012,27 @@ function playListeningQuestion() {
   if (!("speechSynthesis" in window)) return showToast("当前浏览器不支持朗读，请提交后查看听力原文");
   if (!isReview && currentCount >= 2) return showToast("答题阶段最多播放2次，提交后可反复复听");
   stopListeningAudio();
-  const utterance = new SpeechSynthesisUtterance(text);
-  utterance.lang = "ko-KR";
-  utterance.rate = 0.88;
-  utterance.onend = () => {
-    listeningIsSpeaking = false;
-    renderQuestion();
-  };
-  utterance.onerror = () => {
-    listeningIsSpeaking = false;
-    showToast("朗读暂不可用，请提交后查看听力原文");
-    renderQuestion();
-  };
   if (!isReview) listeningPlayCounts[key] = currentCount + 1;
   listeningIsSpeaking = true;
-  window.speechSynthesis.speak(utterance);
+  const started = speakKoreanText(text, {
+    rate: 0.88,
+    onStart: () => {
+      listeningIsSpeaking = true;
+      renderQuestion();
+    },
+    onEnd: () => {
+      listeningIsSpeaking = false;
+      renderQuestion();
+    },
+    onError: () => {
+      listeningIsSpeaking = false;
+      renderQuestion();
+    }
+  });
+  if (!started) {
+    listeningIsSpeaking = false;
+    if (!isReview) listeningPlayCounts[key] = currentCount;
+  }
   renderQuestion();
 }
 
