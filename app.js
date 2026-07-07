@@ -79,7 +79,7 @@ const studyTemplates = {
     ["句子补全", "对应TOPIK写作51题，练对话和句子空格"], ["短文逻辑补全", "对应TOPIK写作52题，练前后文逻辑"], ["图表说明", "对应TOPIK写作53题，练趋势、比较和总结"], ["议论文结构", "对应TOPIK写作54题，练观点、理由和例证"]
   ],
   dictation: [
-    ["常见词听写", "听音后写出真题常见词和基础搭配"], ["短句背写", "听一句简单表达，再手写完整句子"], ["听错词巩固", "从听力和阅读错题里抽词背写"], ["助词句听写", "练 은/는、이/가、을/를 的短句"]
+    ["常见词听写", "听音后写出真题常见词"], ["搭配词听写", "听音后写出常见搭配里的核心词"], ["听错词巩固", "从听力和阅读错题里抽词背写"], ["助词词形听写", "练常见助词相关词形"]
   ],
   review: [
     ["到期错题复盘", "完成1、3、7、14天复习"], ["延迟变式检验", "正确作答并讲明思路"], ["本日知识回忆", "不看笔记复述判断路径"]
@@ -137,7 +137,7 @@ const completionStandards = {
 };
 
 const weakTokenMap = { "听力": "listening", "阅读": "reading", "词汇": "vocab", "语法": "grammar", "写作": "writing", "口语": "speaking" };
-const planSchemaVersion = "16";
+const planSchemaVersion = "18";
 const dictationStorageKey = "topikPrototypeDictationState";
 const wordEliminationStorageKey = "topikPrototypeWordEliminationState";
 const completeMasteryTopikIReadingSource = "完全掌握 TOPIK I 初级阅读 · 1-2 必背单词";
@@ -322,6 +322,40 @@ function scopedConsolidationTemplates(tokens = []) {
   ];
 }
 
+function scopedStudyTokens(settings = readStudySettings()) {
+  const defaults = defaultStudyTokens(settings);
+  const explicit = userSelectedStudyTokens(settings);
+  return [...new Set((explicit.length ? explicit : selectedStudyTokens(settings, defaults)).map(normalizeStudyCategory))];
+}
+
+function allowedTaskCategories(settings = readStudySettings()) {
+  const tokens = scopedStudyTokens(settings);
+  return new Set([
+    ...tokens,
+    ...(hasActualReviewNeed() ? ["consolidation", "review"] : [])
+  ]);
+}
+
+function constrainTasksToStudyScope(sourceTasks = [], settings = readStudySettings()) {
+  const scopedTokens = scopedStudyTokens(settings);
+  const allowedCategories = allowedTaskCategories(settings);
+  const cleaned = (sourceTasks || []).filter(task => {
+    const category = normalizeStudyCategory(task.category);
+    if (!allowedCategories.has(category)) return false;
+    if (taskMentionsUnselectedScope(task, scopedTokens)) return false;
+    return true;
+  }).map(task => ({ ...task, category: normalizeStudyCategory(task.category) }));
+  return cleaned.length ? cleaned : generatePlanFromSettings(settings);
+}
+
+function syncTasksToStudyScope(settings = readStudySettings()) {
+  const scopedTasks = constrainTasksToStudyScope(tasks, settings);
+  if (JSON.stringify(scopedTasks) === JSON.stringify(tasks)) return false;
+  tasks = scopedTasks;
+  localStorage.setItem("topikPrototypeTasks", JSON.stringify(tasks));
+  return true;
+}
+
 function minutesToClock(total) {
   const normalized = Math.max(0, total);
   return `${String(Math.floor(normalized / 60)).padStart(2, "0")}:${String(normalized % 60).padStart(2, "0")}`;
@@ -485,7 +519,7 @@ function generatePlanFromSettings(settings) {
   const coreTokens = defaultStudyTokens({ exam, level });
   const weakTokens = selectedStudyTokens(settings, coreTokens);
   const templateSource = exam === "IELTS" ? ieltsTemplates : (exam === "OTHER" ? genericTemplates : studyTemplates);
-  const rotation = [...new Set([...prioritizedStudyTokens(weakTokens), "consolidation"])];
+  const rotation = [...new Set(prioritizedStudyTokens(weakTokens))];
   const foundationOffset = { "入门": 0, "一般": 1, "较好": 2, "不确定": 0 }[settings.foundation] || 0;
   let sequence = 0;
   const categoryCounts = {};
@@ -1170,7 +1204,7 @@ function taskDisplayTitle(task = {}, index = 0) {
     reading: ["通知公告阅读", "促销广告阅读", "短文大意理解", "题干关键词定位", "图表信息读取", "句子连接判断", "限时阅读"],
     vocab: ["生活场景词汇", "基础助词辨析", "动词形容词变形", "连接语尾基础", "固定搭配训练", "语境填空", "易混词辨析"],
     grammar: ["基础助词辨析", "连接语尾基础", "句子结构判断", "时态与敬语"],
-    dictation: ["听写：常见词", "听写：短句背写", "听写：听错词巩固", "听写：助词句"],
+    dictation: ["听写：常见词", "听写：搭配词", "听写：听错词", "听写：助词词形"],
     consolidation: ["错因预防练习", "延迟巩固练习", "混合题型串联", "限时综合练习", "本日知识回忆"],
     review: ["错题复盘：同类变式题", "错题复盘：到期题重做", "错题复盘：判断路径"],
     mock: ["阶段模拟：限时综合练习"]
@@ -1776,7 +1810,10 @@ function uniqueTextParts(parts = []) {
     .map(part => String(part || "").trim())
     .filter(part => {
       if (!part) return false;
-      const key = part.replace(/\s+/g, "");
+      const key = part
+        .replace(/\s+/g, "")
+        .replace(/[。；;,.，、：:！!？?]/g, "")
+        .replace(/^(需要|建议|请|先|再)+/, "");
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
@@ -1784,7 +1821,7 @@ function uniqueTextParts(parts = []) {
 }
 
 function compactRepeatedClauses(text = "") {
-  return uniqueTextParts(String(text).split(/[；;]+/)).join("；");
+  return uniqueTextParts(String(text).split(/[；;。]+/)).join("；");
 }
 
 function tomorrowPriorityTask(tomorrowTasks = [], profile = studyPerformanceProfile()) {
@@ -1828,7 +1865,7 @@ function buildTomorrowFocus() {
   const profile = studyPerformanceProfile();
   const wrongFocus = todayWrongFocus(profile);
   const planFocus = tomorrowPlanFocus(profile);
-  return wrongFocus ? `${wrongFocus}${planFocus}` : planFocus;
+  return wrongFocus ? `${wrongFocus} ${planFocus}` : planFocus;
 }
 
 function updateTomorrowFocus(text = "") {
@@ -1842,7 +1879,7 @@ function readStudySettings() {
     exam: "TOPIK",
     level: "I",
     targetGrade: "2",
-    weak: ["语法"],
+    weak: ["听力", "阅读"],
     studyContent: ""
   };
 }
@@ -2736,13 +2773,12 @@ function normalizeAiTasks(aiTasks, settings) {
   const defaultTokens = defaultStudyTokens(settings);
   const explicitTokens = userSelectedStudyTokens(settings);
   const selectedTokens = (explicitTokens.length ? explicitTokens : selectedStudyTokens(settings, defaultTokens)).map(normalizeStudyCategory);
+  const hasReviewNeed = hasActualReviewNeed();
   const allowed = [...new Set([
     ...selectedTokens,
-    "consolidation",
-    "review"
+    ...(hasReviewNeed ? ["consolidation", "review"] : [])
   ])];
   const allowedCategories = new Set(allowed);
-  const hasReviewNeed = hasActualReviewNeed();
   return (aiTasks || []).filter(task => {
     const category = normalizeStudyCategory(task.category);
     const validClock = /^\d{2}:\d{2}$/.test(task.start || "") && /^\d{2}:\d{2}$/.test(task.end || "");
@@ -2799,6 +2835,7 @@ async function commitPlanSettings(settings) {
   } catch {
     tasks = generatePlanFromSettings(settings);
   }
+  tasks = constrainTasksToStudyScope(tasks, settings);
   localStorage.setItem("topikPrototypeTasks", JSON.stringify(tasks));
   localStorage.setItem("topikPrototypePlanVersion", planSchemaVersion);
   renderCalendar();
@@ -3202,6 +3239,10 @@ if (savedSettings) {
 } else {
   updateExamOptions("TOPIK", "I");
 }
+const startupSettings = savedSettings ? { ...readStudySettings(), ...savedSettings } : readStudySettings();
+syncTasksToStudyScope(startupSettings);
+renderCalendar();
+updateTomorrowFocus();
 initializeCloud().finally(() => {
   if (previewRewardId && rewardCatalog[previewRewardId]) return;
   if (localStorage.getItem("topikPrototypeOnboarded")) return;
