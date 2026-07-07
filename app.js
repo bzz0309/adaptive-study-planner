@@ -137,7 +137,7 @@ const completionStandards = {
 };
 
 const weakTokenMap = { "听力": "listening", "阅读": "reading", "词汇": "vocab", "语法": "grammar", "写作": "writing", "口语": "speaking" };
-const planSchemaVersion = "18";
+const planSchemaVersion = "19";
 const dictationStorageKey = "topikPrototypeDictationState";
 const wordEliminationStorageKey = "topikPrototypeWordEliminationState";
 const completeMasteryTopikIReadingSource = "完全掌握 TOPIK I 初级阅读 · 1-2 必背单词";
@@ -328,17 +328,17 @@ function scopedStudyTokens(settings = readStudySettings()) {
   return [...new Set((explicit.length ? explicit : selectedStudyTokens(settings, defaults)).map(normalizeStudyCategory))];
 }
 
-function allowedTaskCategories(settings = readStudySettings()) {
+function allowedTaskCategories(settings = readStudySettings(), hasReviewNeed = hasActualReviewNeed()) {
   const tokens = scopedStudyTokens(settings);
   return new Set([
     ...tokens,
-    ...(hasActualReviewNeed() ? ["consolidation", "review"] : [])
+    ...(hasReviewNeed ? ["consolidation", "review"] : [])
   ]);
 }
 
-function constrainTasksToStudyScope(sourceTasks = [], settings = readStudySettings()) {
+function constrainTasksToStudyScope(sourceTasks = [], settings = readStudySettings(), hasReviewNeed = hasActualReviewNeed()) {
   const scopedTokens = scopedStudyTokens(settings);
-  const allowedCategories = allowedTaskCategories(settings);
+  const allowedCategories = allowedTaskCategories(settings, hasReviewNeed);
   const cleaned = (sourceTasks || []).filter(task => {
     const category = normalizeStudyCategory(task.category);
     if (!allowedCategories.has(category)) return false;
@@ -917,14 +917,25 @@ function currentCloudState() {
   };
 }
 
+function cloudStateHasReviewNeed(data = {}) {
+  return [...(data.importedErrors || []), ...(data.practiceErrors || [])].some(item => item && item.id);
+}
+
 function applyCloudState(data) {
   if (!data || typeof data !== "object") return;
-  if (Array.isArray(data.tasks)) localStorage.setItem("topikPrototypeTasks", JSON.stringify(data.tasks));
   if (Array.isArray(data.importedErrors)) localStorage.setItem("topikPrototypeImportedErrors", JSON.stringify(data.importedErrors));
   if (Array.isArray(data.practiceErrors)) localStorage.setItem("topikPrototypePracticeErrors", JSON.stringify(data.practiceErrors));
   if (data.settings) localStorage.setItem("topikPrototypeSettings", JSON.stringify(data.settings));
   if (data.onboarded) localStorage.setItem("topikPrototypeOnboarded", data.onboarded);
-  if (data.planVersion) localStorage.setItem("topikPrototypePlanVersion", data.planVersion);
+  if (Array.isArray(data.tasks)) {
+    const settings = data.settings ? { ...readStudySettings(), ...data.settings } : readStudySettings();
+    const scopedTasks = constrainTasksToStudyScope(data.tasks, settings, cloudStateHasReviewNeed(data));
+    if (JSON.stringify(scopedTasks) !== JSON.stringify(data.tasks) || data.planVersion !== planSchemaVersion) {
+      localStorage.setItem("topikPrototypeNeedsCloudRepair", "yes");
+    }
+    localStorage.setItem("topikPrototypeTasks", JSON.stringify(scopedTasks));
+  }
+  localStorage.setItem("topikPrototypePlanVersion", planSchemaVersion);
   if (data.tomorrowFocus) localStorage.setItem("topikPrototypeTomorrowFocus", data.tomorrowFocus);
   if (data.dailyReminder) localStorage.setItem("topikPrototypeDailyReminder", JSON.stringify(data.dailyReminder));
   if (data.rewards) localStorage.setItem("topikPrototypeRewards", JSON.stringify(data.rewards));
@@ -1105,6 +1116,10 @@ async function initializeCloud() {
       cloud.session.user = await userResponse.json();
       storeCloudSession(cloud.session);
       await loadCloudState(false);
+      if (localStorage.getItem("topikPrototypeNeedsCloudRepair") === "yes") {
+        localStorage.removeItem("topikPrototypeNeedsCloudRepair");
+        await saveCloudState(false);
+      }
       if (redirected) showToast("邮箱确认成功，已自动登录并开启云同步");
     } else storeCloudSession(null);
   } else updateCloudUI();
