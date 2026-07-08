@@ -42,6 +42,8 @@ function buildCurrentWeekDays(referenceDate = new Date()) {
 }
 
 let days = buildCurrentWeekDays();
+let activeTtsAudio = null;
+let activeTtsAudioUrl = "";
 
 const defaultTasks = [
   { id: 1, day: "mon", start: "11:00", end: "11:40", category: "listening", title: "短对话诊断", note: "辨认场所、人物与行动", status: "completed", standards: ["首遍不暂停完成15题", "正确率达到80%", "错题复听并写下漏听关键词", "次日重做错题"] },
@@ -1261,7 +1263,59 @@ function getKoreanSpeechVoice() {
     || null;
 }
 
-function speakKoreanText(text, options = {}) {
+function stopTtsAudio() {
+  if (activeTtsAudio) {
+    activeTtsAudio.pause();
+    activeTtsAudio.removeAttribute("src");
+    activeTtsAudio.load?.();
+    activeTtsAudio = null;
+  }
+  if (activeTtsAudioUrl) {
+    URL.revokeObjectURL(activeTtsAudioUrl);
+    activeTtsAudioUrl = "";
+  }
+}
+
+async function playOpenSourceTts(text, options = {}) {
+  const content = String(text || "").trim();
+  if (!content) return false;
+  try {
+    const response = await fetch("/api/tts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        text: content,
+        language: "ko-KR",
+        rate: options.rate || 0.86
+      })
+    });
+    if (!response.ok) return false;
+    const contentType = response.headers.get("content-type") || "";
+    if (!contentType.startsWith("audio/")) return false;
+    const blob = await response.blob();
+    if (!blob.size) return false;
+    stopTtsAudio();
+    activeTtsAudioUrl = URL.createObjectURL(blob);
+    activeTtsAudio = new Audio(activeTtsAudioUrl);
+    activeTtsAudio.playbackRate = 1;
+    activeTtsAudio.onplay = () => options.onStart?.();
+    activeTtsAudio.onended = () => {
+      stopTtsAudio();
+      options.onEnd?.();
+    };
+    activeTtsAudio.onerror = () => {
+      stopTtsAudio();
+      options.onError?.();
+    };
+    await activeTtsAudio.play();
+    return true;
+  } catch {
+    stopTtsAudio();
+    return false;
+  }
+}
+
+function speakBrowserKoreanText(text, options = {}) {
   if (!("speechSynthesis" in window)) {
     showToast("当前浏览器不支持朗读");
     options.onError?.();
@@ -1290,6 +1344,17 @@ function speakKoreanText(text, options = {}) {
   window.speechSynthesis.speak(utterance);
   setTimeout(() => window.speechSynthesis.resume?.(), 80);
   return true;
+}
+
+async function speakKoreanText(text, options = {}) {
+  const content = String(text || "").trim();
+  if (!content) {
+    options.onError?.();
+    return false;
+  }
+  const usedOpenSourceTts = await playOpenSourceTts(content, options);
+  if (usedOpenSourceTts) return true;
+  return speakBrowserKoreanText(content, options);
 }
 
 function speakDictationText(text) {
@@ -1989,6 +2054,7 @@ function materialPracticeForContext(context = {}, limit = 5) {
 }
 
 function stopListeningAudio() {
+  stopTtsAudio();
   if ("speechSynthesis" in window) window.speechSynthesis.cancel();
   listeningIsSpeaking = false;
 }
@@ -2002,19 +2068,18 @@ function listeningTextFor(question = {}) {
   return String(question.audioText || question.transcript || "").trim();
 }
 
-function playListeningQuestion() {
+async function playListeningQuestion() {
   const question = activePractice[questionIndex];
   const text = listeningTextFor(question);
   const key = `${questionIndex}`;
   const currentCount = listeningPlayCounts[key] || 0;
   const isReview = questionGraded;
   if (!text) return showToast("这题暂时没有可播放音频，已作为听力文本题处理");
-  if (!("speechSynthesis" in window)) return showToast("当前浏览器不支持朗读，请提交后查看听力原文");
   if (!isReview && currentCount >= 2) return showToast("答题阶段最多播放2次，提交后可反复复听");
   stopListeningAudio();
   if (!isReview) listeningPlayCounts[key] = currentCount + 1;
   listeningIsSpeaking = true;
-  const started = speakKoreanText(text, {
+  const started = await speakKoreanText(text, {
     rate: 0.88,
     onStart: () => {
       listeningIsSpeaking = true;
