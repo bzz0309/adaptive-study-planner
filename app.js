@@ -755,6 +755,69 @@ const topikIReadingFallbackQuestions = [
 ];
 const realMaterialQuestionBank = [
   {
+    id: "topik-ii-listening-102-pictures-v1",
+    sourceType: "official-material",
+    exam: "TOPIK",
+    level: "II",
+    category: "listening",
+    title: "TOPIK II 听力：看图与图表理解",
+    skillLabel: "看图与图表理解",
+    trainingPoint: "先听音频，再根据场景动作、人物关系和图表数据选择最符合的一项",
+    sourceTitle: "第102届 TOPIK II 听力真题",
+    sourceDetail: "1-3题 · 图片/图表选择样本",
+    usage: "daily-practice",
+    questions: [
+      {
+        materialQuestionId: "topik-ii-listening-102-q001",
+        materialImage: "assets/materials/topik102-listening/question/q001.png",
+        audioSrc: "assets/materials/topik102-listening/audio/2-01.mp3",
+        stem: "다음을 듣고 가장 알맞은 그림 또는 그래프를 고르십시오.",
+        stemZh: "听音频，选择最符合内容的图画或图表。",
+        options: ["그림 ①", "그림 ②", "그림 ③", "그림 ④"],
+        optionTranslations: ["图1", "图2", "图3", "图4"],
+        answer: 1,
+        answerZh: "图2",
+        transcript: "남자: 이 책을 소포로 보내고 싶은데요. 소포 상자 살 수 있지요? 여자: 네. 손님, 상자는 이쪽에서 고르시면 돼요. 남자: 네, 한번 볼게요.",
+        transcriptZh: "男：我想把这本书寄包裹。可以买包裹箱吧？女：可以，客人，箱子在这边选就行。男：好，我看一下。",
+        explanation: "남자는 책을 소포로 보내려고 하고, 여자는 상자를 고르라고 안내합니다.",
+        explanationZh: "音频里男生想寄书，需要买包裹箱；女生指引他去选择箱子。图2最符合“在邮局柜台前选包裹箱”的场景。",
+        source: "第102届 TOPIK II 听力 1题"
+      },
+      {
+        materialQuestionId: "topik-ii-listening-102-q002",
+        materialImage: "assets/materials/topik102-listening/question/q002.png",
+        audioSrc: "assets/materials/topik102-listening/audio/2-02.mp3",
+        stem: "다음을 듣고 가장 알맞은 그림 또는 그래프를 고르십시오.",
+        stemZh: "听音频，选择最符合内容的图画或图表。",
+        options: ["그림 ①", "그림 ②", "그림 ③", "그림 ④"],
+        optionTranslations: ["图1", "图2", "图3", "图4"],
+        answer: 0,
+        answerZh: "图1",
+        transcript: "여자: 어, 낚싯대가 움직인다. 물고기 잡은 것 같아. 남자: 그래? 낚싯대 잘 잡고 천천히 당겨서 올려 봐. 여자: 응. 그런데 진짜 무겁다.",
+        transcriptZh: "女：啊，鱼竿在动。好像钓到鱼了。男：是吗？把鱼竿抓稳，慢慢拉上来看看。女：嗯，可是真的很重。",
+        explanation: "여자는 낚싯대가 움직인다고 말하고, 남자는 낚싯대를 잡고 천천히 당기라고 합니다.",
+        explanationZh: "对话中女生正在钓鱼，鱼竿动了，男生让她抓稳鱼竿慢慢拉上来。图1最符合“女生正在拉鱼竿，男生在旁边指导”的场景。",
+        source: "第102届 TOPIK II 听力 2题"
+      },
+      {
+        materialQuestionId: "topik-ii-listening-102-q003",
+        materialImage: "assets/materials/topik102-listening/question/q003.png",
+        audioSrc: "assets/materials/topik102-listening/audio/2-03.mp3",
+        stem: "다음을 듣고 가장 알맞은 그림 또는 그래프를 고르십시오.",
+        stemZh: "听音频，选择最符合内容的图画或图表。",
+        options: ["그래프 ①", "그래프 ②", "그래프 ③", "그래프 ④"],
+        optionTranslations: ["图表1", "图表2", "图表3", "图表4"],
+        answer: 2,
+        answerZh: "图表3",
+        transcript: "남자: 안전한 먹거리에 대한 소비자들의 관심이 높아지면서 최근 1년간 친환경 농산물을 구매한 적이 있다는 응답이 76%로 나타났습니다. 친환경 농산물 구매 이유로는 '건강을 위해서'가 1위를 차지했으며, '환경 보호를 위해서', '품질이 좋아서'가 그 뒤를 이었습니다.",
+        transcriptZh: "男：随着消费者对安全食品的关注提高，调查显示最近一年购买过环保农产品的回答占76%。购买环保农产品的理由中，“为了健康”排第一，其后是“为了保护环境”和“因为品质好”。",
+        explanation: "구매 경험은 있다는 응답이 76%이고, 구매 이유는 건강, 환경 보호, 품질 순서입니다.",
+        explanationZh: "音频说最近一年买过环保农产品的人占76%，并且购买理由排序是：为了健康、为了保护环境、因为品质好。图表3同时符合这两个关键信息。",
+        source: "第102届 TOPIK II 听力 3题"
+      }
+    ]
+  },
+  {
     id: "topik-i-reading-signs-v1",
     sourceType: "user-material",
     exam: "TOPIK",
@@ -2027,6 +2090,14 @@ function safeMaterialImagePath(path = "") {
   return imagePath;
 }
 
+function safeAudioPath(path = "") {
+  const audioPath = String(path || "").trim();
+  if (!audioPath) return "";
+  if (!audioPath.startsWith("assets/materials/")) return "";
+  if (!/\.(mp3|m4a|wav|ogg)$/i.test(audioPath)) return "";
+  return audioPath;
+}
+
 function questionBankMatchesContext(bank, settings, context = {}) {
   return bank.exam === settings.exam &&
     bank.level === settings.level &&
@@ -2061,24 +2132,82 @@ function stopListeningAudio() {
 
 function isListeningQuestion(question = {}) {
   const task = practiceTaskId ? tasks.find(item => item.id === practiceTaskId) : null;
-  return Boolean(question.audioText || question.transcript || task?.category === "listening" || /listening|듣기/i.test(question.source || question.questionType || ""));
+  return Boolean(question.audioSrc || question.audioText || question.transcript || task?.category === "listening" || /listening|듣기/i.test(question.source || question.questionType || ""));
 }
 
 function listeningTextFor(question = {}) {
   return String(question.audioText || question.transcript || "").trim();
 }
 
+function listeningAudioFor(question = {}) {
+  return safeAudioPath(question.audioSrc || question.audioUrl || question.audioFile || "");
+}
+
+function playAudioFile(src, callbacks = {}) {
+  if (!src) return false;
+  stopTtsAudio();
+  const audio = new Audio(src);
+  activeTtsAudio = audio;
+  audio.onplay = callbacks.onStart || null;
+  audio.onended = callbacks.onEnd || null;
+  audio.onerror = callbacks.onError || null;
+  audio.play().catch(() => {
+    callbacks.onError?.();
+  });
+  return true;
+}
+
 async function playListeningQuestion() {
   const question = activePractice[questionIndex];
+  const audioSrc = listeningAudioFor(question);
   const text = listeningTextFor(question);
   const key = `${questionIndex}`;
   const currentCount = listeningPlayCounts[key] || 0;
   const isReview = questionGraded;
-  if (!text) return showToast("这题暂时没有可播放音频，已作为听力文本题处理");
+  if (!audioSrc && !text) return showToast("这题暂时没有可播放音频，已作为听力文本题处理");
   if (!isReview && currentCount >= 2) return showToast("答题阶段最多播放2次，提交后可反复复听");
   stopListeningAudio();
   if (!isReview) listeningPlayCounts[key] = currentCount + 1;
   listeningIsSpeaking = true;
+  if (audioSrc) {
+    playAudioFile(audioSrc, {
+      onStart: () => {
+        listeningIsSpeaking = true;
+        renderQuestion();
+      },
+      onEnd: () => {
+        listeningIsSpeaking = false;
+        renderQuestion();
+      },
+      onError: async () => {
+        listeningIsSpeaking = false;
+        if (!text) {
+          if (!isReview) listeningPlayCounts[key] = currentCount;
+          renderQuestion();
+          showToast("音频暂时播放失败，请稍后再试");
+          return;
+        }
+        renderQuestion();
+        await speakKoreanText(text, {
+          rate: 0.88,
+          onStart: () => {
+            listeningIsSpeaking = true;
+            renderQuestion();
+          },
+          onEnd: () => {
+            listeningIsSpeaking = false;
+            renderQuestion();
+          },
+          onError: () => {
+            listeningIsSpeaking = false;
+            renderQuestion();
+          }
+        });
+      }
+    });
+    renderQuestion();
+    return;
+  }
   const started = await speakKoreanText(text, {
     rate: 0.88,
     onStart: () => {
@@ -2215,6 +2344,7 @@ function normalizePracticeQuestions(items, limit = 5) {
       sourceDetail: String(item.sourceDetail || "").trim(),
       materialSetTitle: String(item.materialSetTitle || "").trim(),
       materialImage: safeMaterialImagePath(item.materialImage || item.image || ""),
+      audioSrc: safeAudioPath(item.audioSrc || item.audioUrl || item.audioFile || ""),
       passageZh: String(item.passageZh || item.passageChinese || item.sourceTextZh || "").trim(),
       audioText,
       transcript: String(item.transcript || audioText).trim(),
@@ -2724,6 +2854,7 @@ function renderQuestion() {
   const learningMode = practiceReviewMode === "learning";
   const listening = isListeningQuestion(question);
   const transcript = listeningTextFor(question);
+  const hasPlayableAudio = Boolean(listeningAudioFor(question) || transcript);
   const transcriptZh = String(question.transcriptZh || "").trim();
   const playCount = listeningPlayCounts[`${questionIndex}`] || 0;
   const remainingPlays = Math.max(0, 2 - playCount);
@@ -2731,7 +2862,7 @@ function renderQuestion() {
   $("#questionProgress").textContent = `${questionIndex + 1} / ${activePractice.length}`;
   $("#questionArea").innerHTML = `${listening ? `<div class="listening-player">
     <div><span>听力播放</span><strong>${questionGraded ? (learningMode ? "复盘阶段可反复听" : "本题已记录，整组完成后复盘") : `答题阶段剩余 ${remainingPlays} 次`}</strong></div>
-    <button class="secondary-button compact" id="playListening" type="button" ${listeningIsSpeaking || (!learningMode && questionGraded) || (!questionGraded && remainingPlays <= 0) || !transcript ? "disabled" : ""}>${listeningIsSpeaking ? "播放中…" : "播放音频"}</button>
+    <button class="secondary-button compact" id="playListening" type="button" ${listeningIsSpeaking || (!learningMode && questionGraded) || (!questionGraded && remainingPlays <= 0) || !hasPlayableAudio ? "disabled" : ""}>${listeningIsSpeaking ? "播放中…" : "播放音频"}</button>
   </div>` : ""}
   ${materialLabel ? `<div class="material-source-pill">资料题 · ${escapeImportText(materialLabel)}</div>` : ""}
   ${question.materialImage ? `<button class="question-material-image" type="button" id="openMaterialImage" aria-label="查看原始资料图"><img src="${escapeImportText(question.materialImage)}" alt="原始资料页" loading="lazy" /></button>` : ""}
