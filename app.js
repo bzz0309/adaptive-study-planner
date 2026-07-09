@@ -2187,16 +2187,57 @@ function playAudioFile(src, callbacks = {}) {
 async function playListeningQuestion() {
   const question = activePractice[questionIndex];
   const audioSrc = listeningAudioFor(question);
+  const text = listeningTextFor(question);
   const key = `${questionIndex}`;
   const currentCount = listeningPlayCounts[key] || 0;
   const isReview = questionGraded;
-  if (!audioSrc) return showToast("这题暂时没有原始音频，不使用机械朗读");
+  if (!audioSrc && !text) return showToast("这题暂时没有可播放音频，已作为文本题处理");
   if (!isReview && currentCount >= 2) return showToast("答题阶段最多播放2次，提交后可反复复听");
   stopListeningAudio();
   if (!isReview) listeningPlayCounts[key] = currentCount + 1;
   listeningIsSpeaking = true;
   renderQuestion();
-  playAudioFile(audioSrc, {
+  if (audioSrc) {
+    playAudioFile(audioSrc, {
+      onStart: () => {
+        listeningIsSpeaking = true;
+        renderQuestion();
+      },
+      onEnd: () => {
+        listeningIsSpeaking = false;
+        renderQuestion();
+      },
+      onError: async () => {
+        listeningIsSpeaking = false;
+        if (!text) {
+          if (!isReview) listeningPlayCounts[key] = currentCount;
+          renderQuestion();
+          showToast("原始音频暂时播放失败，请稍后再试");
+          return;
+        }
+        showToast("原始音频暂时失败，先用 AI 朗读练习");
+        renderQuestion();
+        await speakKoreanText(text, {
+          rate: 0.88,
+          onStart: () => {
+            listeningIsSpeaking = true;
+            renderQuestion();
+          },
+          onEnd: () => {
+            listeningIsSpeaking = false;
+            renderQuestion();
+          },
+          onError: () => {
+            listeningIsSpeaking = false;
+            renderQuestion();
+          }
+        });
+      }
+    });
+    return;
+  }
+  const started = await speakKoreanText(text, {
+    rate: 0.88,
     onStart: () => {
       listeningIsSpeaking = true;
       renderQuestion();
@@ -2207,11 +2248,14 @@ async function playListeningQuestion() {
     },
     onError: () => {
       listeningIsSpeaking = false;
-      if (!isReview) listeningPlayCounts[key] = currentCount;
       renderQuestion();
-      showToast("原始音频暂时播放失败，请稍后再试");
     }
   });
+  if (!started) {
+    listeningIsSpeaking = false;
+    if (!isReview) listeningPlayCounts[key] = currentCount;
+  }
+  renderQuestion();
 }
 
 function readPracticeQuestionCount() {
@@ -2838,15 +2882,16 @@ function renderQuestion() {
   const learningMode = practiceReviewMode === "learning";
   const listening = isListeningQuestion(question);
   const transcript = listeningTextFor(question);
-  const hasPlayableAudio = Boolean(listeningAudioFor(question));
+  const hasOriginalAudio = Boolean(listeningAudioFor(question));
+  const hasPlayableAudio = Boolean(hasOriginalAudio || transcript);
   const transcriptZh = String(question.transcriptZh || "").trim();
   const playCount = listeningPlayCounts[`${questionIndex}`] || 0;
   const remainingPlays = Math.max(0, 2 - playCount);
   const materialLabel = question.skillLabel || question.materialSetTitle || question.sourceTitle || "";
   $("#questionProgress").textContent = `${questionIndex + 1} / ${activePractice.length}`;
-  $("#questionArea").innerHTML = `${listening ? `<div class="listening-player ${hasPlayableAudio ? "" : "is-muted"}">
-    <div><span>听力音频</span><strong>${hasPlayableAudio ? (questionGraded ? (learningMode ? "复盘阶段可反复听" : "本题已记录，整组完成后复盘") : `答题阶段剩余 ${remainingPlays} 次`) : "暂无原始音频，按文本题完成"}</strong></div>
-    <button class="secondary-button compact" id="playListening" type="button" ${listeningIsSpeaking || (!learningMode && questionGraded) || (!questionGraded && remainingPlays <= 0) || !hasPlayableAudio ? "disabled" : ""}>${listeningIsSpeaking ? "播放中…" : "播放音频"}</button>
+  $("#questionArea").innerHTML = `${listening ? `<div class="listening-player ${hasOriginalAudio ? "" : "is-muted"}">
+    <div><span>${hasOriginalAudio ? "听力音频" : "AI 朗读"}</span><strong>${hasPlayableAudio ? (hasOriginalAudio ? (questionGraded ? (learningMode ? "复盘阶段可反复听" : "本题已记录，整组完成后复盘") : `答题阶段剩余 ${remainingPlays} 次`) : `暂无原始音频，AI 朗读剩余 ${remainingPlays} 次`) : "暂无可播放内容，按文本题完成"}</strong></div>
+    <button class="secondary-button compact" id="playListening" type="button" ${listeningIsSpeaking || (!learningMode && questionGraded) || (!questionGraded && remainingPlays <= 0) || !hasPlayableAudio ? "disabled" : ""}>${listeningIsSpeaking ? "播放中…" : (hasOriginalAudio ? "播放音频" : "AI 朗读")}</button>
   </div>` : ""}
   ${materialLabel ? `<div class="material-source-pill">资料题 · ${escapeImportText(materialLabel)}</div>` : ""}
   ${question.materialImage ? `<button class="question-material-image" type="button" id="openMaterialImage" aria-label="查看原始资料图"><img src="${escapeImportText(question.materialImage)}" alt="原始资料页" loading="lazy" /></button>` : ""}
