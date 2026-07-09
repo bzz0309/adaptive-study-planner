@@ -2187,56 +2187,16 @@ function playAudioFile(src, callbacks = {}) {
 async function playListeningQuestion() {
   const question = activePractice[questionIndex];
   const audioSrc = listeningAudioFor(question);
-  const text = listeningTextFor(question);
   const key = `${questionIndex}`;
   const currentCount = listeningPlayCounts[key] || 0;
   const isReview = questionGraded;
-  if (!audioSrc && !text) return showToast("这题暂时没有可播放音频，已作为听力文本题处理");
+  if (!audioSrc) return showToast("这题暂时没有原始音频，不使用机械朗读");
   if (!isReview && currentCount >= 2) return showToast("答题阶段最多播放2次，提交后可反复复听");
   stopListeningAudio();
   if (!isReview) listeningPlayCounts[key] = currentCount + 1;
   listeningIsSpeaking = true;
   renderQuestion();
-  if (audioSrc) {
-    playAudioFile(audioSrc, {
-      onStart: () => {
-        listeningIsSpeaking = true;
-        renderQuestion();
-      },
-      onEnd: () => {
-        listeningIsSpeaking = false;
-        renderQuestion();
-      },
-      onError: async () => {
-        listeningIsSpeaking = false;
-        if (!text) {
-          if (!isReview) listeningPlayCounts[key] = currentCount;
-          renderQuestion();
-          showToast("音频暂时播放失败，请稍后再试");
-          return;
-        }
-        renderQuestion();
-        await speakKoreanText(text, {
-          rate: 0.88,
-          onStart: () => {
-            listeningIsSpeaking = true;
-            renderQuestion();
-          },
-          onEnd: () => {
-            listeningIsSpeaking = false;
-            renderQuestion();
-          },
-          onError: () => {
-            listeningIsSpeaking = false;
-            renderQuestion();
-          }
-        });
-      }
-    });
-    return;
-  }
-  const started = await speakKoreanText(text, {
-    rate: 0.88,
+  playAudioFile(audioSrc, {
     onStart: () => {
       listeningIsSpeaking = true;
       renderQuestion();
@@ -2247,14 +2207,11 @@ async function playListeningQuestion() {
     },
     onError: () => {
       listeningIsSpeaking = false;
+      if (!isReview) listeningPlayCounts[key] = currentCount;
       renderQuestion();
+      showToast("原始音频暂时播放失败，请稍后再试");
     }
   });
-  if (!started) {
-    listeningIsSpeaking = false;
-    if (!isReview) listeningPlayCounts[key] = currentCount;
-  }
-  renderQuestion();
 }
 
 function readPracticeQuestionCount() {
@@ -2881,14 +2838,14 @@ function renderQuestion() {
   const learningMode = practiceReviewMode === "learning";
   const listening = isListeningQuestion(question);
   const transcript = listeningTextFor(question);
-  const hasPlayableAudio = Boolean(listeningAudioFor(question) || transcript);
+  const hasPlayableAudio = Boolean(listeningAudioFor(question));
   const transcriptZh = String(question.transcriptZh || "").trim();
   const playCount = listeningPlayCounts[`${questionIndex}`] || 0;
   const remainingPlays = Math.max(0, 2 - playCount);
   const materialLabel = question.skillLabel || question.materialSetTitle || question.sourceTitle || "";
   $("#questionProgress").textContent = `${questionIndex + 1} / ${activePractice.length}`;
-  $("#questionArea").innerHTML = `${listening ? `<div class="listening-player">
-    <div><span>听力播放</span><strong>${questionGraded ? (learningMode ? "复盘阶段可反复听" : "本题已记录，整组完成后复盘") : `答题阶段剩余 ${remainingPlays} 次`}</strong></div>
+  $("#questionArea").innerHTML = `${listening ? `<div class="listening-player ${hasPlayableAudio ? "" : "is-muted"}">
+    <div><span>听力音频</span><strong>${hasPlayableAudio ? (questionGraded ? (learningMode ? "复盘阶段可反复听" : "本题已记录，整组完成后复盘") : `答题阶段剩余 ${remainingPlays} 次`) : "暂无原始音频，按文本题完成"}</strong></div>
     <button class="secondary-button compact" id="playListening" type="button" ${listeningIsSpeaking || (!learningMode && questionGraded) || (!questionGraded && remainingPlays <= 0) || !hasPlayableAudio ? "disabled" : ""}>${listeningIsSpeaking ? "播放中…" : "播放音频"}</button>
   </div>` : ""}
   ${materialLabel ? `<div class="material-source-pill">资料题 · ${escapeImportText(materialLabel)}</div>` : ""}
