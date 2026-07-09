@@ -1326,6 +1326,23 @@ function getKoreanSpeechVoice() {
     || null;
 }
 
+function waitForSpeechVoices(timeout = 900) {
+  if (!("speechSynthesis" in window)) return Promise.resolve([]);
+  const existing = window.speechSynthesis.getVoices?.() || [];
+  if (existing.length) return Promise.resolve(existing);
+  return new Promise(resolve => {
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      window.speechSynthesis.onvoiceschanged = null;
+      resolve(window.speechSynthesis.getVoices?.() || []);
+    };
+    window.speechSynthesis.onvoiceschanged = finish;
+    setTimeout(finish, timeout);
+  });
+}
+
 function stopTtsAudio() {
   if (activeTtsAudio) {
     activeTtsAudio.pause();
@@ -1378,7 +1395,7 @@ async function playOpenSourceTts(text, options = {}) {
   }
 }
 
-function speakBrowserKoreanText(text, options = {}) {
+async function speakBrowserKoreanText(text, options = {}) {
   if (!("speechSynthesis" in window)) {
     showToast("当前浏览器不支持朗读");
     options.onError?.();
@@ -1389,15 +1406,20 @@ function speakBrowserKoreanText(text, options = {}) {
     options.onError?.();
     return false;
   }
+  await waitForSpeechVoices();
   window.speechSynthesis.cancel();
   const utterance = new SpeechSynthesisUtterance(content);
   const voice = getKoreanSpeechVoice();
+  let started = false;
   utterance.lang = "ko-KR";
   utterance.rate = options.rate || 0.86;
   utterance.pitch = options.pitch || 1;
   utterance.volume = 1;
   if (voice) utterance.voice = voice;
-  utterance.onstart = () => options.onStart?.();
+  utterance.onstart = () => {
+    started = true;
+    options.onStart?.();
+  };
   utterance.onend = () => options.onEnd?.();
   utterance.onerror = () => {
     showToast("音频没有成功播放，请确认设备音量和浏览器语音权限");
@@ -1406,6 +1428,12 @@ function speakBrowserKoreanText(text, options = {}) {
   window.speechSynthesis.resume?.();
   window.speechSynthesis.speak(utterance);
   setTimeout(() => window.speechSynthesis.resume?.(), 80);
+  setTimeout(() => {
+    if (!started && !window.speechSynthesis.speaking) {
+      showToast("浏览器没有可用韩语朗读音色，正在使用文本题模式");
+      options.onError?.();
+    }
+  }, 1200);
   return true;
 }
 
@@ -1417,7 +1445,7 @@ async function speakKoreanText(text, options = {}) {
   }
   const usedOpenSourceTts = await playOpenSourceTts(content, options);
   if (usedOpenSourceTts) return true;
-  return speakBrowserKoreanText(content, options);
+  return await speakBrowserKoreanText(content, options);
 }
 
 function speakDictationText(text) {
@@ -2124,8 +2152,7 @@ function stopListeningAudio() {
 }
 
 function isListeningQuestion(question = {}) {
-  const task = practiceTaskId ? tasks.find(item => item.id === practiceTaskId) : null;
-  return Boolean(question.audioSrc || question.audioText || question.transcript || task?.category === "listening" || /listening|듣기/i.test(question.source || question.questionType || ""));
+  return Boolean(question.audioSrc || question.audioText || question.transcript || /listening|듣기/i.test(question.source || question.questionType || ""));
 }
 
 function listeningTextFor(question = {}) {
@@ -2142,9 +2169,16 @@ function playAudioFile(src, callbacks = {}) {
   const audio = new Audio(src);
   activeTtsAudio = audio;
   audio.onplay = callbacks.onStart || null;
-  audio.onended = callbacks.onEnd || null;
-  audio.onerror = callbacks.onError || null;
+  audio.onended = () => {
+    stopTtsAudio();
+    callbacks.onEnd?.();
+  };
+  audio.onerror = () => {
+    stopTtsAudio();
+    callbacks.onError?.();
+  };
   audio.play().catch(() => {
+    stopTtsAudio();
     callbacks.onError?.();
   });
   return true;
@@ -2162,6 +2196,7 @@ async function playListeningQuestion() {
   stopListeningAudio();
   if (!isReview) listeningPlayCounts[key] = currentCount + 1;
   listeningIsSpeaking = true;
+  renderQuestion();
   if (audioSrc) {
     playAudioFile(audioSrc, {
       onStart: () => {
@@ -2198,7 +2233,6 @@ async function playListeningQuestion() {
         });
       }
     });
-    renderQuestion();
     return;
   }
   const started = await speakKoreanText(text, {

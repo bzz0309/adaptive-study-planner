@@ -316,7 +316,13 @@ function reviewQuestion(item = {}, settings = {}) {
   if (/all of the above|none of the above|以上皆是|以上都不是/i.test(question.options.join(" "))) issues.push("选项不够稳定");
 
   const questionType = inferQuestionType(question, settings);
-  if (/listening/.test(questionType) && !question.audioText) issues.push("听力题缺少可播放脚本");
+  if (/listening/.test(questionType)) {
+    const optionsText = question.options.join("");
+    if (!question.audioText || question.audioText.length < 18) issues.push("听力题缺少完整可播放脚本");
+    if (/[_＿]{2,}|（\s*）|\(\s*\)|빈칸|알맞은 것/i.test(question.stem)) issues.push("听力题不能是语法填空");
+    if (question.options.every(option => /^[가-힣]{1,3}$/.test(option.trim()))) issues.push("听力题选项过短，像助词或语法题");
+    if (/^[는이가을를에도만은]+$/.test(optionsText)) issues.push("听力题不能用助词选项");
+  }
   const passed = issues.length === 0;
   return {
     ...question,
@@ -885,6 +891,8 @@ function buildPracticePrompt(settings = {}) {
     "The question type must match Category and Task. If Category is reading, generate reading comprehension based on a notice, advertisement, memo, short passage, chart, or information block; do not generate grammar particle fill-in questions.",
     "If Category is vocab or grammar, grammar and vocabulary questions are allowed. If Category is listening, generate listening questions only.",
     "For listening questions, put the dialogue or monologue in audioText and transcript, and keep stem as only the question. Do not place the full listening script inside stem.",
+    "Listening questions must test meaning, next action, reason, place, time, speaker intention, or content match. Never generate blank-fill, particle, or grammar completion questions for listening.",
+    "Listening options must be meaningful answer choices, not one-syllable particles or grammar endings.",
     "For every Korean question, include stemZh, answerZh, explanationZh, and optionTranslations in Simplified Chinese. explanationZh should explain the question content and why the correct option matches it; do not write English explanations.",
     "For non-listening questions, audioText and transcript may be empty.",
     `Exam: ${getExamLabel(settings)}.`,
