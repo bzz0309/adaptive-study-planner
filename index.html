@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#f6f5ef" />
   <title>TOPIK 学习计划</title>
-  <link rel="stylesheet" href="styles.css?v=20260707-word-elimination" />
+  <link rel="stylesheet" href="styles.css?v=20260710-practice-polish" />
 </head>
 <body>
   <div class="app-shell">
@@ -142,22 +142,22 @@
       <h2 id="taskModalTitle">听力短对话</h2>
       <p class="modal-meta" id="taskModalMeta"></p>
       <div class="task-focus-box" id="taskFocusBox"></div>
-      <div class="standard-box" id="taskFlowIntro">
+      <div class="standard-box flow-box" id="taskFlowIntro">
         <h3>答题流程</h3>
         <ul>
-          <li>选择本组题数</li>
-          <li>开始系统出题并答题</li>
-          <li>系统自动记录正确率、错题和用时</li>
-          <li>答完后可选写一句反思</li>
+          <li>确认题数</li>
+          <li>开始答题</li>
+          <li>系统记录结果</li>
+          <li>错题进入复盘</li>
         </ul>
       </div>
       <div class="checkin-form">
-        <h3 id="taskRecordTitle">开始前确认</h3>
+        <h3 id="taskRecordTitle">本组设置</h3>
         <div class="auto-record-box" id="taskAutoRecord">
           <span>系统自动记录</span>
-          <strong>选择题数后开始练习，系统会自动统计正确率、错题和用时。</strong>
+          <strong>答题后自动统计正确率、错题和用时。</strong>
         </div>
-        <label>本组题数
+        <label class="question-count-field">本组题数
           <select id="practiceQuestionCount">
             <option value="5" selected>5题 · 快速完成</option>
             <option value="10">10题 · 标准练习</option>
@@ -377,6 +377,6 @@
   </div>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="app.js?v=20260707-word-elimination"></script>
+  <script src="app.js?v=20260710-practice-polish"></script>
 </body>
 </html>

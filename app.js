@@ -1491,7 +1491,7 @@ function renderDictationView() {
     <div>
       <p class="section-kicker">听写训练 · 手写记忆</p>
       <h2>听写</h2>
-      <p>先听音，再手写一遍。适合 iPad、手机和触控板。</p>
+      <p>单词听写。先听音，再把韩文输入到答案框；手写区只做草稿。</p>
     </div>
     <div class="score-pill">
       <small>当前</small><strong>${safeIndex + 1} / ${practiceItems.length}</strong><span>${weakIds.size} 个不熟</span>
@@ -1501,7 +1501,7 @@ function renderDictationView() {
     <article class="dictation-workbench">
       <div class="dictation-token">
         <span>${escapeImportText(item.note)}</span>
-        <div><strong>${revealed ? escapeImportText(item.text) : "先听，再写单词"}</strong><em>${escapeImportText(item.pos)}</em></div>
+        <div><strong>${revealed ? escapeImportText(item.text) : "先听音，再输入韩文"}</strong><em>${escapeImportText(item.pos)}</em></div>
         <p>${revealed ? `中文：${escapeImportText(item.zh)}` : "核对前不显示答案，先凭声音写。"}</p>
         <small>${escapeImportText(item.source || "系统听写词库")}</small>
       </div>
@@ -1511,14 +1511,14 @@ function renderDictationView() {
         <button class="dictation-audio-button" type="button" ${revealed ? "" : "disabled"} data-dictation-speak="${escapeImportText(item.example)}">例句</button>
       </div>
       <label class="dictation-input-card">
-        <span>你的答案</span>
+        <span>答案输入框（用于核对）</span>
         <input id="dictationInput" lang="ko" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" value="${escapeImportText(inputText)}" placeholder="用韩文键盘/手写输入这里" />
-        <small>iPad / iPhone 可切到韩文手写键盘，写完会变成普通韩文字。</small>
+        <small>iPad / iPhone 可用韩文手写键盘；写进这里后再点核对。</small>
       </label>
       <div class="dictation-board">
         <canvas id="dictationCanvas" aria-label="听写手写区"></canvas>
         <span class="dictation-write-line"></span>
-        <small>草稿区：可以用 Apple Pencil 先写一遍，但判题以“你的答案”输入框为准</small>
+        <small>草稿区：这里不会自动识别文字</small>
       </div>
       ${revealed ? `<div class="dictation-answer-card">
         <span>核对结果</span>
@@ -1534,22 +1534,13 @@ function renderDictationView() {
           <button class="secondary-button compact" type="button" id="markDictationWeak">标记不熟</button>
           <button class="secondary-button compact" type="button" id="markDictationKnown">已经掌握</button>
         </div>
-      </div>` : `<div class="dictation-hint-card">先听音，再把韩文写进输入框。下面手写区只当草稿纸，系统不会把画布自动识别成文字。</div>`}
+      </div>` : `<div class="dictation-hint-card">先把韩文写进上面的答案输入框。草稿区只是练手，不参与判题。</div>`}
       <div class="dictation-actions">
         <button class="secondary-button" type="button" id="prevDictationItem">上一条</button>
         <button class="secondary-button" type="button" id="clearDictationCanvas">清空</button>
         <button class="primary-button" type="button" id="${revealed ? "nextDictationItem" : "revealDictationAnswer"}">${revealed ? "下一条" : "核对"}</button>
       </div>
     </article>
-    <aside class="dictation-side">
-      <section class="dictation-side-card">
-        <span>不熟词</span>
-        <h3>${weakIds.size ? "下次优先复盘" : "暂时没有"}</h3>
-        <div class="dictation-weak-list">
-          ${practiceItems.filter(entry => weakIds.has(entry.id)).map(entry => `<button type="button" data-dictation-jump="${entry.id}"><strong>${escapeImportText(entry.text)}</strong><small>${escapeImportText(entry.zh)}</small></button>`).join("") || "<p>核对后可以把卡住的词标记在这里。</p>"}
-        </div>
-      </section>
-    </aside>
   </div>`;
   bindDictationEvents();
   requestAnimationFrame(setupDictationCanvas);
@@ -1860,10 +1851,10 @@ function openTask(id) {
     ? `<span>模拟考试</span><strong>先完整答完本组，再统一查看答案、中文解析和错题。</strong>`
     : `<span>学习模式</span><strong>提交后显示中文解析，帮你把这一题学懂。</strong>`;
   $("#practiceModeNote").classList.add("hidden");
-  $("#taskRecordTitle").textContent = hasLearningRecord ? "答题结果" : "开始前确认";
+  $("#taskRecordTitle").textContent = hasLearningRecord ? "答题结果" : "本组设置";
   $("#taskAutoRecord").innerHTML = total
     ? `<span>系统已记录</span><strong>${correct} / ${total} 题正确 · ${rate}%</strong><p>${task.checkin?.source || "系统练习自动统计"} · ${task.checkin?.updatedAt ? new Date(task.checkin.updatedAt).toLocaleString("zh-CN", { hour12: false }) : "刚刚"}</p>`
-    : `<span>系统自动记录</span><strong>选择题数后开始练习，系统会自动统计正确率、错题和用时。</strong>`;
+    : `<span>系统自动记录</span><strong>答题后自动统计正确率、错题和用时。</strong>`;
   $("#reflectionField").classList.add("hidden");
   $("#taskNote").disabled = !hasLearningRecord;
   $("#taskNote").value = hasLearningRecord ? (task.checkin?.reflection || "") : "";
@@ -2031,7 +2022,9 @@ function todayWrongFocus(profile = studyPerformanceProfile()) {
   const wrongTask = profile.todayWrongTask;
   if (!wrongTask) return "";
   const wrongCount = taskWrongCount(wrongTask);
-  const note = compactRepeatedClauses(String(wrongTask.checkin.note || wrongTask.checkin.reflection || "").replace(/^AI自动记录：/, "")).slice(0, 36);
+  const note = compactRepeatedClauses(String(wrongTask.checkin.note || wrongTask.checkin.reflection || "")
+    .replace(/^AI自动记录：/, "")
+    .replace(/^错\d+题[；;。]*/, "")).slice(0, 36);
   return note
     ? `先复盘今天${taskFocusLabel(wrongTask)}的 ${wrongCount} 道错题：${note}。`
     : `先复盘今天${taskFocusLabel(wrongTask)}的 ${wrongCount} 道错题。`;
@@ -2041,7 +2034,7 @@ function buildTomorrowFocus() {
   const profile = studyPerformanceProfile();
   const wrongFocus = todayWrongFocus(profile);
   const planFocus = tomorrowPlanFocus(profile);
-  return wrongFocus ? `${wrongFocus} ${planFocus}` : planFocus;
+  return compactRepeatedClauses(wrongFocus ? `${wrongFocus} ${planFocus}` : planFocus);
 }
 
 function updateTomorrowFocus(text = "") {
