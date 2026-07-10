@@ -54,10 +54,11 @@ function clampNumber(value, fallback, min, max) {
   return Math.max(min, Math.min(max, parsed));
 }
 
-async function readProviderAudio(response) {
+async function readProviderAudio(response, provider) {
   const contentType = response.headers.get("content-type") || "";
   if (contentType.startsWith("audio/")) {
     return {
+      provider,
       contentType,
       buffer: Buffer.from(await response.arrayBuffer())
     };
@@ -67,6 +68,7 @@ async function readProviderAudio(response) {
     const audio = data.audioBase64 || data.audio || data.wavBase64 || data.mp3Base64;
     if (!audio) return null;
     return {
+      provider,
       contentType: data.mimeType || data.contentType || "audio/wav",
       buffer: Buffer.from(String(audio).replace(/^data:audio\/\w+;base64,/, ""), "base64")
     };
@@ -75,40 +77,73 @@ async function readProviderAudio(response) {
 }
 
 function cleanElevenLabsVoiceValue(value = "") {
-  return String(value || "").replace(/\*/g, "").trim();
+  return String(value || "").replace(/\*/g, "").replace(/^["']|["']$/g, "").trim();
 }
 
 function looksLikeVoiceId(value = "") {
   return /^[A-Za-z0-9_-]{10,}$/.test(value);
 }
 
+function voiceNameCandidates(value = "") {
+  const clean = cleanElevenLabsVoiceValue(value);
+  const shortName = clean.split(/\s+-\s+/)[0]?.trim() || "";
+  return [...new Set([clean, shortName].filter(Boolean).map(item => item.toLowerCase()))];
+}
+
 async function resolveElevenLabsVoiceId(apiKey, configuredVoice) {
   const voice = cleanElevenLabsVoiceValue(configuredVoice);
-  if (!voice) return "";
-  if (looksLikeVoiceId(voice)) return voice;
+  if (!voice) return { voiceId: "", failure: "missing_voice" };
+  if (looksLikeVoiceId(voice)) return { voiceId: voice, failure: "" };
 
   const response = await fetch("https://api.elevenlabs.io/v1/voices", {
     method: "GET",
     headers: { "xi-api-key": apiKey }
   });
-  if (!response.ok) return "";
+  if (!response.ok) return { voiceId: "", failure: `voice_list_${response.status}` };
 
   const data = await response.json();
   const voices = Array.isArray(data.voices) ? data.voices : [];
-  const target = voice.toLowerCase();
-  const matched = voices.find(item => String(item.name || "").toLowerCase() === target)
-    || voices.find(item => String(item.name || "").toLowerCase().includes(target))
-    || voices.find(item => target.includes(String(item.name || "").toLowerCase()));
+  const targets = voiceNameCandidates(voice);
+  const matched = voices.find(item => targets.includes(String(item.name || "").toLowerCase()))
+    || voices.find(item => targets.some(target => String(item.name || "").toLowerCase().includes(target)))
+    || voices.find(item => targets.some(target => target.includes(String(item.name || "").toLowerCase())));
 
-  return matched?.voice_id || "";
+  return { voiceId: matched?.voice_id || "", failure: matched ? "" : "voice_not_found" };
 }
 
-async function fetchElevenLabsTts(text) {
-  const apiKey = process.env.ELEVENLABS_API_KEY || "";
-  if (!apiKey) return null;
+function buildDiagnostics() {
+  return {
+    elevenLabs: {
+      hasApiKey: Boolean(String(process.env.ELEVENLABS_API_KEY || "").trim()),
+      hasVoice: Boolean(String(process.env.ELEVENLABS_VOICE_ID || "").trim()),
+      modelId: process.env.ELEVENLABS_MODEL_ID || "",
+      failure: ""
+    },
+    openAiCompatible: {
+      hasApiKey: Boolean(String(process.env.OPENAI_TTS_API_KEY || process.env.OPENAI_API_KEY || "").trim()),
+      model: process.env.OPENAI_TTS_MODEL || process.env.TTS_MODEL || "",
+      failure: ""
+    },
+    external: {
+      hasEndpoint: Boolean(String(process.env.OPEN_SOURCE_TTS_ENDPOINT || process.env.PIPER_TTS_ENDPOINT || process.env.TTS_ENDPOINT || "").trim()),
+      failure: ""
+    }
+  };
+}
 
-  const voiceId = await resolveElevenLabsVoiceId(apiKey, process.env.ELEVENLABS_VOICE_ID || "");
-  if (!voiceId) return null;
+async function fetchElevenLabsTts(text, diagnostics) {
+  const apiKey = process.env.ELEVENLABS_API_KEY || "";
+  if (!apiKey) {
+    diagnostics.elevenLabs.failure = "missing_api_key";
+    return null;
+  }
+
+  const resolved = await resolveElevenLabsVoiceId(apiKey, process.env.ELEVENLABS_VOICE_ID || "");
+  if (!resolved.voiceId) {
+    diagnostics.elevenLabs.failure = resolved.failure || "missing_voice";
+    return null;
+  }
+  const voiceId = resolved.voiceId;
 
   const modelId = process.env.ELEVENLABS_MODEL_ID || "eleven_v3";
   const outputFormat = process.env.ELEVENLABS_OUTPUT_FORMAT || "mp3_44100_128";
@@ -136,17 +171,26 @@ async function fetchElevenLabsTts(text) {
 
   let response = await requestAudio(modelId);
   if (!response.ok && modelId !== "eleven_multilingual_v2") {
+    diagnostics.elevenLabs.failure = `request_${response.status}_fallback_model`;
     response = await requestAudio("eleven_multilingual_v2");
   }
 
-  if (!response.ok) return null;
-  return await readProviderAudio(response);
+  if (!response.ok) {
+    diagnostics.elevenLabs.failure = `request_${response.status}`;
+    return null;
+  }
+  const audio = await readProviderAudio(response, "elevenlabs");
+  if (!audio) diagnostics.elevenLabs.failure = "no_audio";
+  return audio;
 }
 
-async function fetchOpenAiCompatibleTts(text, body = {}) {
+async function fetchOpenAiCompatibleTts(text, body = {}, diagnostics) {
   const model = process.env.OPENAI_TTS_MODEL || process.env.TTS_MODEL || "";
   const apiKey = process.env.OPENAI_TTS_API_KEY || process.env.OPENAI_API_KEY || "";
-  if (!model || !apiKey) return null;
+  if (!model || !apiKey) {
+    diagnostics.openAiCompatible.failure = !model ? "missing_model" : "missing_api_key";
+    return null;
+  }
 
   const baseUrl = trimTrailingSlash(
     process.env.OPENAI_TTS_BASE_URL || process.env.OPENAI_BASE_URL || "https://api.openai.com/v1"
@@ -169,13 +213,21 @@ async function fetchOpenAiCompatibleTts(text, body = {}) {
     })
   });
 
-  if (!response.ok) return null;
-  return await readProviderAudio(response);
+  if (!response.ok) {
+    diagnostics.openAiCompatible.failure = `request_${response.status}`;
+    return null;
+  }
+  const audio = await readProviderAudio(response, "openai-compatible");
+  if (!audio) diagnostics.openAiCompatible.failure = "no_audio";
+  return audio;
 }
 
-async function fetchExternalTts(text, body = {}) {
+async function fetchExternalTts(text, body = {}, diagnostics) {
   const endpoint = process.env.OPEN_SOURCE_TTS_ENDPOINT || process.env.PIPER_TTS_ENDPOINT || process.env.TTS_ENDPOINT;
-  if (!endpoint) return null;
+  if (!endpoint) {
+    diagnostics.external.failure = "missing_endpoint";
+    return null;
+  }
 
   const headers = { "Content-Type": "application/json" };
   const apiKey = process.env.OPEN_SOURCE_TTS_API_KEY || process.env.PIPER_TTS_API_KEY || "";
@@ -187,8 +239,13 @@ async function fetchExternalTts(text, body = {}) {
     body: JSON.stringify(buildPayload(text, body))
   });
 
-  if (!response.ok) return null;
-  return await readProviderAudio(response);
+  if (!response.ok) {
+    diagnostics.external.failure = `request_${response.status}`;
+    return null;
+  }
+  const audio = await readProviderAudio(response, "external");
+  if (!audio) diagnostics.external.failure = "no_audio";
+  return audio;
 }
 
 module.exports = async function tts(req, res) {
@@ -199,16 +256,21 @@ module.exports = async function tts(req, res) {
     const text = cleanText(body.text);
     if (!text) return sendJson(res, 400, { error: "Missing text" });
 
-    const audio = await fetchElevenLabsTts(text) || await fetchOpenAiCompatibleTts(text, body) || await fetchExternalTts(text, body);
+    const diagnostics = buildDiagnostics();
+    const audio = await fetchElevenLabsTts(text, diagnostics)
+      || await fetchOpenAiCompatibleTts(text, body, diagnostics)
+      || await fetchExternalTts(text, body, diagnostics);
     if (!audio?.buffer?.length) {
       return sendJson(res, 501, {
         error: "TTS provider is not configured",
-        detail: "Set ELEVENLABS_API_KEY with ELEVENLABS_VOICE_ID, OPENAI_TTS_MODEL with OPENAI_API_KEY, or set OPEN_SOURCE_TTS_ENDPOINT."
+        detail: "Set ELEVENLABS_API_KEY with ELEVENLABS_VOICE_ID, OPENAI_TTS_MODEL with OPENAI_API_KEY, or set OPEN_SOURCE_TTS_ENDPOINT.",
+        diagnostics
       });
     }
 
     res.statusCode = 200;
     res.setHeader("Content-Type", audio.contentType);
+    res.setHeader("X-TTS-Provider", audio.provider || "unknown");
     res.setHeader("Cache-Control", "no-store");
     res.end(audio.buffer);
   } catch (error) {

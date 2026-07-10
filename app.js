@@ -1369,11 +1369,32 @@ async function playOpenSourceTts(text, options = {}) {
         rate: options.rate || 0.86
       })
     });
-    if (!response.ok) return false;
+    if (!response.ok) {
+      try {
+        const data = await response.clone().json();
+        window.__lastTtsProvider = "";
+        window.__lastTtsError = data;
+        console.warn("TTS API unavailable", data);
+      } catch {
+        window.__lastTtsProvider = "";
+        window.__lastTtsError = { status: response.status };
+      }
+      return false;
+    }
     const contentType = response.headers.get("content-type") || "";
-    if (!contentType.startsWith("audio/")) return false;
+    if (!contentType.startsWith("audio/")) {
+      window.__lastTtsProvider = "";
+      window.__lastTtsError = { status: response.status, contentType };
+      return false;
+    }
     const blob = await response.blob();
-    if (!blob.size) return false;
+    if (!blob.size) {
+      window.__lastTtsProvider = "";
+      window.__lastTtsError = { status: response.status, contentType, emptyAudio: true };
+      return false;
+    }
+    window.__lastTtsProvider = response.headers.get("x-tts-provider") || "unknown";
+    window.__lastTtsError = null;
     stopTtsAudio();
     activeTtsAudioUrl = URL.createObjectURL(blob);
     activeTtsAudio = new Audio(activeTtsAudioUrl);
@@ -1389,8 +1410,10 @@ async function playOpenSourceTts(text, options = {}) {
     };
     await activeTtsAudio.play();
     return true;
-  } catch {
+  } catch (error) {
     stopTtsAudio();
+    window.__lastTtsProvider = "";
+    window.__lastTtsError = { message: error?.message || "tts_play_failed" };
     return false;
   }
 }
