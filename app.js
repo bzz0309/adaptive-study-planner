@@ -1418,6 +1418,16 @@ async function playOpenSourceTts(text, options = {}) {
   }
 }
 
+function hasConfiguredCloudTtsFailure() {
+  const diagnostics = window.__lastTtsError?.diagnostics;
+  if (!diagnostics) return false;
+  return Boolean(
+    diagnostics.elevenLabs?.hasApiKey ||
+      diagnostics.openAiCompatible?.hasApiKey ||
+      diagnostics.external?.hasEndpoint
+  );
+}
+
 async function speakBrowserKoreanText(text, options = {}) {
   if (!("speechSynthesis" in window)) {
     showToast("当前浏览器不支持朗读");
@@ -1468,6 +1478,11 @@ async function speakKoreanText(text, options = {}) {
   }
   const usedOpenSourceTts = await playOpenSourceTts(content, options);
   if (usedOpenSourceTts) return true;
+  if (hasConfiguredCloudTtsFailure()) {
+    showToast("云端音频生成失败，请检查 TTS 配置或额度");
+    options.onError?.();
+    return false;
+  }
   return await speakBrowserKoreanText(content, options);
 }
 
