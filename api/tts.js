@@ -49,6 +49,11 @@ function numberOrDefault(value, fallback) {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+function clampNumber(value, fallback, min, max) {
+  const parsed = numberOrDefault(value, fallback);
+  return Math.max(min, Math.min(max, parsed));
+}
+
 async function readProviderAudio(response) {
   const contentType = response.headers.get("content-type") || "";
   if (contentType.startsWith("audio/")) {
@@ -67,6 +72,39 @@ async function readProviderAudio(response) {
     };
   }
   return null;
+}
+
+async function fetchElevenLabsTts(text) {
+  const apiKey = process.env.ELEVENLABS_API_KEY || "";
+  const voiceId = process.env.ELEVENLABS_VOICE_ID || "";
+  if (!apiKey || !voiceId) return null;
+
+  const modelId = process.env.ELEVENLABS_MODEL_ID || "eleven_v3";
+  const outputFormat = process.env.ELEVENLABS_OUTPUT_FORMAT || "mp3_44100_128";
+  const response = await fetch(
+    `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}?output_format=${encodeURIComponent(outputFormat)}`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "audio/mpeg",
+        "xi-api-key": apiKey
+      },
+      body: JSON.stringify({
+        text,
+        model_id: modelId,
+        voice_settings: {
+          stability: clampNumber(process.env.ELEVENLABS_STABILITY, 0.45, 0, 1),
+          similarity_boost: clampNumber(process.env.ELEVENLABS_SIMILARITY_BOOST, 0.8, 0, 1),
+          style: clampNumber(process.env.ELEVENLABS_STYLE, 0, 0, 1),
+          use_speaker_boost: process.env.ELEVENLABS_SPEAKER_BOOST !== "false"
+        }
+      })
+    }
+  );
+
+  if (!response.ok) return null;
+  return await readProviderAudio(response);
 }
 
 async function fetchOpenAiCompatibleTts(text, body = {}) {
@@ -125,11 +163,11 @@ module.exports = async function tts(req, res) {
     const text = cleanText(body.text);
     if (!text) return sendJson(res, 400, { error: "Missing text" });
 
-    const audio = await fetchOpenAiCompatibleTts(text, body) || await fetchExternalTts(text, body);
+    const audio = await fetchElevenLabsTts(text) || await fetchOpenAiCompatibleTts(text, body) || await fetchExternalTts(text, body);
     if (!audio?.buffer?.length) {
       return sendJson(res, 501, {
         error: "TTS provider is not configured",
-        detail: "Set OPENAI_TTS_MODEL with OPENAI_API_KEY, or set OPEN_SOURCE_TTS_ENDPOINT."
+        detail: "Set ELEVENLABS_API_KEY with ELEVENLABS_VOICE_ID, OPENAI_TTS_MODEL with OPENAI_API_KEY, or set OPEN_SOURCE_TTS_ENDPOINT."
       });
     }
 
