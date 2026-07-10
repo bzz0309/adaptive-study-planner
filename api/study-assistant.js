@@ -238,6 +238,94 @@ const MATERIAL_PRACTICE_BANK = [
   }
 ];
 
+function stableHashText(value = "") {
+  return Array.from(String(value)).reduce((hash, char) => {
+    return (hash * 31 + char.charCodeAt(0)) >>> 0;
+  }, 0);
+}
+
+function materialRequestText(settings = {}) {
+  const request = settings.practiceRequest || {};
+  return [
+    request.title,
+    request.task?.title,
+    request.task?.note,
+    request.category
+  ].filter(Boolean).join(" ");
+}
+
+function materialQuestionText(question = {}) {
+  return [
+    question.materialQuestionId,
+    question.stem,
+    question.stemZh,
+    question.transcript,
+    question.transcriptZh,
+    question.explanation,
+    question.explanationZh,
+    question.source
+  ].filter(Boolean).join(" ");
+}
+
+function materialPriorityScore(question = {}, settings = {}) {
+  const requestText = materialRequestText(settings);
+  const questionText = materialQuestionText(question);
+  const rules = [
+    {
+      request: /数字|时间|日期|价格|数量|几点|几月|多少|number|time|date|price/i,
+      question: /数字|时间|日期|价格|数量|월|일|시|분|원|가격|시간|날짜|얼마|몇/i
+    },
+    {
+      request: /否定|时态|过去|未来|将来|tense|negative/i,
+      question: /否定|时态|过去|未来|将来|안\s|못|않|았|었|겠|예정/i
+    },
+    {
+      request: /下一步|行动|请求|建议|做什么|action|next/i,
+      question: /下一步|行动|请求|建议|做什么|주세요|부탁|요청|보내|가다|오다/i
+    },
+    {
+      request: /原因|理由|为什么|reason|why/i,
+      question: /原因|理由|为什么|왜|때문|이유/i
+    },
+    {
+      request: /图|图表|看图|picture|graph/i,
+      question: /图|图表|看图|그림|그래프|사진/i
+    },
+    {
+      request: /复述|听后|原文|retell|summary/i,
+      question: /复述|听后|原文|transcript|다시|요약/i
+    }
+  ];
+  return rules.reduce((score, rule) => {
+    if (!rule.request.test(requestText)) return score;
+    return score + (rule.question.test(questionText) ? 10 : 0);
+  }, 0);
+}
+
+function orderedMaterialQuestionsForSettings(questions = [], settings = {}) {
+  const uniqueQuestions = [];
+  const seen = new Set();
+  questions.forEach(question => {
+    const key = question.materialQuestionId || question.questionId || question.materialImage || question.stem;
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    uniqueQuestions.push(question);
+  });
+  if (uniqueQuestions.length <= 1) return uniqueQuestions;
+  const rotation = stableHashText(materialRequestText(settings)) % uniqueQuestions.length;
+  return uniqueQuestions
+    .map((question, index) => ({
+      question,
+      index,
+      score: materialPriorityScore(question, settings)
+    }))
+    .sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      return ((a.index + rotation) % uniqueQuestions.length) - ((b.index + rotation) % uniqueQuestions.length);
+    })
+    .map(item => item.question);
+}
+
 function materialPractice(settings = {}) {
   const request = settings.practiceRequest || {};
   const match = MATERIAL_PRACTICE_BANK.find(item =>
@@ -247,9 +335,10 @@ function materialPractice(settings = {}) {
   );
   if (!match) return null;
   const count = requestedQuestionCount(settings);
+  const questions = orderedMaterialQuestionsForSettings(match.questions, settings);
   return {
     title: match.title,
-    questions: match.questions.slice(0, count).map(question => ({
+    questions: questions.slice(0, count).map(question => ({
       ...question,
       materialSetId: match.id,
       materialSetTitle: match.title,
