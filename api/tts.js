@@ -40,6 +40,15 @@ function buildPayload(text, body = {}) {
   };
 }
 
+function trimTrailingSlash(value = "") {
+  return String(value || "").replace(/\/+$/, "");
+}
+
+function numberOrDefault(value, fallback) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
 async function readProviderAudio(response) {
   const contentType = response.headers.get("content-type") || "";
   if (contentType.startsWith("audio/")) {
@@ -60,40 +69,69 @@ async function readProviderAudio(response) {
   return null;
 }
 
+async function fetchOpenAiCompatibleTts(text, body = {}) {
+  const model = process.env.OPENAI_TTS_MODEL || process.env.TTS_MODEL || "";
+  const apiKey = process.env.OPENAI_TTS_API_KEY || process.env.OPENAI_API_KEY || "";
+  if (!model || !apiKey) return null;
+
+  const baseUrl = trimTrailingSlash(
+    process.env.OPENAI_TTS_BASE_URL || process.env.OPENAI_BASE_URL || "https://api.openai.com/v1"
+  );
+  const voice = process.env.OPENAI_TTS_VOICE || process.env.TTS_VOICE || "alloy";
+  const speed = Math.max(0.25, Math.min(4, numberOrDefault(body.rate, 0.9)));
+
+  const response = await fetch(`${baseUrl}/audio/speech`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`
+    },
+    body: JSON.stringify({
+      model,
+      voice,
+      input: text,
+      response_format: process.env.OPENAI_TTS_FORMAT || "mp3",
+      speed
+    })
+  });
+
+  if (!response.ok) return null;
+  return await readProviderAudio(response);
+}
+
+async function fetchExternalTts(text, body = {}) {
+  const endpoint = process.env.OPEN_SOURCE_TTS_ENDPOINT || process.env.PIPER_TTS_ENDPOINT || process.env.TTS_ENDPOINT;
+  if (!endpoint) return null;
+
+  const headers = { "Content-Type": "application/json" };
+  const apiKey = process.env.OPEN_SOURCE_TTS_API_KEY || process.env.PIPER_TTS_API_KEY || "";
+  if (apiKey) headers.Authorization = `Bearer ${apiKey}`;
+
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(buildPayload(text, body))
+  });
+
+  if (!response.ok) return null;
+  return await readProviderAudio(response);
+}
+
 module.exports = async function tts(req, res) {
   if (req.method !== "POST") return sendJson(res, 405, { error: "Method not allowed" });
-  const endpoint = process.env.OPEN_SOURCE_TTS_ENDPOINT || process.env.PIPER_TTS_ENDPOINT || process.env.TTS_ENDPOINT;
-  if (!endpoint) {
-    return sendJson(res, 501, {
-      error: "Open source TTS endpoint is not configured",
-      detail: "Set OPEN_SOURCE_TTS_ENDPOINT to a Piper/MeloTTS compatible service."
-    });
-  }
 
   try {
     const body = await parseBody(req);
     const text = cleanText(body.text);
     if (!text) return sendJson(res, 400, { error: "Missing text" });
 
-    const headers = { "Content-Type": "application/json" };
-    const apiKey = process.env.OPEN_SOURCE_TTS_API_KEY || process.env.PIPER_TTS_API_KEY || "";
-    if (apiKey) headers.Authorization = `Bearer ${apiKey}`;
-
-    const providerResponse = await fetch(endpoint, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(buildPayload(text, body))
-    });
-
-    if (!providerResponse.ok) {
-      return sendJson(res, 502, {
-        error: "TTS provider failed",
-        status: providerResponse.status
+    const audio = await fetchOpenAiCompatibleTts(text, body) || await fetchExternalTts(text, body);
+    if (!audio?.buffer?.length) {
+      return sendJson(res, 501, {
+        error: "TTS provider is not configured",
+        detail: "Set OPENAI_TTS_MODEL with OPENAI_API_KEY, or set OPEN_SOURCE_TTS_ENDPOINT."
       });
     }
-
-    const audio = await readProviderAudio(providerResponse);
-    if (!audio?.buffer?.length) return sendJson(res, 502, { error: "TTS provider did not return audio" });
 
     res.statusCode = 200;
     res.setHeader("Content-Type", audio.contentType);
