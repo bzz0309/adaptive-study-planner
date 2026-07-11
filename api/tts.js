@@ -142,7 +142,7 @@ function buildDiagnostics() {
       hasApiKey: Boolean(String(process.env.MINIMAX_API_KEY || "").trim()),
       hasGroupId: Boolean(String(process.env.MINIMAX_GROUP_ID || "").trim()),
       hasVoice: Boolean(String(process.env.MINIMAX_TTS_VOICE_ID || process.env.MINIMAX_VOICE_ID || "").trim()),
-      model: process.env.MINIMAX_TTS_MODEL || "speech-02-hd",
+      model: process.env.MINIMAX_TTS_MODEL || process.env.MINIMAX_MODEL_ID || "speech-02-hd",
       failure: ""
     },
     elevenLabs: {
@@ -168,25 +168,27 @@ async function fetchMiniMaxTts(text, body = {}, diagnostics) {
   const groupId = String(process.env.MINIMAX_GROUP_ID || "").trim();
   const voiceId = String(process.env.MINIMAX_TTS_VOICE_ID || process.env.MINIMAX_VOICE_ID || "").trim();
 
-  if (!apiKey || !groupId || !voiceId) {
-    diagnostics.minimax.failure = !apiKey ? "missing_api_key" : !groupId ? "missing_group_id" : "missing_voice";
+  if (!apiKey || !voiceId) {
+    diagnostics.minimax.failure = !apiKey ? "missing_api_key" : "missing_voice";
     return null;
   }
 
-  const baseUrl = trimTrailingSlash(process.env.MINIMAX_TTS_BASE_URL || "https://api.minimax.io/v1");
+  const baseUrl = trimTrailingSlash(process.env.MINIMAX_TTS_BASE_URL || "https://api.minimaxi.com/v1");
   const format = process.env.MINIMAX_TTS_FORMAT || "mp3";
   const speed = clampNumber(body.rate || process.env.MINIMAX_TTS_SPEED, 0.86, 0.5, 2);
   const volume = clampNumber(process.env.MINIMAX_TTS_VOLUME, 1, 0.1, 10);
   const pitch = clampNumber(process.env.MINIMAX_TTS_PITCH, 0, -12, 12);
+  const endpoint = new URL(`${baseUrl}/t2a_v2`);
+  if (groupId) endpoint.searchParams.set("GroupId", groupId);
 
-  const response = await fetch(`${baseUrl}/t2a_v2?GroupId=${encodeURIComponent(groupId)}`, {
+  const response = await fetch(endpoint.toString(), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${apiKey}`
     },
     body: JSON.stringify({
-      model: process.env.MINIMAX_TTS_MODEL || "speech-02-hd",
+      model: process.env.MINIMAX_TTS_MODEL || process.env.MINIMAX_MODEL_ID || "speech-02-hd",
       text,
       stream: false,
       voice_setting: {
@@ -375,7 +377,7 @@ module.exports = async function tts(req, res) {
     if (!audio?.buffer?.length) {
       return sendJson(res, 501, {
         error: "TTS provider is not configured",
-        detail: "Set MINIMAX_API_KEY with MINIMAX_GROUP_ID and MINIMAX_TTS_VOICE_ID, or configure ElevenLabs/OpenAI-compatible/external TTS.",
+        detail: "Set MINIMAX_API_KEY and MINIMAX_TTS_VOICE_ID (or MINIMAX_VOICE_ID), or configure ElevenLabs/OpenAI-compatible/external TTS.",
         diagnostics
       });
     }
