@@ -1421,8 +1421,11 @@ async function playOpenSourceTts(text, options = {}) {
 function hasConfiguredCloudTtsFailure() {
   const diagnostics = window.__lastTtsError?.diagnostics;
   if (!diagnostics) return false;
+  const preferredProvider = String(diagnostics.preferredProvider || "").toLowerCase();
   return Boolean(
-    diagnostics.elevenLabs?.hasApiKey ||
+    preferredProvider === "minimax" ||
+      diagnostics.minimax?.hasApiKey ||
+      diagnostics.elevenLabs?.hasApiKey ||
       diagnostics.openAiCompatible?.hasApiKey ||
       diagnostics.external?.hasEndpoint
   );

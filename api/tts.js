@@ -76,6 +76,30 @@ async function readProviderAudio(response, provider) {
   return null;
 }
 
+function decodeAudioString(value = "") {
+  const raw = String(value || "").replace(/^data:audio\/\w+;base64,/, "").trim();
+  if (!raw) return Buffer.alloc(0);
+  if (/^[0-9a-fA-F]+$/.test(raw) && raw.length % 2 === 0) return Buffer.from(raw, "hex");
+  return Buffer.from(raw, "base64");
+}
+
+function audioContentType(format = "mp3") {
+  const normalized = String(format || "mp3").toLowerCase();
+  if (normalized === "wav") return "audio/wav";
+  if (normalized === "pcm") return "audio/L16";
+  return "audio/mpeg";
+}
+
+function readMiniMaxAudioPayload(data, format) {
+  const audio = data?.data?.audio || data?.audio || data?.audioBase64 || data?.mp3Base64 || data?.wavBase64;
+  if (!audio) return null;
+  return {
+    provider: "minimax",
+    contentType: data?.mimeType || data?.contentType || audioContentType(format),
+    buffer: decodeAudioString(audio)
+  };
+}
+
 function cleanElevenLabsVoiceValue(value = "") {
   return String(value || "").replace(/\*/g, "").replace(/^["']|["']$/g, "").trim();
 }
@@ -113,6 +137,14 @@ async function resolveElevenLabsVoiceId(apiKey, configuredVoice) {
 
 function buildDiagnostics() {
   return {
+    preferredProvider: String(process.env.TTS_PROVIDER || "").trim(),
+    minimax: {
+      hasApiKey: Boolean(String(process.env.MINIMAX_API_KEY || "").trim()),
+      hasGroupId: Boolean(String(process.env.MINIMAX_GROUP_ID || "").trim()),
+      hasVoice: Boolean(String(process.env.MINIMAX_TTS_VOICE_ID || process.env.MINIMAX_VOICE_ID || "").trim()),
+      model: process.env.MINIMAX_TTS_MODEL || "speech-02-hd",
+      failure: ""
+    },
     elevenLabs: {
       hasApiKey: Boolean(String(process.env.ELEVENLABS_API_KEY || "").trim()),
       hasVoice: Boolean(String(process.env.ELEVENLABS_VOICE_ID || "").trim()),
@@ -129,6 +161,80 @@ function buildDiagnostics() {
       failure: ""
     }
   };
+}
+
+async function fetchMiniMaxTts(text, body = {}, diagnostics) {
+  const apiKey = String(process.env.MINIMAX_API_KEY || "").trim();
+  const groupId = String(process.env.MINIMAX_GROUP_ID || "").trim();
+  const voiceId = String(process.env.MINIMAX_TTS_VOICE_ID || process.env.MINIMAX_VOICE_ID || "").trim();
+
+  if (!apiKey || !groupId || !voiceId) {
+    diagnostics.minimax.failure = !apiKey ? "missing_api_key" : !groupId ? "missing_group_id" : "missing_voice";
+    return null;
+  }
+
+  const baseUrl = trimTrailingSlash(process.env.MINIMAX_TTS_BASE_URL || "https://api.minimax.io/v1");
+  const format = process.env.MINIMAX_TTS_FORMAT || "mp3";
+  const speed = clampNumber(body.rate || process.env.MINIMAX_TTS_SPEED, 0.86, 0.5, 2);
+  const volume = clampNumber(process.env.MINIMAX_TTS_VOLUME, 1, 0.1, 10);
+  const pitch = clampNumber(process.env.MINIMAX_TTS_PITCH, 0, -12, 12);
+
+  const response = await fetch(`${baseUrl}/t2a_v2?GroupId=${encodeURIComponent(groupId)}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`
+    },
+    body: JSON.stringify({
+      model: process.env.MINIMAX_TTS_MODEL || "speech-02-hd",
+      text,
+      stream: false,
+      voice_setting: {
+        voice_id: voiceId,
+        speed,
+        vol: volume,
+        pitch
+      },
+      audio_setting: {
+        sample_rate: numberOrDefault(process.env.MINIMAX_TTS_SAMPLE_RATE, 32000),
+        bitrate: numberOrDefault(process.env.MINIMAX_TTS_BITRATE, 128000),
+        format,
+        channel: numberOrDefault(process.env.MINIMAX_TTS_CHANNEL, 1)
+      }
+    })
+  });
+
+  if (!response.ok) {
+    diagnostics.minimax.failure = `request_${response.status}`;
+    return null;
+  }
+
+  const contentType = response.headers.get("content-type") || "";
+  if (contentType.startsWith("audio/")) {
+    return {
+      provider: "minimax",
+      contentType,
+      buffer: Buffer.from(await response.arrayBuffer())
+    };
+  }
+
+  let data = null;
+  try {
+    data = await response.json();
+  } catch {
+    diagnostics.minimax.failure = "invalid_json";
+    return null;
+  }
+
+  const statusCode = data?.base_resp?.status_code;
+  if (typeof statusCode === "number" && statusCode !== 0) {
+    diagnostics.minimax.failure = `api_${statusCode}`;
+    return null;
+  }
+
+  const audio = readMiniMaxAudioPayload(data, format);
+  if (!audio?.buffer?.length) diagnostics.minimax.failure = "no_audio";
+  return audio;
 }
 
 async function fetchElevenLabsTts(text, diagnostics) {
@@ -257,13 +363,19 @@ module.exports = async function tts(req, res) {
     if (!text) return sendJson(res, 400, { error: "Missing text" });
 
     const diagnostics = buildDiagnostics();
-    const audio = await fetchElevenLabsTts(text, diagnostics)
-      || await fetchOpenAiCompatibleTts(text, body, diagnostics)
-      || await fetchExternalTts(text, body, diagnostics);
+    const preferredProvider = String(process.env.TTS_PROVIDER || "").toLowerCase().trim();
+    const miniMaxAudio = await fetchMiniMaxTts(text, body, diagnostics);
+    const audio = miniMaxAudio || (
+      preferredProvider === "minimax"
+        ? null
+        : await fetchElevenLabsTts(text, diagnostics)
+          || await fetchOpenAiCompatibleTts(text, body, diagnostics)
+          || await fetchExternalTts(text, body, diagnostics)
+    );
     if (!audio?.buffer?.length) {
       return sendJson(res, 501, {
         error: "TTS provider is not configured",
-        detail: "Set ELEVENLABS_API_KEY with ELEVENLABS_VOICE_ID, OPENAI_TTS_MODEL with OPENAI_API_KEY, or set OPEN_SOURCE_TTS_ENDPOINT.",
+        detail: "Set MINIMAX_API_KEY with MINIMAX_GROUP_ID and MINIMAX_TTS_VOICE_ID, or configure ElevenLabs/OpenAI-compatible/external TTS.",
         diagnostics
       });
     }
