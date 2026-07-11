@@ -377,18 +377,18 @@ function inferQuestionType(question = {}, settings = {}) {
     if (/speaking|cue card|part 2|fluency/.test(text)) return "ielts_speaking";
     return "ielts_general";
   }
-  if (settings.exam === "TOPIK" && settings.level === "II") {
-    if (category === "listening") return "topik2_listening";
-    if (category === "reading") return "topik2_reading";
-    if (category === "writing") return "topik2_writing";
-    if (category === "vocab" || category === "grammar") return "topik2_grammar";
-    if (/듣기|listening|화자|의도|말투|audio/.test(text)) return "topik2_listening";
-    if (/문법|grammar|어미|지만|으니까|도록|거나/.test(text)) return "topik2_grammar";
-    if (/쓰기|writing|그래프|자료|개요/.test(text)) return "topik2_writing";
-    if (/읽기|reading|중심|글|문장|빈칸|연결|장문/.test(text)) return "topik2_reading";
-    return "topik2_general";
+  if (settings.exam === "TOPIK") {
+    const topikPrefix = settings.level === "II" ? "topik2" : "topik1";
+    if (category === "listening") return `${topikPrefix}_listening`;
+    if (category === "reading") return `${topikPrefix}_reading`;
+    if (category === "writing") return `${topikPrefix}_writing`;
+    if (category === "vocab" || category === "grammar") return `${topikPrefix}_grammar`;
+    if (/듣기|listening|화자|의도|말투|audio/.test(text)) return `${topikPrefix}_listening`;
+    if (/문법|grammar|어미|지만|으니까|도록|거나/.test(text)) return `${topikPrefix}_grammar`;
+    if (/쓰기|writing|그래프|자료|개요/.test(text)) return `${topikPrefix}_writing`;
+    if (/읽기|reading|중심|글|문장|빈칸|연결|장문/.test(text)) return `${topikPrefix}_reading`;
+    return `${topikPrefix}_general`;
   }
-  if (settings.exam === "TOPIK") return "topik1_foundation";
   return "general_practice";
 }
 
@@ -454,6 +454,78 @@ function fallbackPractice(settings = {}) {
   const category = request.category || "vocab";
   const taskTitle = compact(request.taskTitle, "系统练习");
   const examLabel = getExamLabel({ ...settings, exam, level, targetGrade: request.targetGrade || settings.targetGrade });
+
+  if (exam === "TOPIK" && level === "I" && category === "listening") {
+    const listeningScript = "여자: 민수 씨, 오늘 한국어 수업에 와요? 남자: 네, 두 시에 교실에 가요. 여자: 책을 가져오세요. 남자: 네, 책하고 공책을 가져갈게요.";
+    const listeningScriptZh = "女：民秀，你今天来上韩语课吗？男：是的，我两点去教室。女：请带书来。男：好的，我会带书和笔记本。";
+    const withAudio = question => ({
+      audioText: listeningScript,
+      transcript: listeningScript,
+      transcriptZh: listeningScriptZh,
+      questionType: "topik1_listening",
+      ...question,
+    });
+    return {
+      questions: [
+        withAudio({
+          stem: "남자는 몇 시에 교실에 갑니까?",
+          stemZh: "男生几点去教室？",
+          options: ["한 시", "두 시", "세 시", "네 시"],
+          optionTranslations: ["一点", "两点", "三点", "四点"],
+          answer: 1,
+          answerZh: "两点",
+          explanation: "남자는 두 시에 교실에 간다고 했습니다.",
+          explanationZh: "男生说两点去教室，所以答案是“两点”。",
+          source: "TOPIK I 听力：时间信息",
+        }),
+        withAudio({
+          stem: "남자는 어디에 갑니까?",
+          stemZh: "男生去哪里？",
+          options: ["도서관", "교실", "식당", "집"],
+          optionTranslations: ["图书馆", "教室", "食堂", "家"],
+          answer: 1,
+          answerZh: "教室",
+          explanation: "남자는 교실에 간다고 했습니다.",
+          explanationZh: "对话里男生说“교실에 가요”，意思是去教室。",
+          source: "TOPIK I 听力：地点信息",
+        }),
+        withAudio({
+          stem: "여자는 남자에게 무엇을 가져오라고 했습니까?",
+          stemZh: "女生让男生带什么来？",
+          options: ["책", "우산", "사진", "가방"],
+          optionTranslations: ["书", "雨伞", "照片", "包"],
+          answer: 0,
+          answerZh: "书",
+          explanation: "여자는 책을 가져오라고 말했습니다.",
+          explanationZh: "女生让男生带书来，所以选“책”。",
+          source: "TOPIK I 听力：对象信息",
+        }),
+        withAudio({
+          stem: "남자는 무엇을 가져가겠다고 했습니까?",
+          stemZh: "男生说会带什么？",
+          options: ["책하고 공책", "음식하고 물", "전화기하고 지갑", "모자하고 신발"],
+          optionTranslations: ["书和笔记本", "食物和水", "手机和钱包", "帽子和鞋"],
+          answer: 0,
+          answerZh: "书和笔记本",
+          explanation: "남자는 책하고 공책을 가져가겠다고 했습니다.",
+          explanationZh: "男生最后说会带书和笔记本。",
+          source: "TOPIK I 听力：物品信息",
+        }),
+        withAudio({
+          stem: "대화 내용과 같은 것을 고르십시오.",
+          stemZh: "请选择与对话内容一致的一项。",
+          options: ["남자는 수업에 갑니다", "수업은 아침에 있습니다", "여자는 책을 빌립니다", "남자는 집에 있습니다"],
+          optionTranslations: ["男生去上课", "课在早上", "女生借书", "男生在家"],
+          answer: 0,
+          answerZh: "男生去上课",
+          explanation: "남자는 오늘 한국어 수업에 간다고 했습니다.",
+          explanationZh: "对话开头确认男生今天去韩语课，所以选“男生去上课”。",
+          source: "TOPIK I 听力：内容一致",
+        }),
+      ].slice(0, count),
+      sources: [`${examLabel} listening beginner dialogue fallback`, "TOPIK I listening structure reference", taskTitle].filter(Boolean),
+    };
+  }
 
   if (exam === "TOPIK" && level === "II" && category === "listening") {
     const listeningScript = "남자: 수진 씨, 오늘 동아리 회의에 못 올 것 같아요. 갑자기 아르바이트 시간이 바뀌었거든요. 여자: 그래요? 그럼 내일 오전까지 의견을 문자로 보내 주세요. 회의에서 대신 말해 줄게요. 남자: 고마워요. 포스터 디자인에 대한 의견을 정리해서 보낼게요.";

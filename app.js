@@ -904,6 +904,16 @@ const realMaterialQuestionBank = [
   }
 ];
 const materialPracticeBank = realMaterialQuestionBank;
+const topikIListeningFallbackScript = "남자: 민수 씨, 몇 시에 교실에 가요? 여자: 두 시에 가요. 오늘 한국어 수업이 있어요. 남자: 수업은 어디에서 해요? 여자: 학교 2층 교실에서 해요.";
+const topikIListeningFallbackScriptZh = "男：民秀，你几点去教室？女：两点去。今天有韩语课。男：课在哪里上？女：在学校二楼教室。";
+const topikIListeningFallbackQuestions = [
+  { audioText: topikIListeningFallbackScript, transcript: topikIListeningFallbackScript, transcriptZh: topikIListeningFallbackScriptZh, questionType: "topik1_listening", stem: "여자는 몇 시에 교실에 갑니까?", stemZh: "女生几点去教室？", options: ["한 시", "두 시", "세 시", "네 시"], optionTranslations: ["一点", "两点", "三点", "四点"], answer: 1, answerZh: "两点", explanation: "여자는 두 시에 교실에 간다고 말했습니다.", explanationZh: "女生说自己两点去教室。", source: "TOPIK I listening fallback" },
+  { audioText: topikIListeningFallbackScript, transcript: topikIListeningFallbackScript, transcriptZh: topikIListeningFallbackScriptZh, questionType: "topik1_listening", stem: "오늘 무엇이 있습니까?", stemZh: "今天有什么？", options: ["한국어 수업", "친구 생일", "학교 시험", "운동 연습"], optionTranslations: ["韩语课", "朋友生日", "学校考试", "运动练习"], answer: 0, answerZh: "韩语课", explanation: "여자는 오늘 한국어 수업이 있다고 했습니다.", explanationZh: "女生说今天有韩语课。", source: "TOPIK I listening fallback" },
+  { audioText: topikIListeningFallbackScript, transcript: topikIListeningFallbackScript, transcriptZh: topikIListeningFallbackScriptZh, questionType: "topik1_listening", stem: "수업은 어디에서 합니까?", stemZh: "课在哪里上？", options: ["도서관", "학교 2층 교실", "운동장", "식당"], optionTranslations: ["图书馆", "学校二楼教室", "操场", "食堂"], answer: 1, answerZh: "学校二楼教室", explanation: "여자는 학교 2층 교실에서 수업을 한다고 했습니다.", explanationZh: "女生说课在学校二楼教室上。", source: "TOPIK I listening fallback" },
+  { audioText: topikIListeningFallbackScript, transcript: topikIListeningFallbackScript, transcriptZh: topikIListeningFallbackScriptZh, questionType: "topik1_listening", stem: "대화 내용과 같은 것을 고르십시오.", stemZh: "选择与对话内容一致的一项。", options: ["남자는 교실에 갑니다", "여자는 세 시에 갑니다", "오늘 한국어 수업이 있습니다", "수업은 도서관에서 합니다"], optionTranslations: ["男生去教室", "女生三点去", "今天有韩语课", "课在图书馆上"], answer: 2, answerZh: "今天有韩语课", explanation: "대화에서 오늘 한국어 수업이 있다고 했습니다.", explanationZh: "对话中说今天有韩语课。", source: "TOPIK I listening fallback" },
+  { audioText: topikIListeningFallbackScript, transcript: topikIListeningFallbackScript, transcriptZh: topikIListeningFallbackScriptZh, questionType: "topik1_listening", stem: "남자는 무엇을 물어봅니까?", stemZh: "男生问了什么？", options: ["교실에 가는 시간", "수업의 이름", "친구의 전화번호", "점심 메뉴"], optionTranslations: ["去教室的时间", "课程名称", "朋友的电话号码", "午饭菜单"], answer: 0, answerZh: "去教室的时间", explanation: "남자는 몇 시에 교실에 가는지 물어봤습니다.", explanationZh: "男生问女生几点去教室。", source: "TOPIK I listening fallback" }
+];
+
 const listeningFallbackScript = "남자: 수진 씨, 오늘 동아리 회의에 못 올 것 같아요. 갑자기 아르바이트 시간이 바뀌었거든요. 여자: 그래요? 그럼 내일 오전까지 의견을 문자로 보내 주세요. 회의에서 대신 말해 줄게요. 남자: 고마워요. 포스터 디자인에 대한 의견을 정리해서 보낼게요.";
 const listeningFallbackScriptZh = "男：秀珍，我今天可能去不了社团会议了。突然打工时间变了。女：是吗？那请你明天上午之前把意见用短信发给我吧。我会在会议上替你说。男：谢谢。我会整理好关于海报设计的意见发过去。";
 const listeningFallbackQuestions = [
@@ -2134,10 +2144,18 @@ function fallbackPracticeQuestions(errorId) {
   return particleQuestions.slice(5, 10);
 }
 
+function listeningFallbackForContext(context = {}) {
+  const settings = context?.settings || readStudySettings();
+  const task = context?.task || {};
+  const level = task.examLevel || task.level || settings.level;
+  if (settings.exam === "TOPIK" && level === "I") return topikIListeningFallbackQuestions;
+  return listeningFallbackQuestions;
+}
+
 function localFallbackForContext(errorId, context) {
   const materialPractice = materialPracticeForContext(context);
   if (materialPractice.length) return materialPractice;
-  if (context?.category === "listening") return listeningFallbackQuestions;
+  if (isListeningPracticeContext(context)) return listeningFallbackForContext(context);
   if (context?.category === "reading") return topikIReadingFallbackQuestions;
   return fallbackPracticeQuestions(errorId);
 }
@@ -2290,6 +2308,23 @@ function listeningTextFor(question = {}) {
 
 function listeningAudioFor(question = {}) {
   return safeAudioPath(question.audioSrc || question.audioUrl || question.audioFile || "");
+}
+
+function isListeningPracticeContext(context = {}) {
+  return context?.category === "listening" || context?.task?.category === "listening";
+}
+
+function looksLikeGrammarFillQuestion(question = {}) {
+  const stem = String(question.stem || "");
+  const options = Array.isArray(question.options) ? question.options.map((option) => String(option).trim()) : [];
+  const optionsText = options.join("");
+  return /[_＿]{2,}|（\s*）|\(\s*\)|빈칸|알맞은 것/i.test(stem)
+    || (options.length > 0 && options.every((option) => /^[가-힣]{1,3}$/.test(option)))
+    || /^[는이가을를에도만은]+$/.test(optionsText);
+}
+
+function isPlayableListeningPracticeQuestion(question = {}) {
+  return Boolean(listeningAudioFor(question) || listeningTextFor(question)) && !looksLikeGrammarFillQuestion(question);
 }
 
 function playAudioFile(src, callbacks = {}) {
@@ -2990,10 +3025,23 @@ async function startPractice(errorId = "e1", linkedTaskId = null, isSample = fal
   openModal("practiceModal");
   try {
     const generated = await loadExamDrivenPractice(errorId, linkedTaskId, questionCount);
-    if (generated.length) activePractice = generated;
-    else if (linkedTaskId) showToast("暂未生成新题，已使用本地兜底练习");
+    const usableGenerated = isListeningPracticeContext(context)
+      ? generated.filter(isPlayableListeningPracticeQuestion)
+      : generated;
+    if (usableGenerated.length) activePractice = usableGenerated;
+    else if (linkedTaskId) {
+      showToast(
+        isListeningPracticeContext(context)
+          ? "听力题缺少可播放内容，已使用本地听力练习"
+          : "暂未生成新题，已使用本地兜底练习",
+      );
+    }
   } catch {
     if (linkedTaskId) showToast("在线出题两次失败，已进入本地兜底练习");
+  }
+  if (isListeningPracticeContext(context)) {
+    const playablePractice = activePractice.filter(isPlayableListeningPracticeQuestion);
+    activePractice = playablePractice.length ? playablePractice : listeningFallbackForContext(context);
   }
   questionIndex = 0;
   selectedAnswer = null;
