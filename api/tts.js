@@ -135,13 +135,20 @@ async function resolveElevenLabsVoiceId(apiKey, configuredVoice) {
   return { voiceId: matched?.voice_id || "", failure: matched ? "" : "voice_not_found" };
 }
 
+function defaultMiniMaxVoiceId() {
+  return String(process.env.MINIMAX_TTS_VOICE_ID || process.env.MINIMAX_VOICE_ID || process.env.MINIMAX_DEFAULT_VOICE_ID || "male-qn-qingse").trim();
+}
+
 function buildDiagnostics() {
+  const configuredMiniMaxVoice = String(process.env.MINIMAX_TTS_VOICE_ID || process.env.MINIMAX_VOICE_ID || "").trim();
+  const defaultMiniMaxVoice = defaultMiniMaxVoiceId();
   return {
     preferredProvider: String(process.env.TTS_PROVIDER || "").trim(),
     minimax: {
       hasApiKey: Boolean(String(process.env.MINIMAX_API_KEY || "").trim()),
       hasGroupId: Boolean(String(process.env.MINIMAX_GROUP_ID || "").trim()),
-      hasVoice: Boolean(String(process.env.MINIMAX_TTS_VOICE_ID || process.env.MINIMAX_VOICE_ID || "").trim()),
+      hasVoice: Boolean(configuredMiniMaxVoice),
+      usesDefaultVoice: !configuredMiniMaxVoice && Boolean(defaultMiniMaxVoice),
       model: process.env.MINIMAX_TTS_MODEL || process.env.MINIMAX_MODEL_ID || "speech-02-hd",
       failure: ""
     },
@@ -166,10 +173,10 @@ function buildDiagnostics() {
 async function fetchMiniMaxTts(text, body = {}, diagnostics) {
   const apiKey = String(process.env.MINIMAX_API_KEY || "").trim();
   const groupId = String(process.env.MINIMAX_GROUP_ID || "").trim();
-  const voiceId = String(process.env.MINIMAX_TTS_VOICE_ID || process.env.MINIMAX_VOICE_ID || "").trim();
+  const voiceId = defaultMiniMaxVoiceId();
 
   if (!apiKey || !voiceId) {
-    diagnostics.minimax.failure = !apiKey ? "missing_api_key" : "missing_voice";
+    diagnostics.minimax.failure = !apiKey ? "missing_api_key" : "missing_default_voice";
     return null;
   }
 
@@ -377,7 +384,7 @@ module.exports = async function tts(req, res) {
     if (!audio?.buffer?.length) {
       return sendJson(res, 501, {
         error: "TTS provider is not configured",
-        detail: "Set MINIMAX_API_KEY and MINIMAX_TTS_VOICE_ID (or MINIMAX_VOICE_ID), or configure ElevenLabs/OpenAI-compatible/external TTS.",
+        detail: "Set MINIMAX_API_KEY for MiniMax TTS. MINIMAX_TTS_VOICE_ID is optional and falls back to the default voice.",
         diagnostics
       });
     }
