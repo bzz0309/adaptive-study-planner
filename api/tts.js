@@ -139,6 +139,10 @@ function defaultMiniMaxVoiceId() {
   return String(process.env.MINIMAX_TTS_VOICE_ID || process.env.MINIMAX_VOICE_ID || process.env.MINIMAX_DEFAULT_VOICE_ID || "male-qn-qingse").trim();
 }
 
+function fallbackMiniMaxVoiceId() {
+  return String(process.env.MINIMAX_FALLBACK_VOICE_ID || "male-qn-qingse").trim();
+}
+
 function buildDiagnostics() {
   const configuredMiniMaxVoice = String(process.env.MINIMAX_TTS_VOICE_ID || process.env.MINIMAX_VOICE_ID || "").trim();
   const defaultMiniMaxVoice = defaultMiniMaxVoiceId();
@@ -150,7 +154,9 @@ function buildDiagnostics() {
       hasVoice: Boolean(configuredMiniMaxVoice),
       usesDefaultVoice: !configuredMiniMaxVoice && Boolean(defaultMiniMaxVoice),
       model: process.env.MINIMAX_TTS_MODEL || process.env.MINIMAX_MODEL_ID || "speech-02-hd",
-      failure: ""
+      failure: "",
+      message: "",
+      fallbackVoiceTried: false
     },
     elevenLabs: {
       hasApiKey: Boolean(String(process.env.ELEVENLABS_API_KEY || "").trim()),
@@ -170,10 +176,20 @@ function buildDiagnostics() {
   };
 }
 
-async function fetchMiniMaxTts(text, body = {}, diagnostics) {
+function readMiniMaxStatusMessage(data = {}) {
+  return String(
+    data?.base_resp?.status_msg
+      || data?.base_resp?.message
+      || data?.base_resp?.status_message
+      || data?.message
+      || data?.msg
+      || ""
+  ).slice(0, 240);
+}
+
+async function requestMiniMaxTts(text, body = {}, diagnostics, voiceId) {
   const apiKey = String(process.env.MINIMAX_API_KEY || "").trim();
   const groupId = String(process.env.MINIMAX_GROUP_ID || "").trim();
-  const voiceId = defaultMiniMaxVoiceId();
 
   if (!apiKey || !voiceId) {
     diagnostics.minimax.failure = !apiKey ? "missing_api_key" : "missing_default_voice";
@@ -238,12 +254,37 @@ async function fetchMiniMaxTts(text, body = {}, diagnostics) {
   const statusCode = data?.base_resp?.status_code;
   if (typeof statusCode === "number" && statusCode !== 0) {
     diagnostics.minimax.failure = `api_${statusCode}`;
+    diagnostics.minimax.message = readMiniMaxStatusMessage(data);
     return null;
   }
 
   const audio = readMiniMaxAudioPayload(data, format);
   if (!audio?.buffer?.length) diagnostics.minimax.failure = "no_audio";
   return audio;
+}
+
+async function fetchMiniMaxTts(text, body = {}, diagnostics) {
+  const voiceId = defaultMiniMaxVoiceId();
+  const audio = await requestMiniMaxTts(text, body, diagnostics, voiceId);
+  if (audio?.buffer?.length) return audio;
+
+  const fallbackVoice = fallbackMiniMaxVoiceId();
+  if (voiceId && fallbackVoice && voiceId !== fallbackVoice && diagnostics.minimax.failure) {
+    const firstFailure = diagnostics.minimax.failure;
+    const firstMessage = diagnostics.minimax.message;
+    diagnostics.minimax.fallbackVoiceTried = true;
+    diagnostics.minimax.failure = "";
+    diagnostics.minimax.message = "";
+    const fallbackAudio = await requestMiniMaxTts(text, body, diagnostics, fallbackVoice);
+    if (fallbackAudio?.buffer?.length) return fallbackAudio;
+    if (diagnostics.minimax.failure) {
+      diagnostics.minimax.message = diagnostics.minimax.message
+        ? `${firstFailure}${firstMessage ? `: ${firstMessage}` : ""}; fallback ${diagnostics.minimax.failure}: ${diagnostics.minimax.message}`
+        : `${firstFailure}${firstMessage ? `: ${firstMessage}` : ""}; fallback ${diagnostics.minimax.failure}`;
+    }
+  }
+
+  return null;
 }
 
 async function fetchElevenLabsTts(text, diagnostics) {
@@ -382,9 +423,15 @@ module.exports = async function tts(req, res) {
           || await fetchExternalTts(text, body, diagnostics)
     );
     if (!audio?.buffer?.length) {
+      const providerConfigured = diagnostics.minimax.hasApiKey
+        || diagnostics.elevenLabs.hasApiKey
+        || diagnostics.openAiCompatible.hasApiKey
+        || diagnostics.external.hasEndpoint;
       return sendJson(res, 501, {
-        error: "TTS provider is not configured",
-        detail: "Set MINIMAX_API_KEY for MiniMax TTS. MINIMAX_TTS_VOICE_ID is optional and falls back to the default voice.",
+        error: providerConfigured ? "TTS provider failed" : "TTS provider is not configured",
+        detail: providerConfigured
+          ? "The configured TTS provider returned an error. Check diagnostics for the provider response."
+          : "Set MINIMAX_API_KEY for MiniMax TTS. MINIMAX_TTS_VOICE_ID is optional and falls back to the default voice.",
         diagnostics
       });
     }
