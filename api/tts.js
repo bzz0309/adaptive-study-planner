@@ -143,6 +143,26 @@ function fallbackMiniMaxVoiceId() {
   return String(process.env.MINIMAX_FALLBACK_VOICE_ID || "male-qn-qingse").trim();
 }
 
+function normalizeMiniMaxSpeaker(value = "") {
+  const speaker = String(value || "").trim().toLowerCase();
+  if (["male", "man", "m", "male1", "man1", "m1", "남자", "남성", "남", "男", "男生", "男声"].includes(speaker)) return "male";
+  if (["female", "woman", "f", "female1", "woman1", "f1", "여자", "여성", "여", "女", "女生", "女声"].includes(speaker)) return "female";
+  if (["male2", "man2", "m2", "男2", "男生2", "男声2"].includes(speaker)) return "male2";
+  if (["female2", "woman2", "f2", "女2", "女生2", "女声2"].includes(speaker)) return "female2";
+  return "default";
+}
+
+function miniMaxVoiceIdForSpeaker(speaker) {
+  const normalized = normalizeMiniMaxSpeaker(speaker);
+  const voiceBySpeaker = {
+    male: process.env.MINIMAX_MALE_VOICE_ID || process.env.MINIMAX_DIALOGUE_MALE_VOICE_ID,
+    female: process.env.MINIMAX_FEMALE_VOICE_ID || process.env.MINIMAX_DIALOGUE_FEMALE_VOICE_ID,
+    male2: process.env.MINIMAX_SECOND_MALE_VOICE_ID,
+    female2: process.env.MINIMAX_SECOND_FEMALE_VOICE_ID
+  };
+  return String(voiceBySpeaker[normalized] || defaultMiniMaxVoiceId()).trim();
+}
+
 function buildDiagnostics() {
   const configuredMiniMaxVoice = String(process.env.MINIMAX_TTS_VOICE_ID || process.env.MINIMAX_VOICE_ID || "").trim();
   const defaultMiniMaxVoice = defaultMiniMaxVoiceId();
@@ -152,6 +172,8 @@ function buildDiagnostics() {
       hasApiKey: Boolean(String(process.env.MINIMAX_API_KEY || "").trim()),
       hasGroupId: Boolean(String(process.env.MINIMAX_GROUP_ID || "").trim()),
       hasVoice: Boolean(configuredMiniMaxVoice),
+      hasMaleVoice: Boolean(String(process.env.MINIMAX_MALE_VOICE_ID || process.env.MINIMAX_DIALOGUE_MALE_VOICE_ID || "").trim()),
+      hasFemaleVoice: Boolean(String(process.env.MINIMAX_FEMALE_VOICE_ID || process.env.MINIMAX_DIALOGUE_FEMALE_VOICE_ID || "").trim()),
       usesDefaultVoice: !configuredMiniMaxVoice && Boolean(defaultMiniMaxVoice),
       model: process.env.MINIMAX_TTS_MODEL || process.env.MINIMAX_MODEL_ID || "speech-02-hd",
       failure: "",
@@ -264,7 +286,7 @@ async function requestMiniMaxTts(text, body = {}, diagnostics, voiceId) {
 }
 
 async function fetchMiniMaxTts(text, body = {}, diagnostics) {
-  const voiceId = defaultMiniMaxVoiceId();
+  const voiceId = miniMaxVoiceIdForSpeaker(body.speaker);
   const audio = await requestMiniMaxTts(text, body, diagnostics, voiceId);
   if (audio?.buffer?.length) return audio;
 

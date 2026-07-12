@@ -1376,7 +1376,8 @@ async function playOpenSourceTts(text, options = {}) {
       body: JSON.stringify({
         text: content,
         language: "ko-KR",
-        rate: options.rate || 0.86
+        rate: options.rate || 0.86,
+        speaker: options.speaker || ""
       })
     });
     if (!response.ok) {
@@ -1497,6 +1498,75 @@ async function speakKoreanText(text, options = {}) {
     return false;
   }
   return await speakBrowserKoreanText(content, options);
+}
+
+function normalizeDialogueSpeaker(label = "") {
+  const value = String(label || "").trim();
+  if (/^(남자|남성|남학생|남|男|男生|男声)$/.test(value)) return "male";
+  if (/^(여자|여성|여학생|여|女|女生|女声)$/.test(value)) return "female";
+  return "default";
+}
+
+function getDialogueSegments(text = "") {
+  const source = String(text || "").trim();
+  if (!source) return [];
+  const markerPattern = /(남자|여자|남성|여성|남학생|여학생|남|여|男生|女生|男声|女声|男|女)\s*[:：]/g;
+  const matches = Array.from(source.matchAll(markerPattern));
+  if (!matches.length) return [{ speaker: "default", text: source }];
+
+  const segments = [];
+  matches.forEach((match, index) => {
+    const start = match.index + match[0].length;
+    const end = index + 1 < matches.length ? matches[index + 1].index : source.length;
+    const content = source.slice(start, end).trim();
+    if (content) {
+      segments.push({ speaker: normalizeDialogueSpeaker(match[1]), text: content });
+    }
+  });
+
+  return segments.length ? segments : [{ speaker: "default", text: source }];
+}
+
+async function speakKoreanDialogueText(text, options = {}) {
+  const segments = getDialogueSegments(text);
+  if (segments.length <= 1) return speakKoreanText(text, options);
+
+  let hasStarted = false;
+  for (const segment of segments) {
+    const played = await new Promise(resolve => {
+      let settled = false;
+      const finish = value => {
+        if (settled) return;
+        settled = true;
+        resolve(value);
+      };
+
+      speakKoreanText(segment.text, {
+        ...options,
+        speaker: segment.speaker,
+        onStart: () => {
+          if (!hasStarted) {
+            hasStarted = true;
+            options.onStart?.();
+          }
+        },
+        onEnd: () => finish(true),
+        onError: () => finish(false)
+      })
+        .then(ok => {
+          if (!ok) finish(false);
+        })
+        .catch(() => finish(false));
+    });
+
+    if (!played) {
+      options.onError?.();
+      return false;
+    }
+  }
+
+  options.onEnd?.();
+  return true;
 }
 
 function speakDictationText(text) {
@@ -2381,7 +2451,7 @@ async function playListeningQuestion() {
         }
         showToast("原始音频暂时失败，先用 AI 朗读练习");
         renderQuestion();
-        await speakKoreanText(text, {
+        await speakKoreanDialogueText(text, {
           rate: 0.88,
           onStart: () => {
             listeningIsSpeaking = true;
@@ -2400,7 +2470,7 @@ async function playListeningQuestion() {
     });
     return;
   }
-  const started = await speakKoreanText(text, {
+  const started = await speakKoreanDialogueText(text, {
     rate: 0.88,
     onStart: () => {
       listeningIsSpeaking = true;
