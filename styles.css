@@ -318,6 +318,11 @@ input:focus, textarea:focus, select:focus { border-color: #8497a8; box-shadow: 0
 .listening-player span, .transcript-box span { display: block; color: var(--muted); font-size: 10px; font-weight: 850; }
 .listening-player strong { display: block; margin-top: 3px; color: var(--ink); font-size: 13px; }
 .listening-player.is-muted strong { color: #7a817d; }
+.listening-player.is-active { background: #f1faf4; border-color: #badbc8; }
+.listening-player.is-active strong { color: #2f6b4b; }
+.listening-player.is-error { background: #fff6f4; border-color: #efc7c1; }
+.listening-player.is-error strong { color: #9d3d35; }
+.secondary-button.compact.is-error { border-color: #efc7c1; color: #9d3d35; background: #fffaf9; }
 .transcript-box { margin-top: 14px; padding: 13px; border-radius: 13px; background: #f4f4ef; }
 .transcript-box p { margin: 6px 0 0; color: #26323c; font-size: 12px; font-weight: 650; line-height: 1.65; }
 .question-stem { margin: 28px 0 16px; font-size: 20px; font-weight: 800; line-height: 1.6; }

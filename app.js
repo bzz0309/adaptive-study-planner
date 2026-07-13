@@ -347,15 +347,58 @@ function constrainTasksToStudyScope(sourceTasks = [], settings = readStudySettin
     if (taskMentionsUnselectedScope(task, scopedTokens)) return false;
     return true;
   }).map(task => ({ ...task, category: normalizeStudyCategory(task.category) }));
-  return cleaned.length ? cleaned : generatePlanFromSettings(settings);
+  if (cleaned.length) return cleaned;
+  const fallbackTasks = generatePlanFromSettings(settings);
+  return (fallbackTasks || []).filter(task => {
+    const category = normalizeStudyCategory(task.category);
+    if (!allowedCategories.has(category)) return false;
+    if (taskMentionsUnselectedScope(task, scopedTokens)) return false;
+    return true;
+  }).map(task => ({ ...task, category: normalizeStudyCategory(task.category) }));
 }
 
 function syncTasksToStudyScope(settings = readStudySettings()) {
   const scopedTasks = constrainTasksToStudyScope(tasks, settings);
-  if (JSON.stringify(scopedTasks) === JSON.stringify(tasks)) return false;
+  if (JSON.stringify(scopedTasks) === JSON.stringify(tasks)) {
+    writePlanScope(settings);
+    return false;
+  }
   tasks = scopedTasks;
   localStorage.setItem("topikPrototypeTasks", JSON.stringify(tasks));
+  writePlanScope(settings);
   return true;
+}
+
+function planScopeSignature(settings = readStudySettings()) {
+  const weak = scopedStudyTokens(settings);
+  const studyDays = Array.isArray(settings.studyDays) ? [...settings.studyDays].sort() : [];
+  return JSON.stringify({
+    exam: settings.exam || "TOPIK",
+    level: settings.level || "I",
+    targetGrade: settings.targetGrade || "",
+    intensity: settings.intensity || "",
+    weak,
+    studyDays,
+    availableStart: settings.availableStart || "",
+    availableEnd: settings.availableEnd || "",
+    firstRoundWeeks: Number(settings.firstRoundWeeks || 0)
+  });
+}
+
+function writePlanScope(settings = readStudySettings()) {
+  localStorage.setItem("topikPrototypePlanScope", planScopeSignature(settings));
+}
+
+function savedPlanScopeMatches(settings = readStudySettings()) {
+  return localStorage.getItem("topikPrototypePlanScope") === planScopeSignature(settings);
+}
+
+function readStoredSettings() {
+  try {
+    return JSON.parse(localStorage.getItem("topikPrototypeSettings") || "null");
+  } catch {
+    return null;
+  }
 }
 
 function minutesToClock(total) {
@@ -518,8 +561,7 @@ function generatePlanFromSettings(settings) {
   const targetMinutes = dailyTargetMinutes(settings);
   const blockMinutes = blockSizeForIntensity(settings);
   const blocksPerDay = Math.max(1, Math.ceil(targetMinutes / blockMinutes));
-  const coreTokens = defaultStudyTokens({ exam, level });
-  const weakTokens = selectedStudyTokens(settings, coreTokens);
+  const weakTokens = scopedStudyTokens(settings);
   const templateSource = exam === "IELTS" ? ieltsTemplates : (exam === "OTHER" ? genericTemplates : studyTemplates);
   const rotation = [...new Set(prioritizedStudyTokens(weakTokens))];
   const foundationOffset = { "入门": 0, "一般": 1, "较好": 2, "不确定": 0 }[settings.foundation] || 0;
@@ -942,7 +984,10 @@ let practiceWrongNotes = [];
 let practiceResults = [];
 let practiceIsSample = false;
 let practiceReviewMode = "learning";
+const LISTENING_PLAY_LIMIT = 2;
+const LISTENING_TTS_RATE = 1;
 let listeningPlayCounts = {};
+let listeningPlaybackState = { key: "", status: "idle", message: "" };
 let listeningIsSpeaking = false;
 let activeCalendarFilter = "all";
 
@@ -986,6 +1031,7 @@ function currentCloudState() {
     settings: JSON.parse(localStorage.getItem("topikPrototypeSettings") || "null"),
     onboarded: localStorage.getItem("topikPrototypeOnboarded") || "",
     planVersion: localStorage.getItem("topikPrototypePlanVersion") || "5",
+    planScope: localStorage.getItem("topikPrototypePlanScope") || "",
     tomorrowFocus: localStorage.getItem("topikPrototypeTomorrowFocus") || "",
     dailyReminder: readReminderSettings(),
     rewards: readRewardState()
@@ -998,17 +1044,26 @@ function cloudStateHasReviewNeed(data = {}) {
 
 function applyCloudState(data) {
   if (!data || typeof data !== "object") return;
+  const localSettings = readStoredSettings();
+  const cloudSettings = data.settings ? { ...readStudySettings(), ...data.settings } : null;
+  const localScope = localSettings ? planScopeSignature({ ...readStudySettings(), ...localSettings }) : "";
+  const cloudScope = cloudSettings ? planScopeSignature(cloudSettings) : "";
+  const storedScope = localStorage.getItem("topikPrototypePlanScope") || "";
+  const preferLocalSettings = Boolean(localSettings && storedScope && storedScope === localScope && cloudScope && localScope !== cloudScope);
+  const effectiveSettings = preferLocalSettings && localSettings ? { ...readStudySettings(), ...localSettings } : (cloudSettings || readStudySettings());
   if (Array.isArray(data.importedErrors)) localStorage.setItem("topikPrototypeImportedErrors", JSON.stringify(data.importedErrors));
   if (Array.isArray(data.practiceErrors)) localStorage.setItem("topikPrototypePracticeErrors", JSON.stringify(data.practiceErrors));
-  if (data.settings) localStorage.setItem("topikPrototypeSettings", JSON.stringify(data.settings));
+  if (data.settings && !preferLocalSettings) localStorage.setItem("topikPrototypeSettings", JSON.stringify(data.settings));
+  if (preferLocalSettings) localStorage.setItem("topikPrototypeNeedsCloudRepair", "yes");
   if (data.onboarded) localStorage.setItem("topikPrototypeOnboarded", data.onboarded);
   if (Array.isArray(data.tasks)) {
-    const settings = data.settings ? { ...readStudySettings(), ...data.settings } : readStudySettings();
-    const scopedTasks = constrainTasksToStudyScope(data.tasks, settings, cloudStateHasReviewNeed(data));
-    if (JSON.stringify(scopedTasks) !== JSON.stringify(data.tasks) || data.planVersion !== planSchemaVersion) {
+    const scopedTasks = constrainTasksToStudyScope(data.tasks, effectiveSettings, cloudStateHasReviewNeed(data));
+    const effectiveScope = planScopeSignature(effectiveSettings);
+    if (JSON.stringify(scopedTasks) !== JSON.stringify(data.tasks) || data.planVersion !== planSchemaVersion || (data.planScope && data.planScope !== effectiveScope)) {
       localStorage.setItem("topikPrototypeNeedsCloudRepair", "yes");
     }
     localStorage.setItem("topikPrototypeTasks", JSON.stringify(scopedTasks));
+    writePlanScope(effectiveSettings);
   }
   localStorage.setItem("topikPrototypePlanVersion", planSchemaVersion);
   if (data.tomorrowFocus) localStorage.setItem("topikPrototypeTomorrowFocus", data.tomorrowFocus);
@@ -1376,7 +1431,7 @@ async function playOpenSourceTts(text, options = {}) {
       body: JSON.stringify({
         text: content,
         language: "ko-KR",
-        rate: options.rate || 0.86,
+        rate: options.rate || LISTENING_TTS_RATE,
         speaker: options.speaker || ""
       })
     });
@@ -1459,7 +1514,7 @@ async function speakBrowserKoreanText(text, options = {}) {
   const voice = getKoreanSpeechVoice();
   let started = false;
   utterance.lang = "ko-KR";
-  utterance.rate = options.rate || 0.86;
+  utterance.rate = options.rate || LISTENING_TTS_RATE;
   utterance.pitch = options.pitch || 1;
   utterance.volume = 1;
   if (voice) utterance.voice = voice;
@@ -2137,7 +2192,7 @@ function uniqueTextParts(parts = []) {
 }
 
 function compactRepeatedClauses(text = "") {
-  return uniqueTextParts(String(text).split(/[；;。]+/)).join("；");
+  return uniqueTextParts(String(text).split(/[；;。]+|[，,]\s*(?=(?:需要|建议|请|先|再|标记|记录|复听|重做|整理))/)).join("；");
 }
 
 function tomorrowPriorityTask(tomorrowTasks = [], profile = studyPerformanceProfile()) {
@@ -2362,18 +2417,69 @@ function materialPracticeForContext(context = {}, limit = 5) {
   return realMaterialQuestionsForContext(context, limit);
 }
 
-function stopListeningAudio() {
-  stopTtsAudio();
-  if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+function currentListeningKey() {
+  return `${questionIndex}`;
+}
+
+function resetListeningPlaybackState() {
+  listeningPlaybackState = { key: "", status: "idle", message: "" };
   listeningIsSpeaking = false;
 }
 
+function setListeningPlaybackState(status = "idle", message = "", key = currentListeningKey()) {
+  listeningPlaybackState = { key, status, message };
+  listeningIsSpeaking = status === "generating" || status === "playing";
+  renderQuestion();
+}
+
+function markListeningPlaybackFailed(key, message) {
+  listeningPlaybackState = { key, status: "error", message };
+  listeningIsSpeaking = false;
+  renderQuestion();
+}
+
+function listeningTtsPlaybackOptions(key, generatingMessage = "正在生成 AI 朗读音频") {
+  setListeningPlaybackState("generating", generatingMessage, key);
+  return {
+    rate: LISTENING_TTS_RATE,
+    onStart: () => setListeningPlaybackState("playing", "正在播放 AI 朗读", key),
+    onEnd: () => setListeningPlaybackState("idle", "", key),
+    onError: () => markListeningPlaybackFailed(key, "音频生成或播放失败，点按钮重试")
+  };
+}
+
+function stopListeningAudio() {
+  stopTtsAudio();
+  if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+  resetListeningPlaybackState();
+}
+
+function listeningDescriptorFor(question = {}) {
+  return [
+    question.source,
+    question.questionType,
+    question.sourceTitle,
+    question.title,
+    question.category,
+    question.skillLabel,
+    question.trainingPoint
+  ].filter(Boolean).join(" ");
+}
+
 function isListeningQuestion(question = {}) {
-  return Boolean(question.audioSrc || question.audioText || question.transcript || /listening|듣기/i.test(question.source || question.questionType || ""));
+  return Boolean(
+    question.audioSrc
+      || question.audioText
+      || question.transcript
+      || /listening|듣기|听力|听/i.test(listeningDescriptorFor(question))
+  );
 }
 
 function listeningTextFor(question = {}) {
-  return String(question.audioText || question.transcript || "").trim();
+  const direct = String(question.audioText || question.transcript || "").trim();
+  if (direct) return direct;
+  if (!isListeningQuestion(question)) return "";
+  return String(question.audioPrompt || question.dialogue || question.stem || question.prompt || question.question || "").trim();
 }
 
 function listeningAudioFor(question = {}) {
@@ -2394,7 +2500,10 @@ function looksLikeGrammarFillQuestion(question = {}) {
 }
 
 function isPlayableListeningPracticeQuestion(question = {}) {
-  return Boolean(listeningAudioFor(question) || listeningTextFor(question)) && !looksLikeGrammarFillQuestion(question);
+  const hasAudioSource = Boolean(listeningAudioFor(question) || listeningTextFor(question));
+  if (!hasAudioSource) return false;
+  if (isListeningQuestion(question)) return true;
+  return !looksLikeGrammarFillQuestion(question);
 }
 
 function playAudioFile(src, callbacks = {}) {
@@ -2422,74 +2531,42 @@ async function playListeningQuestion() {
   const question = activePractice[questionIndex];
   const audioSrc = listeningAudioFor(question);
   const text = listeningTextFor(question);
-  const key = `${questionIndex}`;
+  const key = currentListeningKey();
   const currentCount = listeningPlayCounts[key] || 0;
   const isReview = questionGraded;
   if (!audioSrc && !text) return showToast("这题暂时没有可播放音频，已作为文本题处理");
-  if (!isReview && currentCount >= 2) return showToast("答题阶段最多播放2次，提交后可反复复听");
+  if (!isReview && currentCount >= LISTENING_PLAY_LIMIT) return showToast("答题阶段最多播放2次，提交后可反复复听");
   stopListeningAudio();
   if (!isReview) listeningPlayCounts[key] = currentCount + 1;
-  listeningIsSpeaking = true;
-  renderQuestion();
+
   if (audioSrc) {
+    setListeningPlaybackState("playing", "正在播放原始音频", key);
     playAudioFile(audioSrc, {
-      onStart: () => {
-        listeningIsSpeaking = true;
-        renderQuestion();
-      },
-      onEnd: () => {
-        listeningIsSpeaking = false;
-        renderQuestion();
-      },
+      onStart: () => setListeningPlaybackState("playing", "正在播放原始音频", key),
+      onEnd: () => setListeningPlaybackState("idle", "", key),
       onError: async () => {
-        listeningIsSpeaking = false;
         if (!text) {
           if (!isReview) listeningPlayCounts[key] = currentCount;
-          renderQuestion();
+          markListeningPlaybackFailed(key, "原始音频播放失败，稍后再试");
           showToast("原始音频暂时播放失败，请稍后再试");
           return;
         }
         showToast("原始音频暂时失败，先用 AI 朗读练习");
-        renderQuestion();
-        await speakKoreanDialogueText(text, {
-          rate: 0.88,
-          onStart: () => {
-            listeningIsSpeaking = true;
-            renderQuestion();
-          },
-          onEnd: () => {
-            listeningIsSpeaking = false;
-            renderQuestion();
-          },
-          onError: () => {
-            listeningIsSpeaking = false;
-            renderQuestion();
-          }
-        });
+        const played = await speakKoreanDialogueText(text, listeningTtsPlaybackOptions(key, "原始音频失败，正在生成 AI 朗读"));
+        if (!played) {
+          if (!isReview) listeningPlayCounts[key] = currentCount;
+          markListeningPlaybackFailed(key, "AI 朗读生成失败，点按钮重试");
+        }
       }
     });
     return;
   }
-  const started = await speakKoreanDialogueText(text, {
-    rate: 0.88,
-    onStart: () => {
-      listeningIsSpeaking = true;
-      renderQuestion();
-    },
-    onEnd: () => {
-      listeningIsSpeaking = false;
-      renderQuestion();
-    },
-    onError: () => {
-      listeningIsSpeaking = false;
-      renderQuestion();
-    }
-  });
+
+  const started = await speakKoreanDialogueText(text, listeningTtsPlaybackOptions(key));
   if (!started) {
-    listeningIsSpeaking = false;
     if (!isReview) listeningPlayCounts[key] = currentCount;
+    markListeningPlaybackFailed(key, "AI 朗读生成失败，点按钮重试");
   }
-  renderQuestion();
 }
 
 function readPracticeQuestionCount() {
@@ -3132,13 +3209,21 @@ function renderQuestion() {
   const hasOriginalAudio = Boolean(listeningAudioFor(question));
   const hasPlayableAudio = Boolean(hasOriginalAudio || transcript);
   const transcriptZh = String(question.transcriptZh || "").trim();
-  const playCount = listeningPlayCounts[`${questionIndex}`] || 0;
-  const remainingPlays = Math.max(0, 2 - playCount);
+  const playbackKey = `${questionIndex}`;
+  const playCount = listeningPlayCounts[playbackKey] || 0;
+  const remainingPlays = Math.max(0, LISTENING_PLAY_LIMIT - playCount);
+  const playbackState = listeningPlaybackState.key === playbackKey ? listeningPlaybackState : { status: "idle", message: "" };
+  const playbackBusy = playbackState.status === "generating" || playbackState.status === "playing";
+  const playbackFailed = playbackState.status === "error";
+  const audioStatus = playbackState.message || (hasPlayableAudio ? (hasOriginalAudio ? (questionGraded ? (learningMode ? "复盘阶段可反复听" : "本题已记录，整组完成后复盘") : `答题阶段剩余 ${remainingPlays} 次`) : `暂无原始音频，AI 朗读剩余 ${remainingPlays} 次`) : "暂无可播放内容，按文本题完成");
+  const playButtonLabel = playbackState.status === "generating" ? "生成中…" : playbackState.status === "playing" ? "播放中…" : playbackFailed ? "重试播放" : (hasOriginalAudio ? "播放音频" : "AI 朗读");
+  const listeningPlayerClass = ["listening-player", hasOriginalAudio ? "" : "is-muted", playbackBusy ? "is-active" : "", playbackFailed ? "is-error" : ""].filter(Boolean).join(" " );
+  const listeningButtonClass = ["secondary-button compact", playbackFailed ? "is-error" : ""].filter(Boolean).join(" " );
   const materialLabel = question.skillLabel || question.materialSetTitle || question.sourceTitle || "";
   $("#questionProgress").textContent = `${questionIndex + 1} / ${activePractice.length}`;
-  $("#questionArea").innerHTML = `${listening ? `<div class="listening-player ${hasOriginalAudio ? "" : "is-muted"}">
-    <div><span>${hasOriginalAudio ? "听力音频" : "AI 朗读"}</span><strong>${hasPlayableAudio ? (hasOriginalAudio ? (questionGraded ? (learningMode ? "复盘阶段可反复听" : "本题已记录，整组完成后复盘") : `答题阶段剩余 ${remainingPlays} 次`) : `暂无原始音频，AI 朗读剩余 ${remainingPlays} 次`) : "暂无可播放内容，按文本题完成"}</strong></div>
-    <button class="secondary-button compact" id="playListening" type="button" ${listeningIsSpeaking || (!learningMode && questionGraded) || (!questionGraded && remainingPlays <= 0) || !hasPlayableAudio ? "disabled" : ""}>${listeningIsSpeaking ? "播放中…" : (hasOriginalAudio ? "播放音频" : "AI 朗读")}</button>
+  $("#questionArea").innerHTML = `${listening ? `<div class="${listeningPlayerClass}">
+    <div><span>${hasOriginalAudio ? "听力音频" : "AI 朗读"}</span><strong>${audioStatus}</strong></div>
+    <button class="${listeningButtonClass}" id="playListening" type="button" ${playbackBusy || (!learningMode && questionGraded) || (!questionGraded && remainingPlays <= 0) || !hasPlayableAudio ? "disabled" : ""}>${playButtonLabel}</button>
   </div>` : ""}
   ${materialLabel ? `<div class="material-source-pill">资料题 · ${escapeImportText(materialLabel)}</div>` : ""}
   ${question.materialImage ? `<button class="question-material-image" type="button" id="openMaterialImage" aria-label="查看原始资料图"><img src="${escapeImportText(question.materialImage)}" alt="原始资料页" loading="lazy" /></button>` : ""}
@@ -3296,9 +3381,7 @@ function normalizeAiTasks(aiTasks, settings) {
   const allowedDays = new Set(settings.studyDays?.length ? settings.studyDays : days.map(day => day.key));
   const availableStart = settings.availableStart || "00:00";
   const availableEnd = settings.availableEnd || "23:59";
-  const defaultTokens = defaultStudyTokens(settings);
-  const explicitTokens = userSelectedStudyTokens(settings);
-  const selectedTokens = (explicitTokens.length ? explicitTokens : selectedStudyTokens(settings, defaultTokens)).map(normalizeStudyCategory);
+  const selectedTokens = scopedStudyTokens(settings).map(normalizeStudyCategory);
   const hasReviewNeed = hasActualReviewNeed();
   const allowed = [...new Set([
     ...selectedTokens,
@@ -3310,7 +3393,7 @@ function normalizeAiTasks(aiTasks, settings) {
     const validClock = /^\d{2}:\d{2}$/.test(task.start || "") && /^\d{2}:\d{2}$/.test(task.end || "");
     if (!validClock) return false;
     if (category === "review" && !hasReviewNeed) return false;
-    if (taskMentionsUnselectedScope(task, explicitTokens)) return false;
+    if (taskMentionsUnselectedScope(task, selectedTokens)) return false;
     const startMinutes = clockToMinutes(task.start);
     const endMinutes = clockToMinutes(task.end);
     return allowedDays.has(task.day)
@@ -3364,6 +3447,7 @@ async function commitPlanSettings(settings) {
   tasks = constrainTasksToStudyScope(tasks, settings);
   localStorage.setItem("topikPrototypeTasks", JSON.stringify(tasks));
   localStorage.setItem("topikPrototypePlanVersion", planSchemaVersion);
+  writePlanScope(settings);
   renderCalendar();
   updateTomorrowFocus();
   $("#profileIntensity").textContent = settings.intensityLabel;
@@ -3755,11 +3839,12 @@ if (savedSettings) {
   updateExamOptions(savedSettings.exam || "TOPIK", savedSettings.level || "I");
   updateTargetGradeOptions(savedSettings.level || "I", savedSettings.targetGrade || (savedSettings.level === "II" ? "4" : "2"));
   applyExamBrand(savedSettings.exam || "TOPIK", savedSettings.level || "I", savedSettings.targetGrade);
-  if (localStorage.getItem("topikPrototypePlanVersion") !== planSchemaVersion) {
-    const upgradedSettings = { exam: savedSettings.exam || "TOPIK", level: savedSettings.level || "I", foundation: savedSettings.foundation || "一般", weak: savedSettings.weak || ["听力", "阅读"], times: savedSettings.times || ["下午", "晚上"], ...savedSettings };
-    tasks = generatePlanFromSettings(upgradedSettings);
+  const startupSavedSettings = { ...readStudySettings(), ...savedSettings };
+  if (localStorage.getItem("topikPrototypePlanVersion") !== planSchemaVersion || !savedPlanScopeMatches(startupSavedSettings)) {
+    tasks = constrainTasksToStudyScope(generatePlanFromSettings(startupSavedSettings), startupSavedSettings);
     localStorage.setItem("topikPrototypeTasks", JSON.stringify(tasks));
     localStorage.setItem("topikPrototypePlanVersion", planSchemaVersion);
+    writePlanScope(startupSavedSettings);
     renderCalendar();
   }
 } else {

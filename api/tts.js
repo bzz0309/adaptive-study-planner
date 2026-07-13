@@ -220,7 +220,7 @@ async function requestMiniMaxTts(text, body = {}, diagnostics, voiceId) {
 
   const baseUrl = trimTrailingSlash(process.env.MINIMAX_TTS_BASE_URL || "https://api.minimaxi.com/v1");
   const format = process.env.MINIMAX_TTS_FORMAT || "mp3";
-  const speed = clampNumber(body.rate || process.env.MINIMAX_TTS_SPEED, 0.86, 0.5, 2);
+  const speed = clampNumber(body.rate || process.env.MINIMAX_TTS_SPEED, 1, 0.5, 2);
   const volume = clampNumber(process.env.MINIMAX_TTS_VOLUME, 1, 0.1, 10);
   const pitch = clampNumber(process.env.MINIMAX_TTS_PITCH, 0, -12, 12);
   const endpoint = new URL(`${baseUrl}/t2a_v2`);
@@ -374,7 +374,7 @@ async function fetchOpenAiCompatibleTts(text, body = {}, diagnostics) {
     process.env.OPENAI_TTS_BASE_URL || process.env.OPENAI_BASE_URL || "https://api.openai.com/v1"
   );
   const voice = process.env.OPENAI_TTS_VOICE || process.env.TTS_VOICE || "alloy";
-  const speed = Math.max(0.25, Math.min(4, numberOrDefault(body.rate, 0.9)));
+  const speed = Math.max(0.25, Math.min(4, numberOrDefault(body.rate, 1)));
 
   const response = await fetch(`${baseUrl}/audio/speech`, {
     method: "POST",
