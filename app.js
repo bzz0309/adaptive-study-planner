@@ -804,6 +804,7 @@ const realMaterialQuestionBank = [
     category: "listening",
     title: "TOPIK II 听力：看图与图表理解",
     skillLabel: "看图与图表理解",
+    matchTerms: ["看图听关键词", "看图与图表理解"],
     trainingPoint: "先听音频，再根据场景动作、人物关系和图表数据选择最符合的一项",
     sourceTitle: "第102届 TOPIK II 听力真题",
     sourceDetail: "1-3题 · 图片/图表选择样本",
@@ -867,6 +868,7 @@ const realMaterialQuestionBank = [
     category: "reading",
     title: "TOPIK I 阅读：标识与公告理解",
     skillLabel: "标识与公告理解",
+    matchTerms: ["公告信息读取", "广告信息读取", "标识与公告理解"],
     trainingPoint: "从广告、公告和便条中核对时间、对象、条件和活动信息",
     sourceTitle: "用户资料《完全掌握 TOPIK I 初级阅读》",
     sourceDetail: "标识/公告阅读样本 · 5题",
@@ -2304,9 +2306,17 @@ function safeAudioPath(path = "") {
 }
 
 function questionBankMatchesContext(bank, settings, context = {}) {
-  return bank.exam === settings.exam &&
+  const baseMatches = bank.exam === settings.exam &&
     bank.level === settings.level &&
     bank.category === context.category;
+  if (!baseMatches) return false;
+
+  const taskText = materialContextText(context);
+  const matchTerms = Array.isArray(bank.matchTerms) && bank.matchTerms.length
+    ? bank.matchTerms
+    : [bank.skillLabel].filter(Boolean);
+
+  return matchTerms.some(term => taskText.includes(String(term)));
 }
 
 function stableHashText(value = "") {

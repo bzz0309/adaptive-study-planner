@@ -48,6 +48,32 @@ bank.forEach((set, setIndex) => {
   });
 });
 
+const runtimePath = resolve(root, "app.js");
+const runtimeSource = readFileSync(runtimePath, "utf8");
+const expectedTopik102Assets = [
+  ["topik-ii-listening-102-q001", "assets/materials/topik102-listening/question/q001.png", "assets/materials/topik102-listening/audio/2-01.mp3"],
+  ["topik-ii-listening-102-q002", "assets/materials/topik102-listening/question/q002.png", "assets/materials/topik102-listening/audio/2-02.mp3"],
+  ["topik-ii-listening-102-q003", "assets/materials/topik102-listening/question/q003.png", "assets/materials/topik102-listening/audio/2-03.mp3"]
+];
+
+expectedTopik102Assets.forEach(([id, imagePath, audioPath]) => {
+  check(runtimeSource.includes(`materialQuestionId: "${id}"`), `Runtime is missing 102nd listening question: ${id}`);
+  check(runtimeSource.includes(`materialImage: "${imagePath}"`), `Runtime is missing 102nd listening image path: ${imagePath}`);
+  check(runtimeSource.includes(`audioSrc: "${audioPath}"`), `Runtime is missing 102nd listening audio path: ${audioPath}`);
+  check(existsSync(resolve(root, imagePath)), `102nd listening image file does not exist: ${imagePath}`);
+  check(existsSync(resolve(root, audioPath)), `102nd listening audio file does not exist: ${audioPath}`);
+});
+
+check(
+  runtimeSource.includes('matchTerms: ["看图听关键词", "看图与图表理解"]'),
+  "102nd listening set must expose explicit task match terms"
+);
+check(
+  runtimeSource.includes("const taskText = materialContextText(context);") &&
+    runtimeSource.includes("matchTerms.some(term => taskText.includes(String(term)))"),
+  "Runtime must route real material by the task training point"
+);
+
 if (errors.length) {
   console.error(`Real material bank validation failed: ${errors.length} issue(s)`);
   errors.forEach(error => console.error(`- ${error}`));
