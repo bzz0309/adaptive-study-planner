@@ -202,3 +202,11 @@ TOPIK I 系统听力兜底也已完成一题一原文修复。五道题现在对
 云登录的前端路径重复与网络直连问题已修复：`SUPABASE_URL` 会自动去掉误填的 `/rest/v1` 等后缀，认证和 `study_state` 读写统一走本站白名单同域代理。生产虚构账号测试确认请求已进入 `/api/cloud-proxy`，但当前配置的 Supabase 项目域名经公共 DNS 查询返回 NXDOMAIN，代理因此返回502；这不是邮箱或密码错误。恢复真实登录需要恢复原 Supabase 项目，或替换 Vercel 中的 `SUPABASE_URL` 与 `SUPABASE_ANON_KEY`。页面已改为中文可理解提示，不再暴露 `Failed to fetch`。任何后续测试不得使用或输出用户密码。
 
 上述云代理、中文提示与手写入口已部署生产，部署 ID `dpl_Bxuysen8RVdNM2YsRWZ7VaYgTeyx`，资源版本 `20260719-cloud-auth-status-v14`。真实登录仍被已失效的 Supabase 项目配置阻塞，需先恢复或替换云项目后再做有效账号登录与跨设备状态读写验收。
+
+最新稳定版本为 `20260719-full-audit-v15`，生产部署 ID `dpl_65U6AYYy1T7xesARQ17gd5UczTej`，主域名仍为 `https://adaptive-study-planner-chi.vercel.app/`。修改前回退点为提交 `eb125f8` 和标签 `checkpoint-20260719-pre-full-regression`；若后续出现意外回归，先对比该标签，不要重置或覆盖用户后续记录。
+
+本轮只修复两项底层一致性：全新用户不再自动装载示例周计划，服务端无显式配置时 TTS 默认 MiniMax。已确定的浅色视觉系统、日历真实时间线、卡片结构与悬停说明、听写答案面板、手写入口、学习监督信息架构均未重新设计；Day1、Day7、PWA 与 Reward Engine 未修改。
+
+完整回归脚本为 `specs/full-regression.cli.js`，验收说明为 `specs/core-learning-loop.plan.md`。隔离浏览器已覆盖16组核心断言并全部通过，包括部分完成恢复、真实错题诊断、分类筛选、听写、单词消除、多模块补录和390px布局。生产 MiniMax TTS 返回真实 MPEG 音频；生产5题在线请求在智增增超时后约13秒明确降级到已验证题库，不会再等待近一分钟。
+
+唯一明确的外部阻塞仍是云同步：当前 Supabase 项目域名不可达，`/api/cloud-proxy` 返回502及中文提示。恢复跨设备登录需要替换或恢复有效的 `SUPABASE_URL` 与 `SUPABASE_ANON_KEY`，不要在仓库中记录密钥。接下来的产品工作应优先扩充真实 TOPIK 题图、原始音频、阅读/写作题库与 OCR 质量验证；不要再进行一轮全站重设计，也不要扩展 Reward Engine。

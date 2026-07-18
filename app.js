@@ -127,7 +127,7 @@ const defaultTasks = [
   { id: 14, day: "sun", start: "20:00", end: "20:25", category: "vocab", title: "轻量复习与下周预习", note: "只看未掌握内容", status: "planned", standards: ["复习未掌握词汇", "预览下周3个语法点", "写下一个最需要解决的问题", "25分钟到时停止"] }
 ];
 
-let tasks = JSON.parse(localStorage.getItem("topikPrototypeTasks") || "null") || defaultTasks;
+let tasks = JSON.parse(localStorage.getItem("topikPrototypeTasks") || "null") || [];
 
 const studyTemplates = {
   listening: [
@@ -753,6 +753,15 @@ function constrainTasksToStudyScope(sourceTasks = [], settings = readStudySettin
 }
 
 function syncTasksToStudyScope(settings = readStudySettings()) {
+  const hasUserPlan = Boolean(
+    localStorage.getItem("topikPrototypeSettings") || localStorage.getItem("topikPrototypeOnboarded")
+  );
+  if (!hasUserPlan) {
+    if (!tasks.length) return false;
+    tasks = [];
+    localStorage.setItem("topikPrototypeTasks", "[]");
+    return true;
+  }
   const scopedTasks = constrainTasksToStudyScope(tasks, settings);
   if (JSON.stringify(scopedTasks) === JSON.stringify(tasks)) {
     writePlanScope(settings);

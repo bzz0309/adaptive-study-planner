@@ -167,7 +167,7 @@ function buildDiagnostics() {
   const configuredMiniMaxVoice = String(process.env.MINIMAX_TTS_VOICE_ID || process.env.MINIMAX_VOICE_ID || "").trim();
   const defaultMiniMaxVoice = defaultMiniMaxVoiceId();
   return {
-    preferredProvider: String(process.env.TTS_PROVIDER || "openai").trim(),
+    preferredProvider: String(process.env.TTS_PROVIDER || "minimax").trim(),
     minimax: {
       hasApiKey: Boolean(String(process.env.MINIMAX_API_KEY || "").trim()),
       hasGroupId: Boolean(String(process.env.MINIMAX_GROUP_ID || "").trim()),
@@ -447,7 +447,7 @@ module.exports = async function tts(req, res) {
     if (!text) return sendJson(res, 400, { error: "Missing text" });
 
     const diagnostics = buildDiagnostics();
-    const preferredProvider = String(process.env.TTS_PROVIDER || "openai").toLowerCase().trim();
+    const preferredProvider = String(process.env.TTS_PROVIDER || "minimax").toLowerCase().trim();
     const providerRequests = {
       openai: () => fetchOpenAiCompatibleTts(text, body, diagnostics),
       minimax: () => fetchMiniMaxTts(text, body, diagnostics),
@@ -468,7 +468,9 @@ module.exports = async function tts(req, res) {
         error: providerConfigured ? "TTS provider failed" : "TTS provider is not configured",
         detail: providerConfigured
           ? "The configured TTS provider returned an error. Check diagnostics for the provider response."
-          : "Set OPENAI_API_KEY (or OPENAI_TTS_API_KEY) for OpenAI text-to-speech.",
+          : preferredProvider === "minimax"
+            ? "Set MINIMAX_API_KEY for MiniMax text-to-speech."
+            : "Configure the selected text-to-speech provider.",
         diagnostics
       });
     }
