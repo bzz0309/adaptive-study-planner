@@ -167,7 +167,7 @@ function buildDiagnostics() {
   const configuredMiniMaxVoice = String(process.env.MINIMAX_TTS_VOICE_ID || process.env.MINIMAX_VOICE_ID || "").trim();
   const defaultMiniMaxVoice = defaultMiniMaxVoiceId();
   return {
-    preferredProvider: String(process.env.TTS_PROVIDER || "").trim(),
+    preferredProvider: String(process.env.TTS_PROVIDER || "openai").trim(),
     minimax: {
       hasApiKey: Boolean(String(process.env.MINIMAX_API_KEY || "").trim()),
       hasGroupId: Boolean(String(process.env.MINIMAX_GROUP_ID || "").trim()),
@@ -363,17 +363,29 @@ async function fetchElevenLabsTts(text, diagnostics) {
 }
 
 async function fetchOpenAiCompatibleTts(text, body = {}, diagnostics) {
-  const model = process.env.OPENAI_TTS_MODEL || process.env.TTS_MODEL || "";
+  const model = process.env.OPENAI_TTS_MODEL || process.env.TTS_MODEL || "tts-1-hd";
   const apiKey = process.env.OPENAI_TTS_API_KEY || process.env.OPENAI_API_KEY || "";
-  if (!model || !apiKey) {
-    diagnostics.openAiCompatible.failure = !model ? "missing_model" : "missing_api_key";
+  if (!apiKey) {
+    diagnostics.openAiCompatible.failure = "missing_api_key";
     return null;
   }
 
   const baseUrl = trimTrailingSlash(
-    process.env.OPENAI_TTS_BASE_URL || process.env.OPENAI_BASE_URL || "https://api.openai.com/v1"
+    process.env.OPENAI_TTS_ALLOW_CUSTOM_BASE_URL === "true"
+      ? process.env.OPENAI_TTS_BASE_URL || process.env.OPENAI_BASE_URL || "https://api.openai.com/v1"
+      : "https://api.openai.com/v1"
   );
-  const voice = process.env.OPENAI_TTS_VOICE || process.env.TTS_VOICE || "alloy";
+  const speaker = normalizeMiniMaxSpeaker(body.speaker);
+  const voiceBySpeaker = {
+    male: process.env.OPENAI_TTS_MALE_VOICE || "onyx",
+    female: process.env.OPENAI_TTS_FEMALE_VOICE || "nova",
+    male2: process.env.OPENAI_TTS_SECOND_MALE_VOICE || "echo",
+    female2: process.env.OPENAI_TTS_SECOND_FEMALE_VOICE || "shimmer"
+  };
+  const voice = voiceBySpeaker[speaker]
+    || process.env.OPENAI_TTS_VOICE
+    || process.env.TTS_VOICE
+    || "alloy";
   const speed = Math.max(0.25, Math.min(4, numberOrDefault(body.rate, 1)));
 
   const response = await fetch(`${baseUrl}/audio/speech`, {
@@ -395,7 +407,7 @@ async function fetchOpenAiCompatibleTts(text, body = {}, diagnostics) {
     diagnostics.openAiCompatible.failure = `request_${response.status}`;
     return null;
   }
-  const audio = await readProviderAudio(response, "openai-compatible");
+  const audio = await readProviderAudio(response, "openai");
   if (!audio) diagnostics.openAiCompatible.failure = "no_audio";
   return audio;
 }
@@ -435,25 +447,28 @@ module.exports = async function tts(req, res) {
     if (!text) return sendJson(res, 400, { error: "Missing text" });
 
     const diagnostics = buildDiagnostics();
-    const preferredProvider = String(process.env.TTS_PROVIDER || "").toLowerCase().trim();
-    const miniMaxAudio = await fetchMiniMaxTts(text, body, diagnostics);
-    const audio = miniMaxAudio || (
-      preferredProvider === "minimax"
-        ? null
-        : await fetchElevenLabsTts(text, diagnostics)
-          || await fetchOpenAiCompatibleTts(text, body, diagnostics)
-          || await fetchExternalTts(text, body, diagnostics)
-    );
+    const preferredProvider = String(process.env.TTS_PROVIDER || "openai").toLowerCase().trim();
+    const providerRequests = {
+      openai: () => fetchOpenAiCompatibleTts(text, body, diagnostics),
+      minimax: () => fetchMiniMaxTts(text, body, diagnostics),
+      elevenlabs: () => fetchElevenLabsTts(text, diagnostics),
+      external: () => fetchExternalTts(text, body, diagnostics)
+    };
+    const requestProvider = providerRequests[preferredProvider] || providerRequests.openai;
+    const audio = await requestProvider();
     if (!audio?.buffer?.length) {
-      const providerConfigured = diagnostics.minimax.hasApiKey
-        || diagnostics.elevenLabs.hasApiKey
-        || diagnostics.openAiCompatible.hasApiKey
-        || diagnostics.external.hasEndpoint;
+      const providerConfigured = preferredProvider === "openai"
+        ? diagnostics.openAiCompatible.hasApiKey
+        : preferredProvider === "minimax"
+          ? diagnostics.minimax.hasApiKey
+          : preferredProvider === "elevenlabs"
+            ? diagnostics.elevenLabs.hasApiKey
+            : diagnostics.external.hasEndpoint;
       return sendJson(res, 501, {
         error: providerConfigured ? "TTS provider failed" : "TTS provider is not configured",
         detail: providerConfigured
           ? "The configured TTS provider returned an error. Check diagnostics for the provider response."
-          : "Set MINIMAX_API_KEY for MiniMax TTS. MINIMAX_TTS_VOICE_ID is optional and falls back to the default voice.",
+          : "Set OPENAI_API_KEY (or OPENAI_TTS_API_KEY) for OpenAI text-to-speech.",
         diagnostics
       });
     }

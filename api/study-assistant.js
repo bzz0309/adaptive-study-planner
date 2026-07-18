@@ -121,15 +121,34 @@ function normalizeSource(source = {}, index = 0) {
   };
 }
 
+function splitQuestionStem(item = {}) {
+  const rawStem = String(item.stem || item.question || "").trim();
+  const explicitInstruction = String(item.instruction || item.prompt || item.questionPrompt || "").trim();
+  const explicitPassage = String(item.passage || item.sourceText || item.readingText || "").trim();
+  if (explicitInstruction || explicitPassage) {
+    return { instruction: explicitInstruction || rawStem, passage: explicitPassage };
+  }
+  const parts = rawStem.split(/\n\s*\n+/).map(part => part.trim()).filter(Boolean);
+  if (parts.length > 1 && /읽고|글|내용|빈칸|중심|태도/.test(parts[0])) {
+    return { instruction: parts[0], passage: parts.slice(1).join("\n\n") };
+  }
+  return { instruction: rawStem, passage: "" };
+}
+
 function normalizeQuestion(item = {}) {
   const options = Array.isArray(item.options) ? item.options.map(option => compact(option)).filter(Boolean).slice(0, 4) : [];
   const answer = Number(item.answer);
   const audioText = compact(item.audioText || item.audio || item.transcript);
+  const content = splitQuestionStem(item);
   return {
     questionId: compact(item.questionId || item.id || ""),
     materialQuestionId: compact(item.materialQuestionId || ""),
     materialSetId: compact(item.materialSetId || ""),
-    stem: compact(item.stem || item.question),
+    stem: compact(content.instruction),
+    instruction: compact(content.instruction),
+    instructionZh: compact(item.instructionZh || item.promptZh || item.questionPromptZh || ""),
+    passage: compact(content.passage),
+    passageZh: compact(item.passageZh || item.passageChinese || item.sourceTextZh || ""),
     stemZh: compact(item.stemZh || item.questionZh || item.stemChinese || ""),
     options,
     optionTranslations: Array.isArray(item.optionTranslations || item.optionsZh)
@@ -257,8 +276,11 @@ function materialRequestText(settings = {}) {
 function materialQuestionText(question = {}) {
   return [
     question.materialQuestionId,
+    question.instruction,
     question.stem,
     question.stemZh,
+    question.passage,
+    question.passageZh,
     question.transcript,
     question.transcriptZh,
     question.explanation,
@@ -364,7 +386,7 @@ function requestedQuestionCount(settings = {}) {
 }
 
 function inferQuestionType(question = {}, settings = {}) {
-  const text = `${question.stem} ${question.explanation} ${question.source}`.toLowerCase();
+  const text = `${question.stem} ${question.passage || ""} ${question.explanation} ${question.source}`.toLowerCase();
   const category = settings.practiceRequest?.category;
   if (settings.exam === "IELTS") {
     if (category === "listening") return "ielts_listening";
@@ -452,22 +474,21 @@ function fallbackPractice(settings = {}) {
   const exam = settings.exam || request.exam || "TOPIK";
   const level = settings.level || request.level || "I";
   const category = request.category || "vocab";
+  const count = requestedQuestionCount(settings);
   const taskTitle = compact(request.taskTitle, "系统练习");
   const examLabel = getExamLabel({ ...settings, exam, level, targetGrade: request.targetGrade || settings.targetGrade });
 
   if (exam === "TOPIK" && level === "I" && category === "listening") {
-    const listeningScript = "여자: 민수 씨, 오늘 한국어 수업에 와요? 남자: 네, 두 시에 교실에 가요. 여자: 책을 가져오세요. 남자: 네, 책하고 공책을 가져갈게요.";
-    const listeningScriptZh = "女：民秀，你今天来上韩语课吗？男：是的，我两点去教室。女：请带书来。男：好的，我会带书和笔记本。";
-    const withAudio = question => ({
-      audioText: listeningScript,
-      transcript: listeningScript,
-      transcriptZh: listeningScriptZh,
+    const withAudio = (audioText, transcriptZh, question) => ({
+      audioText,
+      transcript: audioText,
+      transcriptZh,
       questionType: "topik1_listening",
       ...question,
     });
     return {
       questions: [
-        withAudio({
+        withAudio("여자: 준호 씨, 오늘 한국어 수업에 와요? 남자: 네, 두 시에 교실에 가요. 여자: 조금 일찍 오세요. 남자: 네, 알겠습니다.", "女：俊浩，你今天来上韩语课吗？男：是的，我两点去教室。女：请稍微早点来。男：好的，知道了。", {
           stem: "남자는 몇 시에 교실에 갑니까?",
           stemZh: "男生几点去教室？",
           options: ["한 시", "두 시", "세 시", "네 시"],
@@ -478,48 +499,48 @@ function fallbackPractice(settings = {}) {
           explanationZh: "男生说两点去教室，所以答案是“两点”。",
           source: "TOPIK I 听力：时间信息",
         }),
-        withAudio({
-          stem: "남자는 어디에 갑니까?",
-          stemZh: "男生去哪里？",
-          options: ["도서관", "교실", "식당", "집"],
-          optionTranslations: ["图书馆", "教室", "食堂", "家"],
+        withAudio("남자: 수미 씨, 지금 어디에 가요? 여자: 우체국에 가요. 편지를 보내려고 해요. 남자: 우체국은 은행 옆에 있어요. 여자: 네, 고마워요.", "男：秀美，你现在去哪里？女：我去邮局，想寄信。男：邮局在银行旁边。女：好的，谢谢。", {
+          stem: "여자는 어디에 갑니까?",
+          stemZh: "女生去哪里？",
+          options: ["은행", "우체국", "도서관", "병원"],
+          optionTranslations: ["银行", "邮局", "图书馆", "医院"],
           answer: 1,
-          answerZh: "教室",
-          explanation: "남자는 교실에 간다고 했습니다.",
-          explanationZh: "对话里男生说“교실에 가요”，意思是去教室。",
+          answerZh: "邮局",
+          explanation: "여자는 편지를 보내려고 우체국에 간다고 했습니다.",
+          explanationZh: "女生说为了寄信要去邮局，所以答案是“邮局”。",
           source: "TOPIK I 听力：地点信息",
         }),
-        withAudio({
-          stem: "여자는 남자에게 무엇을 가져오라고 했습니까?",
-          stemZh: "女生让男生带什么来？",
-          options: ["책", "우산", "사진", "가방"],
-          optionTranslations: ["书", "雨伞", "照片", "包"],
+        withAudio("여자: 밖에 비가 많이 와요. 우산을 가져가세요. 남자: 우산이 어디에 있어요? 여자: 문 옆에 있어요. 남자: 네, 가져갈게요.", "女：外面雨下得很大，请带伞。男：伞在哪里？女：在门旁边。男：好的，我会带上。", {
+          stem: "여자는 남자에게 무엇을 가져가라고 했습니까?",
+          stemZh: "女生让男生带什么？",
+          options: ["우산", "가방", "책", "모자"],
+          optionTranslations: ["雨伞", "包", "书", "帽子"],
           answer: 0,
-          answerZh: "书",
-          explanation: "여자는 책을 가져오라고 말했습니다.",
-          explanationZh: "女生让男生带书来，所以选“책”。",
-          source: "TOPIK I 听力：对象信息",
-        }),
-        withAudio({
-          stem: "남자는 무엇을 가져가겠다고 했습니까?",
-          stemZh: "男生说会带什么？",
-          options: ["책하고 공책", "음식하고 물", "전화기하고 지갑", "모자하고 신발"],
-          optionTranslations: ["书和笔记本", "食物和水", "手机和钱包", "帽子和鞋"],
-          answer: 0,
-          answerZh: "书和笔记本",
-          explanation: "남자는 책하고 공책을 가져가겠다고 했습니다.",
-          explanationZh: "男生最后说会带书和笔记本。",
+          answerZh: "雨伞",
+          explanation: "여자는 비가 오니까 우산을 가져가라고 했습니다.",
+          explanationZh: "女生因为下雨让男生带伞，所以答案是“雨伞”。",
           source: "TOPIK I 听力：物品信息",
         }),
-        withAudio({
+        withAudio("남자: 학교에 어떻게 가요? 여자: 저는 버스를 타고 가요. 집 앞에서 12번 버스를 타면 돼요. 남자: 시간이 얼마나 걸려요? 여자: 십 분쯤 걸려요.", "男：你怎么去学校？女：我坐公交车去。在家门口坐12路公交车就可以。男：要花多长时间？女：大约十分钟。", {
+          stem: "여자는 학교에 어떻게 갑니까?",
+          stemZh: "女生怎么去学校？",
+          options: ["걸어서", "버스로", "지하철로", "택시로"],
+          optionTranslations: ["步行", "坐公交车", "坐地铁", "坐出租车"],
+          answer: 1,
+          answerZh: "坐公交车",
+          explanation: "여자는 버스를 타고 학교에 간다고 했습니다.",
+          explanationZh: "女生说自己坐公交车去学校，所以答案是“坐公交车”。",
+          source: "TOPIK I 听力：交通方式",
+        }),
+        withAudio("여자: 한식당입니다. 무엇을 도와드릴까요? 남자: 오늘 저녁 일곱 시에 세 명 자리를 예약하고 싶어요. 여자: 네, 창가 자리로 준비하겠습니다. 남자: 감사합니다.", "女：这里是韩餐厅，有什么可以帮您？男：我想预约今晚七点的三人座。女：好的，会为您准备靠窗的位置。男：谢谢。", {
           stem: "대화 내용과 같은 것을 고르십시오.",
           stemZh: "请选择与对话内容一致的一项。",
-          options: ["남자는 수업에 갑니다", "수업은 아침에 있습니다", "여자는 책을 빌립니다", "남자는 집에 있습니다"],
-          optionTranslations: ["男生去上课", "课在早上", "女生借书", "男生在家"],
+          options: ["남자는 세 명 자리를 예약합니다", "남자는 점심에 식당에 갑니다", "창가 자리는 없습니다", "예약 시간은 여덟 시입니다"],
+          optionTranslations: ["男生预约三人座", "男生中午去餐厅", "没有靠窗的位置", "预约时间是八点"],
           answer: 0,
-          answerZh: "男生去上课",
-          explanation: "남자는 오늘 한국어 수업에 간다고 했습니다.",
-          explanationZh: "对话开头确认男生今天去韩语课，所以选“男生去上课”。",
+          answerZh: "男生预约三人座",
+          explanation: "남자는 오늘 저녁 일곱 시에 세 명 자리를 예약했습니다.",
+          explanationZh: "男生预约了今晚七点的三人座，所以第一项与对话一致。",
           source: "TOPIK I 听力：内容一致",
         }),
       ].slice(0, count),
@@ -530,13 +551,18 @@ function fallbackPractice(settings = {}) {
   if (exam === "TOPIK" && level === "II" && category === "listening") {
     const listeningScript = "남자: 수진 씨, 오늘 동아리 회의에 못 올 것 같아요. 갑자기 아르바이트 시간이 바뀌었거든요. 여자: 그래요? 그럼 내일 오전까지 의견을 문자로 보내 주세요. 회의에서 대신 말해 줄게요. 남자: 고마워요. 포스터 디자인에 대한 의견을 정리해서 보낼게요.";
     const listeningScriptZh = "男：秀珍，我今天可能去不了社团会议了。突然打工时间变了。女：是吗？那请你明天上午之前把意见用短信发给我吧。我会在会议上替你说。男：谢谢。我会整理好关于海报设计的意见发过去。";
+    const withAudio = (audioText, transcriptZh, question) => ({
+      audioText,
+      transcript: audioText,
+      transcriptZh,
+      questionType: "topik2_listening",
+      ...question,
+    });
     return {
       questions: [
-        {
-          audioText: listeningScript,
-          transcript: listeningScript,
-          transcriptZh: listeningScriptZh,
+        withAudio(listeningScript, listeningScriptZh, {
           stem: "남자가 오늘 동아리 회의에 못 가는 이유는 무엇입니까?",
+          stemZh: "男生今天不能参加社团会议的原因是什么？",
           options: ["포스터를 아직 만들지 못해서", "아르바이트 시간이 바뀌어서", "의견을 정리하지 못해서", "내일 오전에 약속이 있어서"],
           optionTranslations: ["因为还没做完海报", "因为打工时间变了", "因为还没整理好意见", "因为明天上午有约"],
           answer: 1,
@@ -544,58 +570,124 @@ function fallbackPractice(settings = {}) {
           explanationZh: "男生说自己突然打工时间变了，所以今天不能去社团会议。",
           answerZh: "因为打工时间变了",
           source: "TOPIK II listening reason type"
-        },
-        {
-          audioText: listeningScript,
-          transcript: listeningScript,
-          transcriptZh: listeningScriptZh,
-          stem: "여자는 남자에게 무엇을 하라고 했습니까?",
-          options: ["회의에 늦게 오라고 했습니다", "포스터를 바로 만들라고 했습니다", "의견을 문자로 보내라고 했습니다", "아르바이트 시간을 바꾸라고 했습니다"],
-          optionTranslations: ["让他晚点来会议", "让他马上做海报", "让他把意见用短信发过去", "让他改打工时间"],
-          answer: 2,
-          explanation: "여자는 내일 오전까지 의견을 문자로 보내 달라고 했습니다.",
-          explanationZh: "女生让男生在明天上午之前把意见用短信发给她。",
-          answerZh: "让他把意见用短信发过去",
-          source: "TOPIK II listening action type"
-        },
-        {
-          audioText: listeningScript,
-          transcript: listeningScript,
-          transcriptZh: listeningScriptZh,
-          stem: "남자는 무엇에 대한 의견을 보내겠다고 했습니까?",
-          options: ["회의 시간", "포스터 디자인", "동아리 장소", "아르바이트 일정"],
-          optionTranslations: ["会议时间", "海报设计", "社团地点", "打工日程"],
+        }),
+        withAudio("여자: 지훈 씨, 오늘 스터디는 어디에서 해요? 남자: 원래 도서관에서 하려고 했는데 자리가 없어서 학생회관 2층에서 해요. 여자: 알겠어요. 여섯 시까지 갈게요.", "女：志勋，今天学习小组在哪里进行？男：原来想在图书馆进行，但因为没有座位，改在学生会馆二楼。女：知道了，我会在六点前到。", {
+          stem: "오늘 스터디는 어디에서 합니까?",
+          stemZh: "今天的学习小组在哪里进行？",
+          options: ["도서관", "학생회관 2층", "강의실", "식당"],
+          optionTranslations: ["图书馆", "学生会馆二楼", "教室", "食堂"],
           answer: 1,
-          explanation: "남자는 포스터 디자인에 대한 의견을 정리해서 보내겠다고 했습니다.",
-          explanationZh: "男生说会整理关于海报设计的意见并发过去。",
-          answerZh: "海报设计",
-          source: "TOPIK II listening detail type"
-        },
-        {
-          audioText: listeningScript,
-          transcript: listeningScript,
-          transcriptZh: listeningScriptZh,
-          stem: "대화 내용과 같은 것을 고르십시오.",
-          options: ["남자는 회의에서 발표할 것입니다", "여자는 남자의 의견을 대신 말할 것입니다", "회의는 내일 오전에 열립니다", "포스터는 이미 완성되었습니다"],
-          optionTranslations: ["男生会在会议上发表", "女生会代替男生转达意见", "会议会在明天上午举行", "海报已经完成了"],
-          answer: 1,
-          explanation: "여자는 회의에서 남자의 의견을 대신 말해 주겠다고 했습니다.",
-          explanationZh: "女生说会在会议上替男生转达他的意见。",
-          answerZh: "女生会代替男生转达意见",
-          source: "TOPIK II listening matching type"
-        },
-        {
-          audioText: listeningScript,
-          transcript: listeningScript,
-          transcriptZh: listeningScriptZh,
-          stem: "이 대화에서 남자의 말하기 목적은 무엇입니까?",
-          options: ["회의에 못 가는 상황을 설명하려고", "포스터 디자인을 칭찬하려고", "아르바이트를 소개하려고", "회의 장소를 확인하려고"],
-          optionTranslations: ["为了说明不能去会议的情况", "为了称赞海报设计", "为了介绍打工", "为了确认会议地点"],
+          explanation: "남자는 도서관에 자리가 없어서 학생회관 2층에서 스터디를 한다고 했습니다.",
+          explanationZh: "男生说图书馆没有座位，所以学习小组改在学生会馆二楼。",
+          answerZh: "学生会馆二楼",
+          source: "TOPIK II listening place type"
+        }),
+        withAudio("남자: 민지 씨, 발표 연습은 다 했어요? 여자: 아직 못 했어요. 오늘 세 시에 204호에서 같이 연습할래요? 남자: 좋아요. 제가 발표 자료를 가져갈게요.", "男：敏智，发表练习都做完了吗？女：还没有。今天三点在204教室一起练习好吗？男：好，我会带发表资料过去。", {
+          stem: "두 사람은 어디에서 발표 연습을 합니까?",
+          stemZh: "两个人在哪里进行发表练习？",
+          options: ["204호", "도서관", "학생회관", "회의실"],
+          optionTranslations: ["204教室", "图书馆", "学生会馆", "会议室"],
           answer: 0,
-          explanation: "남자는 아르바이트 시간이 바뀌어 회의에 못 간다는 상황을 설명하고 있습니다.",
-          explanationZh: "男生是在说明因为打工时间变动，所以不能参加会议。",
-          answerZh: "为了说明不能去会议的情况",
+          explanation: "여자는 오늘 세 시에 204호에서 같이 연습하자고 했습니다.",
+          explanationZh: "女生提议今天三点在204教室一起练习。",
+          answerZh: "204教室",
+          source: "TOPIK II listening place detail type"
+        }),
+        withAudio("남자: 예약한 김민수인데요. 창가 자리를 부탁드렸어요. 여자: 네, 네 분 자리로 준비했습니다. 일곱 시까지 오시면 됩니다. 남자: 감사합니다. 조금 일찍 가겠습니다.", "男：我是预约过的金民秀。我之前要求了靠窗的位置。女：好的，已经准备了四人座。七点前过来就可以。男：谢谢，我会稍微早点到。", {
+          stem: "대화 내용과 같은 것을 고르십시오.",
+          stemZh: "请选择与对话内容一致的一项。",
+          options: ["남자는 식당 자리를 예약했습니다", "두 사람만 식사할 것입니다", "남자는 일곱 시 이후에 갑니다", "창가 자리는 준비할 수 없습니다"],
+          optionTranslations: ["男生预约了餐厅座位", "只有两个人用餐", "男生七点以后到", "无法准备靠窗座位"],
+          answer: 0,
+          explanation: "남자는 예약한 사람이라고 말했고 창가 자리도 부탁했다고 했습니다.",
+          explanationZh: "男生说明自己已经预约，并确认了靠窗的四人座。",
+          answerZh: "男生预约了餐厅座位",
+          source: "TOPIK II listening matching type"
+        }),
+        withAudio("여자: 실례합니다. 조금 전에 지하철에서 검은색 지갑을 잃어버렸어요. 역무원: 어느 칸에 타셨어요? 여자: 세 번째 칸이었고, 지갑 안에 학생증이 있어요.", "女：不好意思，我刚才在地铁里丢了一个黑色钱包。站务员：您坐的是哪一节车厢？女：第三节，钱包里有学生证。", {
+          stem: "여자가 역무원에게 말하는 목적은 무엇입니까?",
+          stemZh: "女生对站务员说这些话的目的是什么？",
+          options: ["지갑을 잃어버렸다고 신고하려고", "지하철 시간을 확인하려고", "학생증을 새로 만들려고", "세 번째 칸을 예약하려고"],
+          optionTranslations: ["为了报告钱包丢失", "为了确认地铁时间", "为了补办学生证", "为了预约第三节车厢"],
+          answer: 0,
+          explanation: "여자는 지하철에서 잃어버린 검은색 지갑을 찾기 위해 역무원에게 말하고 있습니다.",
+          explanationZh: "女生是在向站务员报告自己在地铁上丢失了黑色钱包。",
+          answerZh: "为了报告钱包丢失",
           source: "TOPIK II listening purpose type"
+        })
+      ],
+      title: `${examLabel} · ${taskTitle}`,
+      sources: sourceList({ exam })
+    };
+  }
+
+  if (exam === "TOPIK" && level === "II" && category === "reading") {
+    return {
+      questions: [
+        {
+          stem: "다음을 읽고 글의 중심 생각을 고르십시오.\n\n최근에는 도서관에 직접 가지 않고도 전자책을 빌릴 수 있다. 이용자는 원하는 시간에 책을 읽을 수 있고, 도서관은 공간 부족 문제를 줄일 수 있다. 그러나 전자책 이용이 어려운 사람을 위한 안내도 함께 마련해야 한다.",
+          instructionZh: "阅读原文，选择最能概括文章中心思想的一项。",
+          passageZh: "最近，即使不亲自去图书馆，也可以借阅电子书。使用者可以在想要的时间读书，图书馆也能缓解空间不足的问题。不过，也应当为不熟悉电子书服务的人提供相应指导。",
+          stemZh: "阅读短文，选择中心思想。短文介绍电子书借阅的便利和图书馆空间优势，同时指出应为不熟悉电子服务的人提供帮助。",
+          options: ["전자책 서비스의 장점과 보완점", "도서관 건물을 크게 짓는 방법", "종이책을 모두 없애야 하는 이유", "책을 빨리 읽는 새로운 기술"],
+          optionTranslations: ["电子书服务的优点与需要完善之处", "扩建图书馆建筑的方法", "应该取消所有纸质书的理由", "快速阅读的新技术"],
+          answer: 0,
+          answerZh: "电子书服务的优点与需要完善之处",
+          explanation: "글은 전자책의 편리함과 공간 절약 효과를 말한 뒤 이용 안내가 필요하다는 보완점도 제시합니다.",
+          explanationZh: "文章先说明电子书便利、节省空间，最后补充需要帮助不熟悉电子服务的人，因此主旨是优点与完善方向。",
+          source: "TOPIK II 阅读主旨题型"
+        },
+        {
+          stem: "다음을 읽고 내용과 같은 것을 고르십시오.\n\n시민 강좌 신청 안내\n신청 기간: 8월 1일-8월 10일\n수업: 매주 수요일 오후 7시\n신청 방법: 홈페이지 접수\n재료비는 수강생이 별도로 부담합니다.",
+          instructionZh: "阅读原文，选择与通知内容一致的一项。",
+          passageZh: "市民课程报名通知：报名时间为8月1日至8月10日；课程每周三晚上7点进行；通过网站报名；材料费由学员另外承担。",
+          stemZh: "阅读市民课程通知，选择与内容一致的一项。申请时间为8月1日至10日，每周三晚上7点上课，网上报名，材料费另付。",
+          options: ["수업은 매주 수요일 저녁에 있습니다.", "신청은 전화로만 할 수 있습니다.", "재료비는 수강료에 포함되어 있습니다.", "8월 10일부터 신청할 수 있습니다."],
+          optionTranslations: ["课程每周三晚上进行。", "只能通过电话报名。", "材料费包含在学费中。", "从8月10日起可以报名。"],
+          answer: 0,
+          answerZh: "课程每周三晚上进行。",
+          explanation: "안내문에 수업 시간이 매주 수요일 오후 7시라고 쓰여 있습니다.",
+          explanationZh: "通知明确写着每周三晚上7点上课，其余选项与报名方式、材料费或日期不符。",
+          source: "TOPIK II 阅读公告细节题型"
+        },
+        {
+          stem: "다음을 읽고 필자의 태도로 맞는 것을 고르십시오.\n\n회의 시간을 줄이기 위해서는 참석자 수만 줄이는 것보다 회의 전에 목적과 자료를 공유하는 것이 중요하다. 준비된 참석자는 핵심 문제에 바로 의견을 낼 수 있기 때문이다.",
+          instructionZh: "阅读原文，选择最符合作者态度的一项。",
+          passageZh: "为了缩短会议时间，比起单纯减少参会人数，更重要的是在会前共享会议目的和资料。因为做好准备的参会者可以直接就核心问题发表意见。",
+          stemZh: "阅读短文，选择符合作者态度的一项。作者认为缩短会议不能只减少人数，更重要的是提前共享目的和资料。",
+          options: ["회의 전 준비가 효율을 높인다고 본다.", "회의에는 가능한 많은 사람이 필요하다고 본다.", "회의 자료는 끝난 뒤 공유해야 한다고 본다.", "회의 시간을 늘려야 의견이 많아진다고 본다."],
+          optionTranslations: ["认为会前准备能提高效率。", "认为会议应尽量多人参加。", "认为资料应在会后共享。", "认为延长会议才能增加意见。"],
+          answer: 0,
+          answerZh: "认为会前准备能提高效率。",
+          explanation: "필자는 목적과 자료를 미리 공유하면 핵심 문제를 바로 논의할 수 있다고 긍정적으로 평가합니다.",
+          explanationZh: "作者明确肯定会前共享目的和资料，理由是参与者可以直接讨论核心问题。",
+          source: "TOPIK II 阅读态度判断题型"
+        },
+        {
+          stem: "다음을 읽고 빈칸에 들어갈 내용으로 가장 알맞은 것을 고르십시오.\n\n새로운 습관을 만들 때 처음부터 큰 목표를 세우면 쉽게 지칠 수 있다. 그래서 전문가들은 행동을 아주 작게 시작하라고 권한다. 예를 들어 매일 한 시간 운동하는 대신 먼저 운동복을 입고 5분만 걷는 것이다. 이렇게 하면 ______.",
+          instructionZh: "阅读原文，选择最适合填入空白处的一项。",
+          passageZh: "培养新习惯时，如果一开始就设定很大的目标，很容易感到疲惫。因此专家建议从非常小的行动开始。例如，不是一开始就每天运动一小时，而是先穿上运动服，只走5分钟。这样就能______。",
+          stemZh: "阅读短文，选择最适合填入结尾的内容。文章建议建立新习惯时从很小的行动开始。",
+          options: ["행동을 시작하는 부담을 줄일 수 있다", "목표를 자주 바꾸는 것이 더 중요하다", "운동 시간을 정확히 한 시간으로 정해야 한다", "처음부터 어려운 계획을 선택할 수 있다"],
+          optionTranslations: ["可以降低开始行动的负担", "更重要的是经常更换目标", "必须把运动时间准确设为一小时", "可以从一开始选择困难计划"],
+          answer: 0,
+          answerZh: "可以降低开始行动的负担",
+          explanation: "앞 문장들은 작은 행동으로 시작하면 쉽게 지치지 않는다고 설명하므로 시작 부담을 줄인다는 결론이 자연스럽습니다.",
+          explanationZh: "前文一直说明小行动能避免一开始就疲惫，所以最自然的结论是降低开始行动的负担。",
+          source: "TOPIK II 阅读逻辑填空题型"
+        },
+        {
+          stem: "다음을 읽고 내용과 다른 것을 고르십시오.\n\n회사에서는 다음 달부터 일회용 컵 사용을 줄이기 위해 개인 컵을 가져온 직원에게 음료 할인 쿠폰을 제공한다. 컵 세척 공간도 각 층에 설치할 예정이다. 참여는 의무가 아니지만 회사는 많은 직원이 함께하기를 기대하고 있다.",
+          instructionZh: "阅读原文，选择与文章内容不一致的一项。",
+          passageZh: "公司从下个月起，为减少一次性杯子的使用，将向自带杯子的员工提供饮料优惠券，并计划在每层设置洗杯区域。参与并非强制，但公司希望有更多员工共同参加。",
+          stemZh: "阅读短文，选择与内容不一致的一项。公司下月开始鼓励员工自带杯子，提供饮料优惠券并设置清洗区，但不强制参加。",
+          options: ["제도는 다음 달부터 시작됩니다.", "개인 컵을 가져오면 할인 쿠폰을 받을 수 있습니다.", "모든 직원은 반드시 참여해야 합니다.", "각 층에 컵을 씻는 공간이 생길 예정입니다."],
+          optionTranslations: ["制度从下个月开始。", "自带杯子可以获得优惠券。", "所有员工都必须参加。", "每层计划设置洗杯区域。"],
+          answer: 2,
+          answerZh: "所有员工都必须参加。",
+          explanation: "글에는 참여가 의무가 아니라고 했으므로 모든 직원이 반드시 참여해야 한다는 내용은 맞지 않습니다.",
+          explanationZh: "原文明确说参加不是强制的，因此“所有员工都必须参加”与内容不一致。",
+          source: "TOPIK II 阅读内容一致题型"
         }
       ],
       title: `${examLabel} · ${taskTitle}`,
@@ -827,7 +919,34 @@ function splitWindowAroundBreaks(window, blockMinutes) {
   return segments.filter(segment => segment.end - segment.start >= blockMinutes);
 }
 
-function dailyStudyStarts(settings = {}, blocksPerDay = 1, blockMinutes = 45) {
+function distributedStudyStarts(candidates = [], blocksPerDay = 1, blockMinutes = 45, dayOffset = 0) {
+  const unique = [...new Set(candidates)].sort((a, b) => a - b);
+  if (!unique.length) return [];
+  const selected = [];
+  const ratios = [0, 0.22, 0.45, 0.68, 0.9, 0.32, 0.78];
+  const minimumDistance = blockMinutes + 10;
+  for (let index = 0; index < blocksPerDay; index += 1) {
+    const binStart = Math.floor(index * unique.length / blocksPerDay);
+    const binEnd = Math.max(binStart, Math.floor((index + 1) * unique.length / blocksPerDay) - 1);
+    const ratio = ratios[(dayOffset + index) % ratios.length];
+    const preferredIndex = Math.round(binStart + (binEnd - binStart) * ratio);
+    const ranked = unique
+      .map((start, candidateIndex) => ({ start, candidateIndex }))
+      .filter(item => item.candidateIndex >= binStart && item.candidateIndex <= binEnd)
+      .sort((first, second) => Math.abs(first.candidateIndex - preferredIndex) - Math.abs(second.candidateIndex - preferredIndex));
+    const match = ranked.find(item => selected.every(existing => Math.abs(existing - item.start) >= minimumDistance));
+    if (match) selected.push(match.start);
+  }
+  if (selected.length < blocksPerDay) {
+    unique.forEach(start => {
+      if (selected.length >= blocksPerDay) return;
+      if (selected.every(existing => Math.abs(existing - start) >= minimumDistance)) selected.push(start);
+    });
+  }
+  return selected.sort((a, b) => a - b).slice(0, blocksPerDay);
+}
+
+function dailyStudyStarts(settings = {}, blocksPerDay = 1, blockMinutes = 45, dayOffset = 0) {
   const availableStart = clockToMinutes(settings.availableStart, 8 * 60);
   const availableEnd = clockToMinutes(settings.availableEnd, 22 * 60);
   const selected = settings.times?.length ? settings.times : ["下午", "晚上"];
@@ -843,30 +962,18 @@ function dailyStudyStarts(settings = {}, blocksPerDay = 1, blockMinutes = 45) {
   })).filter(window => window.end - window.start >= blockMinutes);
   const sourceWindows = (windows.length ? windows : [{ start: availableStart, end: availableEnd }])
     .flatMap(window => splitWindowAroundBreaks(window, blockMinutes));
-  const gap = settings.intensity === "高强度" ? 15 : 20;
   const candidates = [];
-  const windowSlots = sourceWindows.map(window => {
-    const slots = [];
-    for (let start = window.start; start + blockMinutes <= window.end; start += blockMinutes + gap) {
-      if (!overlapsProtectedBreak(start, start + blockMinutes)) slots.push(start);
+  sourceWindows.forEach(window => {
+    for (let start = window.start; start + blockMinutes <= window.end; start += 5) {
+      if (!overlapsProtectedBreak(start, start + blockMinutes)) candidates.push(start);
     }
-    return slots;
   });
-  const longest = Math.max(...windowSlots.map(slots => slots.length), 0);
-  for (let round = 0; round < longest; round += 1) {
-    windowSlots.forEach(slots => {
-      if (Number.isFinite(slots[round])) candidates.push(slots[round]);
-    });
+  if (candidates.length < blocksPerDay) {
+    for (let start = availableStart; start + blockMinutes <= availableEnd; start += 5) {
+      if (!overlapsProtectedBreak(start, start + blockMinutes)) candidates.push(start);
+    }
   }
-  for (let start = availableStart; start + blockMinutes <= availableEnd; start += blockMinutes + gap) {
-    if (!overlapsProtectedBreak(start, start + blockMinutes)) candidates.push(start);
-  }
-  const starts = [];
-  [...new Set(candidates)].forEach(start => {
-    const overlaps = starts.some(existing => Math.abs(existing - start) < blockMinutes + 5);
-    if (!overlaps && starts.length < blocksPerDay) starts.push(start);
-  });
-  return starts.sort((a, b) => a - b);
+  return distributedStudyStarts(candidates, blocksPerDay, blockMinutes, dayOffset);
 }
 
 function selectedPlanCategories(settings = {}, fallbackCategories = []) {
@@ -889,7 +996,13 @@ function fallbackPlan(settings = {}) {
       ? ["listening", "reading", "writing", "speaking"]
       : ["listening", "reading", "vocab"];
   const selectedCategories = selectedPlanCategories(settings, baseCategories);
-  const categories = [...new Set([...selectedCategories, "consolidation", ...(settings.intensity === "高强度" ? ["mock"] : [])])];
+  // A new plan has no evidence for consolidation or mock work yet. Keep the
+  // generated schedule inside the modules the learner explicitly selected;
+  // real results can add review priority later.
+  const measuredWeakCategory = settings.planningProfile?.weakCategory;
+  const categories = measuredWeakCategory && selectedCategories.includes(measuredWeakCategory)
+    ? [measuredWeakCategory, ...selectedCategories]
+    : [...selectedCategories];
   const copy = productTaskCopy(settings);
   const scope = selectedPlanScope(selectedCategories);
   copy.consolidation = [
@@ -904,9 +1017,8 @@ function fallbackPlan(settings = {}) {
   const blockMinutes = blockSizeForIntensity(settings);
   const blocksPerDay = Math.max(1, Math.ceil(targetMinutes / blockMinutes));
   const categoryCounts = {};
-  const tasks = days.flatMap((day, dayIndex) => dailyStudyStarts(settings, blocksPerDay, blockMinutes).map((start, index) => {
-    let category = categories[(dayIndex + index) % categories.length];
-    if (day === "sat" && index === blocksPerDay - 1 && categories.includes("mock")) category = "mock";
+  const tasks = days.flatMap((day, dayIndex) => dailyStudyStarts(settings, blocksPerDay, blockMinutes, dayIndex).map((start, index) => {
+    const category = categories[(dayIndex + index) % categories.length];
     const categoryIndex = categoryCounts[category] || 0;
     categoryCounts[category] = categoryIndex + 1;
     const item = copy[category]?.[categoryIndex % copy[category].length] || copy.consolidation?.[0] || copy.review[0];
@@ -1047,7 +1159,7 @@ function buildPracticePrompt(settings = {}) {
     "You are a careful exam practice generator for a study planner.",
     "Generate original practice questions that follow public official sample-question types and user-provided context.",
     "Do not reproduce a copyrighted full exam paper or claim unverifiable sources.",
-    "Return strict JSON only with this shape: {\"questions\":[{\"stem\":\"...\",\"stemZh\":\"...\",\"options\":[\"...\"],\"optionTranslations\":[\"...\"],\"answer\":0,\"answerZh\":\"...\",\"explanation\":\"...\",\"explanationZh\":\"...\",\"source\":\"...\",\"audioText\":\"...\",\"transcript\":\"...\",\"transcriptZh\":\"...\"}],\"sources\":[\"...\"]}.",
+    "Return strict JSON only with this shape: {\"questions\":[{\"stem\":\"short question or instruction\",\"instruction\":\"reading instruction when applicable\",\"instructionZh\":\"Chinese instruction only\",\"passage\":\"reading passage when applicable\",\"passageZh\":\"Chinese passage translation when applicable\",\"stemZh\":\"Chinese question meaning\",\"options\":[\"...\"],\"optionTranslations\":[\"...\"],\"answer\":0,\"answerZh\":\"...\",\"explanation\":\"...\",\"explanationZh\":\"...\",\"source\":\"...\",\"audioText\":\"...\",\"transcript\":\"...\",\"transcriptZh\":\"...\"}],\"sources\":[\"...\"]}.",
     "Each question must have 4 options and a zero-based numeric answer.",
     "The question type must match Category and Task. If Category is reading, generate reading comprehension based on a notice, advertisement, memo, short passage, chart, or information block; do not generate grammar particle fill-in questions.",
     "If Category is vocab or grammar, grammar and vocabulary questions are allowed. If Category is listening, generate listening questions only.",
@@ -1055,6 +1167,7 @@ function buildPracticePrompt(settings = {}) {
     "Listening questions must test meaning, next action, reason, place, time, speaker intention, or content match. Never generate blank-fill, particle, or grammar completion questions for listening.",
     "Listening options must be meaningful answer choices, not one-syllable particles or grammar endings.",
     "For every Korean question, include stemZh, answerZh, explanationZh, and optionTranslations in Simplified Chinese. explanationZh should explain the question content and why the correct option matches it; do not write English explanations.",
+    "For reading questions, never concatenate the instruction and passage into stem. Put the short instruction in instruction/stem and the full Korean text in passage, with only its translation in passageZh.",
     "For non-listening questions, audioText and transcript may be empty.",
     `Exam: ${getExamLabel(settings)}.`,
     `Category: ${request.category || "mixed"}.`,
@@ -1062,8 +1175,9 @@ function buildPracticePrompt(settings = {}) {
     `Task note: ${request.taskNote || ""}.`,
     `Weak areas: ${(settings.weak || request.weak || []).join(", ") || "unknown"}.`,
     `Standards: ${(request.standards || []).join(" / ") || "complete the set and review errors"}.`,
+    request.batchTotal ? `This is batch ${request.batchIndex + 1} of ${request.batchTotal}. Use different passages, situations, answer positions, and evidence from the other batches.` : "",
     `Generate exactly ${count} questions.`
-  ].join("\n");
+  ].filter(Boolean).join("\n");
 }
 
 function parseModelJson(text = "") {
@@ -1072,11 +1186,29 @@ function parseModelJson(text = "") {
 }
 
 function openAiBaseUrl() {
-  return String(process.env.OPENAI_BASE_URL || "https://api.openai.com/v1").replace(/\/+$/, "");
+  const customBaseUrl = process.env.OPENAI_ALLOW_CUSTOM_BASE_URL === "true"
+    ? process.env.OPENAI_BASE_URL
+    : "";
+  return String(customBaseUrl || "https://api.openai.com/v1").replace(/\/+$/, "");
+}
+
+function practiceProviderTimeoutMs() {
+  const configured = Number(process.env.PRACTICE_PROVIDER_TIMEOUT_MS || 12000);
+  return Math.min(12000, Math.max(6000, Number.isFinite(configured) ? configured : 12000));
+}
+
+async function fetchPracticeProvider(url, options = {}) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), practiceProviderTimeoutMs());
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
 
 async function callOpenAiCompatiblePractice(settings = {}) {
-  const response = await fetch(`${openAiBaseUrl()}/chat/completions`, {
+  const response = await fetchPracticeProvider(`${openAiBaseUrl()}/chat/completions`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -1091,7 +1223,33 @@ async function callOpenAiCompatiblePractice(settings = {}) {
       temperature: 0.4
     })
   });
-  if (!response.ok) return null;
+  if (!response.ok) throw new Error(`openai_http_${response.status}`);
+  const payload = await response.json();
+  const text = payload.choices?.[0]?.message?.content || "";
+  const parsed = parseModelJson(text);
+  if (!Array.isArray(parsed.questions) || !parsed.questions.length) return null;
+  return parsed;
+}
+
+async function callQwenPractice(settings = {}) {
+  const baseUrl = String(process.env.QWEN_BASE_URL || "https://dashscope.aliyuncs.com/compatible-mode/v1").replace(/\/+$/, "");
+  const response = await fetchPracticeProvider(`${baseUrl}/chat/completions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${process.env.QWEN_API_KEY}`
+    },
+    body: JSON.stringify({
+      model: process.env.QWEN_MODEL || "qwen-plus",
+      messages: [
+        { role: "system", content: "Return strict JSON only. Do not include markdown." },
+        { role: "user", content: buildPracticePrompt(settings) }
+      ],
+      temperature: 0.4,
+      enable_thinking: false
+    })
+  });
+  if (!response.ok) throw new Error(`qwen_http_${response.status}`);
   const payload = await response.json();
   const text = payload.choices?.[0]?.message?.content || "";
   const parsed = parseModelJson(text);
@@ -1100,7 +1258,7 @@ async function callOpenAiCompatiblePractice(settings = {}) {
 }
 
 async function callOpenAiResponsesPractice(settings = {}) {
-  const response = await fetch(`${openAiBaseUrl()}/responses`, {
+  const response = await fetchPracticeProvider(`${openAiBaseUrl()}/responses`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -1108,12 +1266,11 @@ async function callOpenAiResponsesPractice(settings = {}) {
     },
     body: JSON.stringify({
       model: process.env.OPENAI_MODEL || "gpt-4.1-mini",
-      tools: [{ type: "web_search_preview" }],
       input: buildPracticePrompt(settings),
       temperature: 0.4
     })
   });
-  if (!response.ok) return null;
+  if (!response.ok) throw new Error(`openai_http_${response.status}`);
   const payload = await response.json();
   const text = payload.output_text || payload.output?.flatMap(item => item.content || []).map(item => item.text || "").join("\n") || "";
   const parsed = parseModelJson(text);
@@ -1121,17 +1278,60 @@ async function callOpenAiResponsesPractice(settings = {}) {
   return parsed;
 }
 
-async function callOpenAiPractice(settings = {}) {
+async function callOpenAiPracticeOnce(settings = {}) {
+  const provider = String(process.env.AI_PROVIDER || "openai").trim().toLowerCase();
+  if (provider === "qwen") {
+    return process.env.QWEN_API_KEY ? callQwenPractice(settings) : null;
+  }
   if (!process.env.OPENAI_API_KEY) return null;
-  if (process.env.OPENAI_BASE_URL) return callOpenAiCompatiblePractice(settings);
+  if (process.env.OPENAI_ALLOW_CUSTOM_BASE_URL === "true" && process.env.OPENAI_BASE_URL) {
+    return callOpenAiCompatiblePractice(settings);
+  }
   return callOpenAiResponsesPractice(settings);
+}
+
+async function callOpenAiPractice(settings = {}) {
+  const count = requestedQuestionCount(settings);
+  if (count <= 5) return callOpenAiPracticeOnce(settings);
+  const batchSizes = Array.from({ length: Math.ceil(count / 5) }, (_, index) => Math.min(5, count - index * 5));
+  const results = await Promise.allSettled(batchSizes.map((batchSize, batchIndex) => callOpenAiPracticeOnce({
+    ...settings,
+    practiceRequest: {
+      ...(settings.practiceRequest || {}),
+      requestedQuestionCount: batchSize,
+      batchIndex,
+      batchTotal: batchSizes.length
+    }
+  })));
+  const completed = results
+    .filter(result => result.status === "fulfilled" && Array.isArray(result.value?.questions) && result.value.questions.length)
+    .map(result => result.value);
+  if (!completed.length) {
+    const firstError = results.find(result => result.status === "rejected")?.reason;
+    if (firstError) throw firstError;
+    return null;
+  }
+  return {
+    questions: completed.flatMap(result => result.questions).slice(0, count),
+    sources: [...new Set(completed.flatMap(result => result.sources || []))]
+  };
 }
 
 async function handlePractice(settings = {}) {
   const material = materialPractice(settings);
   if (material) return reviewPracticeSet(material, settings, "material");
-  const aiPractice = await callOpenAiPractice(settings).catch(() => null);
-  return reviewPracticeSet(aiPractice || fallbackPractice(settings), settings, aiPractice ? "generated" : "fallback");
+  let providerIssue = "";
+  const aiPractice = await callOpenAiPractice(settings).catch(error => {
+    providerIssue = error?.name === "AbortError"
+      ? "provider_timeout"
+      : (/^(?:openai|qwen)_http_\d+$/.test(error?.message || "") ? error.message : "provider_response_invalid");
+    return null;
+  });
+  const reviewed = reviewPracticeSet(aiPractice || fallbackPractice(settings), settings, aiPractice ? "generated" : "fallback");
+  return {
+    ...reviewed,
+    quality: { ...reviewed.quality, providerIssue }
+  };
 }
 
 async function handlePlan(settings = {}) {
@@ -1145,17 +1345,192 @@ async function handleResearch(settings = {}) {
   };
 }
 
-async function handleVision() {
+function validateImportImages(images = []) {
+  if (!Array.isArray(images) || !images.length || images.length > 3) throw new Error("vision_images_invalid");
+  let totalLength = 0;
+  return images.map((entry, index) => {
+    const dataUrl = String(entry?.dataUrl || "");
+    if (!/^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(dataUrl)) {
+      throw new Error("vision_image_invalid");
+    }
+    if (dataUrl.length > 1_800_000) throw new Error("vision_image_too_large");
+    totalLength += dataUrl.length;
+    if (totalLength > 4_500_000) throw new Error("vision_images_too_large");
+    return { name: compact(entry?.name, `image-${index + 1}`), dataUrl };
+  });
+}
+
+function errorImportVisionPrompt() {
+  return [
+    "You extract wrong questions from learner-owned study photos for a TOPIK study review tool.",
+    "Return strict JSON only with this schema:",
+    '{"items":[{"section":"听力|阅读|写作|词汇 / 语法|其他","category":"listening|reading|writing|vocab|other","title":"short Chinese title","question":"exact visible question or instruction","options":["option A","option B","option C","option D"],"userAnswer":"visible learner answer or empty","correctAnswer":"visible correct answer or empty","selectedIndex":-1,"correctIndex":-1,"explanation":"only if visibly provided","focus":"specific skill tested","reasoning":"specific correct reasoning","action":"specific next-time action","confidence":"high|low","needsConfirmation":true}],"summary":"short Chinese summary"}',
+    "Extract only questions visibly present in the images. Do not invent hidden text, answers, explanations, audio, or options.",
+    "Keep Korean text exactly as printed. Use zero-based indexes only when the marked answer can be matched to an extracted option; otherwise use -1.",
+    "Set needsConfirmation=true whenever the question, learner answer, correct answer, or markings are unclear. Confidence must be low in that case.",
+    "If multiple photos show the same question, return it once. Return at most 30 items.",
+    "The reasoning and action must refer to the current question. If evidence is insufficient, leave them empty instead of writing generic advice."
+  ].join("\n");
+}
+
+function normalizeImportVisionItem(item = {}) {
+  const options = Array.isArray(item.options) ? item.options.map(option => compact(option)).filter(Boolean).slice(0, 6) : [];
+  const selectedIndex = Number(item.selectedIndex);
+  const correctIndex = Number(item.correctIndex);
+  const question = compact(item.question || item.stem || item.instruction);
+  const userAnswer = compact(item.userAnswer);
+  const correctAnswer = compact(item.correctAnswer);
+  const uncertain = item.needsConfirmation === true || item.confidence === "low" || !question || !userAnswer || !correctAnswer;
+  const allowedCategories = new Set(["listening", "reading", "writing", "vocab", "other"]);
   return {
-    items: [
-      {
-        section: "语法",
-        title: "场所助词 에 / 에서",
-        focus: "区分存在地点和动作发生地点",
-        cause: "看到地点名词后直接选 에，未判断后面动词性质"
-      }
-    ]
+    section: compact(item.section, "其他").slice(0, 24),
+    category: allowedCategories.has(item.category) ? item.category : "other",
+    title: compact(item.title || question, "待确认错题").slice(0, 80),
+    question: question.slice(0, 1200),
+    options,
+    userAnswer: userAnswer.slice(0, 300),
+    correctAnswer: correctAnswer.slice(0, 300),
+    selectedIndex: Number.isInteger(selectedIndex) && selectedIndex >= 0 && selectedIndex < options.length ? selectedIndex : -1,
+    correctIndex: Number.isInteger(correctIndex) && correctIndex >= 0 && correctIndex < options.length ? correctIndex : -1,
+    explanation: compact(item.explanation).slice(0, 600),
+    focus: compact(item.focus).slice(0, 300),
+    reasoning: compact(item.reasoning).slice(0, 600),
+    action: compact(item.action).slice(0, 400),
+    confidence: uncertain ? "low" : "high",
+    needsConfirmation: uncertain
   };
+}
+
+async function requestErrorImportVision({ baseUrl, apiKey, model, images }) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 20_000);
+  try {
+    const response = await fetch(`${String(baseUrl).replace(/\/+$/, "")}/chat/completions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: "system", content: "Return strict JSON only. Do not include markdown." },
+          {
+            role: "user",
+            content: [
+              { type: "text", text: errorImportVisionPrompt() },
+              ...images.map(image => ({ type: "image_url", image_url: { url: image.dataUrl } }))
+            ]
+          }
+        ],
+        temperature: 0
+      }),
+      signal: controller.signal
+    });
+    if (!response.ok) throw new Error(`vision_provider_http_${response.status}`);
+    const payload = await response.json();
+    const parsed = parseModelJson(payload.choices?.[0]?.message?.content || "");
+    const items = Array.isArray(parsed.items) ? parsed.items.map(normalizeImportVisionItem).filter(item => item.question) : [];
+    if (!items.length) throw new Error("vision_no_questions");
+    return {
+      items: items.slice(0, 30),
+      summary: compact(parsed.summary, `识别到${items.length}道题，请确认作答标记后再导入。`),
+      source: "online"
+    };
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+async function handleVision(settings = {}) {
+  const images = validateImportImages(settings.images);
+  const provider = String(process.env.AI_PROVIDER || "openai").trim().toLowerCase();
+  if (provider !== "openai" || !process.env.OPENAI_API_KEY) throw new Error("vision_provider_unavailable");
+  return requestErrorImportVision({
+    baseUrl: openAiBaseUrl(),
+    apiKey: process.env.OPENAI_API_KEY,
+    model: process.env.OPENAI_VISION_MODEL || process.env.OPENAI_HANDWRITING_MODEL || process.env.OPENAI_MODEL || "gpt-4.1-mini",
+    images
+  });
+}
+
+function validateHandwritingImage(image = "") {
+  const value = String(image || "");
+  if (!/^data:image\/(?:png|jpeg);base64,[A-Za-z0-9+/=]+$/.test(value)) {
+    throw new Error("handwriting_image_invalid");
+  }
+  if (value.length > 1_500_000) throw new Error("handwriting_image_too_large");
+  return value;
+}
+
+function handwritingPrompt() {
+  return [
+    "Recognize only the handwritten Korean Hangul in this image.",
+    "Ignore printed interface text, borders, guide lines, icons, and buttons.",
+    "Return strict JSON only: {\"candidates\":[\"first\",\"second\",\"third\"]}.",
+    "The first candidate must be the most likely exact transcription.",
+    "Return 1 to 3 short Korean candidates. Do not translate or explain."
+  ].join("\n");
+}
+
+function normalizeHandwritingCandidates(payload = {}) {
+  const values = Array.isArray(payload.candidates) ? payload.candidates : [];
+  return [...new Set(values
+    .map(value => compact(value).replace(/[^\u1100-\u11ff\u3130-\u318f\uac00-\ud7af\s]/g, "").trim())
+    .filter(Boolean))].slice(0, 3);
+}
+
+async function requestHandwritingRecognition({ baseUrl, apiKey, model, image }) {
+  const response = await fetchPracticeProvider(`${String(baseUrl).replace(/\/+$/, "")}/chat/completions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`
+    },
+    body: JSON.stringify({
+      model,
+      messages: [
+        { role: "system", content: "Return strict JSON only. Do not include markdown." },
+        {
+          role: "user",
+          content: [
+            { type: "text", text: handwritingPrompt() },
+            { type: "image_url", image_url: { url: image } }
+          ]
+        }
+      ],
+      temperature: 0
+    })
+  });
+  if (!response.ok) throw new Error(`handwriting_provider_http_${response.status}`);
+  const payload = await response.json();
+  const text = payload.choices?.[0]?.message?.content || "";
+  return normalizeHandwritingCandidates(parseModelJson(text));
+}
+
+async function handleHandwriting(settings = {}) {
+  const image = validateHandwritingImage(settings.image);
+  const provider = String(process.env.AI_PROVIDER || "openai").trim().toLowerCase();
+  const providers = [];
+  if (provider === "openai" && process.env.OPENAI_API_KEY) providers.push({
+    baseUrl: openAiBaseUrl(),
+    apiKey: process.env.OPENAI_API_KEY,
+    model: process.env.OPENAI_HANDWRITING_MODEL || process.env.OPENAI_MODEL || "gpt-4.1-mini"
+  });
+  if (provider === "qwen" && process.env.QWEN_API_KEY) providers.push({
+    baseUrl: process.env.QWEN_BASE_URL || "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    apiKey: process.env.QWEN_API_KEY,
+    model: process.env.QWEN_VISION_MODEL || "qwen-vl-plus"
+  });
+  if (!providers.length) throw new Error("handwriting_provider_unavailable");
+
+  for (const provider of providers) {
+    try {
+      const candidates = await requestHandwritingRecognition({ ...provider, image });
+      if (candidates.length) return { candidates, source: "online" };
+    } catch {}
+  }
+  throw new Error("handwriting_recognition_failed");
 }
 
 module.exports = async function studyAssistant(req, res) {
@@ -1168,6 +1543,7 @@ module.exports = async function studyAssistant(req, res) {
     if (action === "plan") return send(res, 200, await handlePlan(settings));
     if (action === "research") return send(res, 200, await handleResearch(settings));
     if (action === "vision") return send(res, 200, await handleVision(settings));
+    if (action === "handwriting") return send(res, 200, await handleHandwriting(settings));
     return send(res, 400, { error: "Unsupported action" });
   } catch (error) {
     return send(res, 500, { error: "Study assistant failed", detail: error.message });

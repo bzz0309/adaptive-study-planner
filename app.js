@@ -6,7 +6,7 @@ const categoryMeta = {
   speaking: { label: "口语", className: "speaking" },
   mock: { label: "模拟测验", className: "mock" },
   dictation: { label: "听写", className: "dictation" },
-  consolidation: { label: "巩固练习", className: "review" },
+  consolidation: { label: "巩固练习", className: "consolidation" },
   review: { label: "错题复盘", className: "review" }
 };
 
@@ -28,22 +28,87 @@ function sameDate(first, second) {
   return first.getFullYear() === second.getFullYear() && first.getMonth() === second.getMonth() && first.getDate() === second.getDate();
 }
 
-function buildCurrentWeekDays(referenceDate = new Date()) {
+function buildCurrentWeekDays(referenceDate = new Date(), featuredReference = new Date()) {
   const [year, month, dayOfMonth] = beijingDateKey(referenceDate).split("-").map(Number);
-  const today = new Date(year, month - 1, dayOfMonth);
-  const mondayOffset = (today.getDay() + 6) % 7;
-  const monday = new Date(today);
-  monday.setDate(today.getDate() - mondayOffset);
+  const referenceDay = new Date(year, month - 1, dayOfMonth);
+  const [featuredYear, featuredMonth, featuredDayOfMonth] = beijingDateKey(featuredReference).split("-").map(Number);
+  const featuredDay = new Date(featuredYear, featuredMonth - 1, featuredDayOfMonth);
+  const mondayOffset = (referenceDay.getDay() + 6) % 7;
+  const monday = new Date(referenceDay);
+  monday.setDate(referenceDay.getDate() - mondayOffset);
   return baseDays.map((day, index) => {
     const date = new Date(monday);
     date.setDate(monday.getDate() + index);
-    return { ...day, date: dateLabel(date), fullDate: date, featured: sameDate(date, today) };
+    return { ...day, date: dateLabel(date), fullDate: date, featured: sameDate(date, featuredDay) };
   });
 }
 
 let days = buildCurrentWeekDays();
+let displayedWeekIndex = 0;
+
+function normalizedWeekIndex(value) {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed >= 0 ? parsed : 0;
+}
+
+function taskWeekIndex(task = {}) {
+  return normalizedWeekIndex(task.weekIndex);
+}
+
+function configuredPlanWeekCount(settings = readStudySettings()) {
+  const configured = Number(settings?.firstRoundWeeks || 0);
+  const taskMaximum = tasks?.length ? Math.max(...tasks.map(task => taskWeekIndex(task))) + 1 : 1;
+  return Math.max(1, Math.min(24, configured || taskMaximum || 1));
+}
+
+function configuredPlanStartDate(settings = readStudySettings()) {
+  const fallback = buildCurrentWeekDays()[0].fullDate;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(settings?.planStartDate || "")) return fallback;
+  const [year, month, day] = settings.planStartDate.split("-").map(Number);
+  const parsed = new Date(year, month - 1, day);
+  return Number.isNaN(parsed.getTime()) ? fallback : parsed;
+}
+
+function initialPlanStartDate(settings = readStudySettings()) {
+  const currentWeek = buildCurrentWeekDays();
+  const todayIndex = Math.max(0, baseDays.findIndex(day => day.key === beijingDayKey()));
+  const selectedDays = Array.isArray(settings?.studyDays) && settings.studyDays.length
+    ? settings.studyDays
+    : baseDays.map(day => day.key);
+  const hasRemainingDay = baseDays.some((day, index) => index >= todayIndex && selectedDays.includes(day.key));
+  const start = new Date(currentWeek[0].fullDate);
+  if (!hasRemainingDay) start.setDate(start.getDate() + 7);
+  return beijingDateKey(start);
+}
+
+function buildPlanWeekDays(weekIndex = 0, settings = readStudySettings()) {
+  const referenceDate = new Date(configuredPlanStartDate(settings));
+  referenceDate.setDate(referenceDate.getDate() + normalizedWeekIndex(weekIndex) * 7);
+  return buildCurrentWeekDays(referenceDate);
+}
+
+function planWeekIndexForDate(date = new Date(), settings = readStudySettings()) {
+  const targetKey = beijingDateKey(date);
+  const [year, month, day] = targetKey.split("-").map(Number);
+  const target = new Date(year, month - 1, day);
+  const distance = Math.floor((target.getTime() - configuredPlanStartDate(settings).getTime()) / 86400000);
+  return Math.max(0, Math.min(configuredPlanWeekCount(settings) - 1, Math.floor(distance / 7)));
+}
+
+function taskScheduledDate(task = {}) {
+  const weekDays = buildPlanWeekDays(taskWeekIndex(task));
+  return weekDays.find(day => day.key === task.day)?.fullDate || weekDays[0].fullDate;
+}
+
+function taskScheduledDateKey(task = {}) {
+  return beijingDateKey(taskScheduledDate(task));
+}
 let activeTtsAudio = null;
 let activeTtsAudioUrl = "";
+let dictationInkStrokes = [];
+let dictationHandwritingRecognizer = null;
+let wordEliminationResolving = false;
+let wordEliminationTimer = null;
 
 const defaultTasks = [
   { id: 1, day: "mon", start: "11:00", end: "11:40", category: "listening", title: "短对话诊断", note: "辨认场所、人物与行动", status: "completed", standards: ["首遍不暂停完成15题", "正确率达到80%", "错题复听并写下漏听关键词", "次日重做错题"] },
@@ -66,7 +131,7 @@ let tasks = JSON.parse(localStorage.getItem("topikPrototypeTasks") || "null") ||
 
 const studyTemplates = {
   listening: [
-    ["听人物和地点", "短对话里先抓谁、在哪里、正在做什么"], ["听下一步行动", "练“接下来做什么”和请求表达"], ["听原因和理由", "抓 못 가요、바뀌었어요 等理由线索"], ["听数字和时间", "练日期、价格、时间和数量"], ["听内容一致", "核对选项是否和原文相同"], ["听否定和时态", "听清 안、못、过去和将来"], ["看图听关键词", "先看图中差异，再听对应词"], ["听后复述", "复听、影子跟读、用中文说出大意"]
+    ["听人物和地点", "短对话里先抓谁、在哪里、正在做什么"], ["听力 · 判断下一步行动", "练“接下来做什么”和请求表达"], ["听原因和理由", "抓 못 가요、바뀌었어요 等理由线索"], ["听数字和时间", "练日期、价格、时间和数量"], ["听内容一致", "核对选项是否和原文相同"], ["听否定和时态", "听清 안、못、过去和将来"], ["看图听关键词", "先看图中差异，再听对应词"], ["听后复述", "复听、影子跟读、用中文说出大意"]
   ],
   reading: [
     ["通知公告阅读", "练日期、地点、对象和规则"], ["促销广告阅读", "练价格、时间、活动和条件"], ["短文大意理解", "找重复关键词和中心句"], ["题干关键词定位", "先看题干，再回原文找依据"], ["图表信息读取", "读表格、时间表和简单说明"], ["句子连接判断", "看前后句的因果、转折和顺序"], ["限时阅读", "控制速度，同时标出答案依据"]
@@ -139,9 +204,12 @@ const completionStandards = {
 };
 
 const weakTokenMap = { "听力": "listening", "阅读": "reading", "词汇": "vocab", "语法": "grammar", "写作": "writing", "口语": "speaking" };
-const planSchemaVersion = "19";
+const planSchemaVersion = "24";
 const dictationStorageKey = "topikPrototypeDictationState";
 const wordEliminationStorageKey = "topikPrototypeWordEliminationState";
+const externalStudyStorageKey = "topikPrototypeExternalStudyRecords";
+let externalVoiceRecognition = null;
+let externalVoiceBaseText = "";
 const completeMasteryTopikIReadingSource = "完全掌握 TOPIK I 初级阅读 · 1-2 必背单词";
 const dictationItems = [
   { id: "bag", pos: "名", text: "가방", zh: "包", pairing: "가방을 사다", pairingZh: "买包", example: "새 가방을 샀어요.", exampleZh: "我买了新包。", note: "TOPIK I 生活名词", source: completeMasteryTopikIReadingSource },
@@ -169,7 +237,7 @@ const dictationItems = [
 ];
 
 function readDictationState() {
-  const fallback = { index: 0, revealed: false, inputText: "", weakIds: [], knownIds: [] };
+  const fallback = { index: 0, revealed: false, inputText: "", weakIds: [], knownIds: [], taskSession: null };
   try {
     return { ...fallback, ...(JSON.parse(localStorage.getItem(dictationStorageKey) || "null") || {}) };
   } catch {
@@ -182,6 +250,17 @@ function writeDictationState(patch = {}) {
   const next = { ...current, ...patch };
   localStorage.setItem(dictationStorageKey, JSON.stringify(next));
   return next;
+}
+
+function normalizedDictationAnswerState(state = readDictationState(), item = currentDictationItem(state), taskSession = dictationTaskSession(state)) {
+  const savedAnswer = taskSession?.answers?.[item?.id];
+  const inputText = String(savedAnswer?.inputText ?? state.inputText ?? "");
+  return {
+    inputText,
+    revealed: taskSession
+      ? Boolean(savedAnswer && inputText.trim())
+      : Boolean(state.revealed && inputText.trim())
+  };
 }
 
 function dictationPracticeItems() {
@@ -204,14 +283,328 @@ function writeWordEliminationState(patch = {}) {
   return next;
 }
 
-function wordEliminationMeaningItems(items = dictationPracticeItems()) {
-  return [...items].sort((a, b) => a.zh.localeCompare(b.zh, "zh-CN") || a.text.localeCompare(b.text, "ko"));
+function readExternalStudyRecords() {
+  try {
+    const records = JSON.parse(localStorage.getItem(externalStudyStorageKey) || "[]");
+    if (!Array.isArray(records)) return [];
+    let repaired = false;
+    const normalizedRecords = records.map(record => {
+      const note = normalizeExternalStudyNote(record?.note || "");
+      const parsedActivities = externalStudyActivitiesFromText(note);
+      const parsedSeconds = parsedActivities.reduce((sum, activity) => sum + activity.actualSeconds, 0);
+      const actualSeconds = parsedSeconds || Math.max(0, Number(record?.actualSeconds || 0));
+      const parsedCategory = externalStudyRecordCategory(parsedActivities);
+      const category = parsedCategory !== "other"
+        ? parsedCategory
+        : (record?.category && record.category !== "other" ? record.category : externalStudyCategory(note));
+      const activities = parsedActivities.length ? parsedActivities : (Array.isArray(record?.activities) ? record.activities : []);
+      const unchanged = note === record?.note
+        && actualSeconds === Number(record?.actualSeconds || 0)
+        && category === record?.category
+        && JSON.stringify(activities) === JSON.stringify(record?.activities || []);
+      if (unchanged) return record;
+      repaired = true;
+      return {
+        ...record,
+        note,
+        actualSeconds,
+        category,
+        activities,
+        planningImpact: actualSeconds
+          ? `已重新识别并计入${externalStudyActivitySummary(activities, actualSeconds)}；当前任务会据此重新判断。`
+          : record?.planningImpact
+      };
+    });
+    if (repaired) localStorage.setItem(externalStudyStorageKey, JSON.stringify(normalizedRecords.slice(0, 100)));
+    return normalizedRecords;
+  } catch {
+    return [];
+  }
+}
+
+function writeExternalStudyRecords(records = []) {
+  const safeRecords = Array.isArray(records) ? records.slice(0, 100) : [];
+  localStorage.setItem(externalStudyStorageKey, JSON.stringify(safeRecords));
+  return safeRecords;
+}
+
+function chineseStudyNumber(value = "") {
+  const source = String(value || "").trim();
+  if (/^\d+(?:\.\d+)?$/.test(source)) return Number(source);
+  const digits = { 一: 1, 二: 2, 两: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9 };
+  if (source === "十") return 10;
+  if (source.includes("十")) {
+    const [tens, ones] = source.split("十");
+    return (tens ? digits[tens] || 0 : 1) * 10 + (ones ? digits[ones] || 0 : 0);
+  }
+  return digits[source] || 0;
+}
+
+function normalizeExternalStudyNote(text = "") {
+  return String(text || "")
+    .replace(/(?:被|备)了(?=[^，。！？]{0,16}(?:单词|词汇|生词))/g, "背了")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function externalStudySecondsFromText(text = "") {
+  return externalStudyActivitiesFromText(text).reduce((sum, activity) => sum + activity.actualSeconds, 0);
+}
+
+function externalStudyDurationMatches(text = "") {
+  const source = String(text || "");
+  const numberPattern = "(?:\\d+(?:\\.\\d+)?|[一二两三四五六七八九十]+)";
+  const patterns = [
+    {
+      regex: new RegExp(`(${numberPattern})\\s*个?\\s*半\\s*(小时|小時)`, "gi"),
+      seconds: match => Math.round((chineseStudyNumber(match[1]) + 0.5) * 3600)
+    },
+    {
+      regex: /半\s*个?\s*(小时|小時)/gi,
+      seconds: () => 30 * 60
+    },
+    {
+      regex: /一\s*刻\s*钟/gi,
+      seconds: () => 15 * 60
+    },
+    {
+      regex: new RegExp(`(${numberPattern})\\s*个?\\s*(小时|小時|h\\b|分钟|分鐘|分\\b|min\\b)`, "gi"),
+      seconds: match => {
+        const amount = chineseStudyNumber(match[1]);
+        if (!Number.isFinite(amount) || amount <= 0) return 0;
+        return /小时|小時|h\b/i.test(match[2]) ? Math.round(amount * 3600) : Math.round(amount * 60);
+      }
+    }
+  ];
+  const matches = [];
+  patterns.forEach(({ regex, seconds }) => {
+    for (const match of source.matchAll(regex)) {
+      const actualSeconds = seconds(match);
+      if (!actualSeconds) continue;
+      const start = match.index || 0;
+      const end = start + match[0].length;
+      if (matches.some(existing => start < existing.end && existing.start < end)) continue;
+      matches.push({ start, end, actualSeconds });
+    }
+  });
+  return matches.sort((first, second) => first.start - second.start);
+}
+
+function externalStudyActivitiesFromText(text = "") {
+  const source = String(text || "");
+  const durations = externalStudyDurationMatches(source);
+  const categoryPatterns = [
+    { category: "listening", regex: /听力|听写|듣기|listening/gi },
+    { category: "reading", regex: /阅读|读题|읽기|reading/gi },
+    { category: "vocab", regex: /单词|词汇|语法|生词|vocab|grammar/gi },
+    { category: "writing", regex: /写作|作文|쓰기|writing/gi }
+  ];
+  const categoryMentions = categoryPatterns.flatMap(({ category, regex }) => [...source.matchAll(regex)].map(match => ({
+    category,
+    start: match.index || 0,
+    end: (match.index || 0) + match[0].length
+  })));
+  const clauseBoundaries = [0];
+  for (const match of source.matchAll(/[，,。；;！？!?\n]/g)) {
+    clauseBoundaries.push((match.index || 0) + match[0].length);
+  }
+  clauseBoundaries.push(source.length + 1);
+  return durations.map(duration => {
+    const durationCenter = (duration.start + duration.end) / 2;
+    const clauseStart = [...clauseBoundaries].reverse().find(boundary => boundary <= duration.start) || 0;
+    const clauseEnd = clauseBoundaries.find(boundary => boundary > duration.end) || source.length + 1;
+    const clauseMentions = categoryMentions.filter(mention => mention.start >= clauseStart && mention.end <= clauseEnd);
+    const nearestCategory = (clauseMentions.length ? clauseMentions : categoryMentions)
+      .map(mention => ({ ...mention, distance: Math.abs(((mention.start + mention.end) / 2) - durationCenter) }))
+      .sort((first, second) => first.distance - second.distance)[0];
+    return {
+      category: nearestCategory?.category || "other",
+      actualSeconds: duration.actualSeconds
+    };
+  });
+}
+
+function externalStudyCategory(text = "") {
+  const source = String(text || "");
+  if (/听力|听写|듣기|listening/i.test(source)) return "listening";
+  if (/阅读|读题|읽기|reading/i.test(source)) return "reading";
+  if (/单词|词汇|语法|vocab|grammar/i.test(source)) return "vocab";
+  if (/写作|作文|쓰기|writing/i.test(source)) return "writing";
+  return "other";
+}
+
+function externalStudyCategoryLabel(category = "other") {
+  return ({
+    listening: "听力",
+    reading: "阅读",
+    vocab: "词汇语法",
+    writing: "写作",
+    mixed: "多项学习"
+  })[category] || "站外学习";
+}
+
+function externalStudyRecordCategory(activities = []) {
+  const categories = [...new Set(activities.map(activity => activity.category).filter(category => category && category !== "other"))];
+  if (categories.length > 1) return "mixed";
+  return categories[0] || "other";
+}
+
+function externalStudyActivitySummary(activities = [], fallbackSeconds = 0) {
+  const recognized = activities.filter(activity => activity.actualSeconds > 0);
+  if (!recognized.length) return formatActualStudyTime(fallbackSeconds);
+  const details = recognized.map(activity => `${externalStudyCategoryLabel(activity.category)}${formatActualStudyTime(activity.actualSeconds)}`);
+  const total = recognized.reduce((sum, activity) => sum + activity.actualSeconds, 0);
+  return recognized.length > 1 ? `${details.join("、")}，共${formatActualStudyTime(total)}` : details[0];
+}
+
+function todayExternalStudyByCategory(records = readExternalStudyRecords()) {
+  const todayKey = beijingDateKey();
+  return records.reduce((summary, record) => {
+    if (!record.createdAt || beijingDateKey(new Date(record.createdAt)) !== todayKey) return summary;
+    const activities = Array.isArray(record.activities) && record.activities.length
+      ? record.activities
+      : [{ category: record.category || "other", actualSeconds: record.actualSeconds || 0 }];
+    activities.forEach(activity => {
+      const category = String(activity.category || "other");
+      summary[category] = (summary[category] || 0) + Math.max(0, Number(activity.actualSeconds || 0));
+    });
+    return summary;
+  }, {});
+}
+
+function stableEliminationRank(value = "") {
+  return [...String(value)].reduce((hash, character) => ((hash * 31) + character.charCodeAt(0)) >>> 0, 2166136261);
+}
+
+function wordEliminationTiles(items = dictationPracticeItems()) {
+  return items
+    .flatMap(item => ([
+      { key: `word-${item.id}`, id: item.id, type: "word", label: item.text, language: "韩文" },
+      { key: `meaning-${item.id}`, id: item.id, type: "meaning", label: item.zh, language: "中文" }
+    ]))
+    .sort((a, b) => stableEliminationRank(`v2-${a.key}`) - stableEliminationRank(`v2-${b.key}`));
 }
 
 function currentDictationItem(state = readDictationState()) {
   const items = dictationPracticeItems();
+  const session = state.taskSession;
+  if (session?.itemIds?.length) {
+    const position = Math.max(0, Math.min(session.itemIds.length - 1, Number(session.currentPosition) || 0));
+    return items.find(item => item.id === session.itemIds[position]) || items[0];
+  }
   const index = Math.max(0, Math.min(items.length - 1, Number(state.index) || 0));
   return items[index] || items[0];
+}
+
+function dictationTaskSession(state = readDictationState()) {
+  const session = state.taskSession;
+  if (!session?.taskId || !Array.isArray(session.itemIds) || !session.itemIds.length) return null;
+  const task = tasks.find(item => String(item.id) === String(session.taskId));
+  if (!task || task.category !== "dictation" || hasPracticeRecord(task) || task.status === "cancelled") return null;
+  return { ...session, task };
+}
+
+function dictationSessionState(session = {}) {
+  const { task, ...serializable } = session;
+  return serializable;
+}
+
+function dictationSessionSeconds(session = {}) {
+  const startedAt = new Date(session.lastStartedAt || "").getTime();
+  if (!Number.isFinite(startedAt)) return 0;
+  return Math.max(0, Math.round((Date.now() - startedAt) / 1000));
+}
+
+function pauseDictationTaskSession({ refresh = true } = {}) {
+  const state = readDictationState();
+  const session = dictationTaskSession(state);
+  if (!session?.lastStartedAt) return;
+  const elapsed = dictationSessionSeconds(session);
+  const task = session.task;
+  task.status = Object.keys(session.answers || {}).length ? "partial" : "in_progress";
+  task.checkin = {
+    ...(task.checkin || {}),
+    startedAt: task.checkin?.startedAt || session.startedAt,
+    lastPausedAt: new Date().toISOString(),
+    partialAnswered: Object.keys(session.answers || {}).length,
+    partialCorrect: Object.values(session.answers || {}).filter(answer => answer.correct).length,
+    actualSeconds: taskActualStudySeconds(task) + elapsed,
+    planningImpact: Object.keys(session.answers || {}).length
+      ? recordPartialPlanImpact(task, Object.keys(session.answers || {}).length, session.itemIds.length)
+      : "听写已开始，系统已保存本次用时；再次进入可继续本组。"
+  };
+  writeDictationState({ taskSession: { ...dictationSessionState(session), lastStartedAt: "" } });
+  if (refresh) persistTasksAndRefresh();
+  else localStorage.setItem("topikPrototypeTasks", JSON.stringify(tasks));
+}
+
+function startDictationTask(task = {}) {
+  if (!task?.id || task.category !== "dictation") return switchView("dictation");
+  const state = readDictationState();
+  const existing = dictationTaskSession(state);
+  let session = existing && String(existing.taskId) === String(task.id) ? existing : null;
+  if (!session) {
+    const items = dictationPracticeItems();
+    const requested = Math.min(items.length, recommendedQuestionCountForTask(task));
+    const startIndex = Math.max(0, Math.min(items.length - 1, Number(state.index) || 0));
+    const itemIds = Array.from({ length: requested }, (_, offset) => items[(startIndex + offset) % items.length].id);
+    const startedAt = new Date().toISOString();
+    session = { taskId: task.id, startedAt, lastStartedAt: startedAt, itemIds, currentPosition: 0, answers: {} };
+  } else if (!session.lastStartedAt) {
+    session = { ...session, lastStartedAt: new Date().toISOString() };
+  }
+  activeTaskId = task.id;
+  task.status = Object.keys(session.answers || {}).length ? "partial" : "in_progress";
+  task.checkin = {
+    ...(task.checkin || {}),
+    startedAt: task.checkin?.startedAt || session.startedAt
+  };
+  writeDictationState({ taskSession: dictationSessionState(session), revealed: false, inputText: "" });
+  persistTasksAndRefresh();
+  switchView("dictation");
+}
+
+function completeDictationTaskSession() {
+  const state = readDictationState();
+  const session = dictationTaskSession(state);
+  if (!session) return;
+  const answers = Object.values(session.answers || {});
+  if (answers.length < session.itemIds.length) return showToast(`还剩 ${session.itemIds.length - answers.length} 个词未核对`);
+  const task = session.task;
+  const completedAt = new Date().toISOString();
+  const correct = answers.filter(answer => answer.correct).length;
+  const total = session.itemIds.length;
+  const wrongCount = total - correct;
+  const weakWordIds = session.itemIds.filter(id => (state.weakIds || []).includes(id));
+  const knownWordIds = session.itemIds.filter(id => (state.knownIds || []).includes(id));
+  task.status = "completed";
+  task.checkin = {
+    ...(task.checkin || {}),
+    correct,
+    total,
+    note: wrongCount
+      ? `AI自动记录：${wrongCount} 个词听写错误，${weakWordIds.length} 个保留在不熟词复习。`
+      : "AI自动记录：本组听写全部正确。",
+    source: "听写模块自动统计",
+    startedAt: task.checkin?.startedAt || session.startedAt,
+    completedAt,
+    updatedAt: completedAt,
+    actualSeconds: taskActualStudySeconds(task) + dictationSessionSeconds(session),
+    weakWordIds,
+    knownWordIds
+  };
+  applyPracticeResultToPlan(task, { correct, total });
+  writeDictationState({
+    taskSession: null,
+    revealed: false,
+    inputText: "",
+    index: Math.max(0, dictationPracticeItems().findIndex(item => item.id === session.itemIds.at(-1)))
+  });
+  activeTaskId = null;
+  persistTasksAndRefresh();
+  recordCheckinReward(task);
+  switchView("calendar");
+  showToast(`听写已完成：${correct} / ${total} 个正确，保留 ${weakWordIds.length} 个不熟词`);
 }
 
 function normalizeDictationAnswer(value = "") {
@@ -281,7 +674,9 @@ function studyPerformanceProfile(records = completedPracticeTasks()) {
 function prioritizedStudyTokens(tokens = [], profile = studyPerformanceProfile()) {
   const normalized = [...new Set(tokens.map(normalizeStudyCategory))];
   if (!profile.weakCategory || !normalized.includes(profile.weakCategory)) return normalized;
-  return [...new Set([profile.weakCategory, ...normalized])];
+  // Keep one extra occurrence for the weakest category so real answer data
+  // increases its weekly frequency instead of only moving it to the front.
+  return [profile.weakCategory, ...normalized];
 }
 
 function defaultStudyTokens(settings = {}) {
@@ -346,7 +741,7 @@ function constrainTasksToStudyScope(sourceTasks = [], settings = readStudySettin
     if (!allowedCategories.has(category)) return false;
     if (taskMentionsUnselectedScope(task, scopedTokens)) return false;
     return true;
-  }).map(task => ({ ...task, category: normalizeStudyCategory(task.category) }));
+  }).map(task => ({ ...task, weekIndex: taskWeekIndex(task), category: normalizeStudyCategory(task.category) }));
   if (cleaned.length) return cleaned;
   const fallbackTasks = generatePlanFromSettings(settings);
   return (fallbackTasks || []).filter(task => {
@@ -354,7 +749,7 @@ function constrainTasksToStudyScope(sourceTasks = [], settings = readStudySettin
     if (!allowedCategories.has(category)) return false;
     if (taskMentionsUnselectedScope(task, scopedTokens)) return false;
     return true;
-  }).map(task => ({ ...task, category: normalizeStudyCategory(task.category) }));
+  }).map(task => ({ ...task, weekIndex: taskWeekIndex(task), category: normalizeStudyCategory(task.category) }));
 }
 
 function syncTasksToStudyScope(settings = readStudySettings()) {
@@ -381,7 +776,8 @@ function planScopeSignature(settings = readStudySettings()) {
     studyDays,
     availableStart: settings.availableStart || "",
     availableEnd: settings.availableEnd || "",
-    firstRoundWeeks: Number(settings.firstRoundWeeks || 0)
+    firstRoundWeeks: Number(settings.firstRoundWeeks || 0),
+    planStartDate: settings.planStartDate || ""
   });
 }
 
@@ -423,8 +819,7 @@ function dailyTargetMinutes(settings = {}) {
 
 function blockSizeForIntensity(settings = {}) {
   if (settings.intensity === "高强度") return 60;
-  if (settings.intensity === "中等") return 45;
-  return 40;
+  return 45;
 }
 
 const protectedBreaks = [
@@ -468,35 +863,49 @@ function preferredStudyWindows(settings = {}, blockMinutes = 45) {
   return source.flatMap(window => splitWindowAroundBreaks(window, blockMinutes));
 }
 
-function dailyStudyStarts(settings = {}, blocksPerDay = 1, blockMinutes = 45) {
+function distributedStudyStarts(candidates = [], blocksPerDay = 1, blockMinutes = 45, dayOffset = 0) {
+  const unique = [...new Set(candidates)].sort((a, b) => a - b);
+  if (!unique.length) return [];
+  const selected = [];
+  const ratios = [0, 0.22, 0.45, 0.68, 0.9, 0.32, 0.78];
+  const minimumDistance = blockMinutes + 10;
+  for (let index = 0; index < blocksPerDay; index += 1) {
+    const binStart = Math.floor(index * unique.length / blocksPerDay);
+    const binEnd = Math.max(binStart, Math.floor((index + 1) * unique.length / blocksPerDay) - 1);
+    const ratio = ratios[(dayOffset + index) % ratios.length];
+    const preferredIndex = Math.round(binStart + (binEnd - binStart) * ratio);
+    const ranked = unique
+      .map((start, candidateIndex) => ({ start, candidateIndex }))
+      .filter(item => item.candidateIndex >= binStart && item.candidateIndex <= binEnd)
+      .sort((first, second) => Math.abs(first.candidateIndex - preferredIndex) - Math.abs(second.candidateIndex - preferredIndex));
+    const match = ranked.find(item => selected.every(existing => Math.abs(existing - item.start) >= minimumDistance));
+    if (match) selected.push(match.start);
+  }
+  if (selected.length < blocksPerDay) {
+    unique.forEach(start => {
+      if (selected.length >= blocksPerDay) return;
+      if (selected.every(existing => Math.abs(existing - start) >= minimumDistance)) selected.push(start);
+    });
+  }
+  return selected.sort((a, b) => a - b).slice(0, blocksPerDay);
+}
+
+function dailyStudyStarts(settings = {}, blocksPerDay = 1, blockMinutes = 45, dayOffset = 0) {
   const availableStart = clockToMinutes(settings.availableStart, 8 * 60);
   const availableEnd = clockToMinutes(settings.availableEnd, 22 * 60);
   const windows = preferredStudyWindows(settings, blockMinutes);
-  const gap = settings.intensity === "高强度" ? 15 : 20;
   const candidates = [];
-  const windowSlots = windows.map(window => {
-    const slots = [];
-    for (let start = window.start; start + blockMinutes <= window.end; start += blockMinutes + gap) {
-      if (!overlapsProtectedBreak(start, start + blockMinutes)) slots.push(start);
+  windows.forEach(window => {
+    for (let start = window.start; start + blockMinutes <= window.end; start += 5) {
+      if (!overlapsProtectedBreak(start, start + blockMinutes)) candidates.push(start);
     }
-    return slots;
   });
-  const longest = Math.max(...windowSlots.map(slots => slots.length), 0);
-  for (let round = 0; round < longest; round += 1) {
-    windowSlots.forEach(slots => {
-      if (Number.isFinite(slots[round])) candidates.push(slots[round]);
-    });
+  if (candidates.length < blocksPerDay) {
+    for (let start = availableStart; start + blockMinutes <= availableEnd; start += 5) {
+      if (!overlapsProtectedBreak(start, start + blockMinutes)) candidates.push(start);
+    }
   }
-  for (let start = availableStart; start + blockMinutes <= availableEnd; start += blockMinutes + gap) {
-    if (!overlapsProtectedBreak(start, start + blockMinutes)) candidates.push(start);
-  }
-  const unique = [...new Set(candidates)];
-  const starts = [];
-  unique.forEach(start => {
-    const overlaps = starts.some(existing => Math.abs(existing - start) < blockMinutes + 5);
-    if (!overlaps && starts.length < blocksPerDay) starts.push(start);
-  });
-  return starts.sort((a, b) => a - b);
+  return distributedStudyStarts(candidates, blocksPerDay, blockMinutes, dayOffset);
 }
 
 function updateTargetGradeOptions(level = "I", selectedGrade = "") {
@@ -563,17 +972,28 @@ function generatePlanFromSettings(settings) {
   const blocksPerDay = Math.max(1, Math.ceil(targetMinutes / blockMinutes));
   const weakTokens = scopedStudyTokens(settings);
   const templateSource = exam === "IELTS" ? ieltsTemplates : (exam === "OTHER" ? genericTemplates : studyTemplates);
-  const rotation = [...new Set(prioritizedStudyTokens(weakTokens))];
+  const rotation = prioritizedStudyTokens(weakTokens);
   const foundationOffset = { "入门": 0, "一般": 1, "较好": 2, "不确定": 0 }[settings.foundation] || 0;
   let sequence = 0;
   const categoryCounts = {};
   const generated = [];
 
-  const selectedDayKeys = settings.studyDays?.length ? new Set(settings.studyDays) : new Set(days.map(day => day.key));
-  days.filter(day => selectedDayKeys.has(day.key)).forEach((day, dayIndex) => {
-    const starts = dailyStudyStarts(settings, blocksPerDay, blockMinutes);
-    starts.forEach((start, blockIndex) => {
-      let token = rotation[(dayIndex * blocksPerDay + blockIndex) % rotation.length];
+  const selectedDayKeys = settings.studyDays?.length ? new Set(settings.studyDays) : new Set(baseDays.map(day => day.key));
+  const weekCount = Math.max(1, Math.min(24, Number(settings.firstRoundWeeks || 1)));
+  const todayKey = beijingDayKey();
+  const todayIndex = Math.max(0, baseDays.findIndex(day => day.key === todayKey));
+  const currentWeekStartKey = beijingDateKey(buildCurrentWeekDays()[0].fullDate);
+  const firstWeekIsCurrent = !settings.planStartDate || settings.planStartDate === currentWeekStartKey;
+  for (let weekIndex = 0; weekIndex < weekCount; weekIndex += 1) {
+    baseDays.filter((day, dayIndex) => selectedDayKeys.has(day.key) && (weekIndex > 0 || !firstWeekIsCurrent || dayIndex >= todayIndex)).forEach(day => {
+      const dayIndex = baseDays.findIndex(item => item.key === day.key);
+      const globalDayIndex = weekIndex * baseDays.length + dayIndex;
+      const starts = dailyStudyStarts(settings, blocksPerDay, blockMinutes, globalDayIndex);
+      starts.forEach((start, blockIndex) => {
+      // Move each module to a different study window on the next day.
+      // Advancing by blocksPerDay repeats the same slot whenever the number
+      // of daily blocks equals the number of selected modules.
+      let token = rotation[(globalDayIndex + blockIndex) % rotation.length];
       const category = normalizeStudyCategory(token);
       const templates = exam === "IELTS" && level === "II" && token === "writing"
         ? ieltsGeneralWriting
@@ -583,21 +1003,25 @@ function generatePlanFromSettings(settings) {
       const categoryIndex = categoryCounts[category] || 0;
       categoryCounts[category] = categoryIndex + 1;
       const template = templates[(categoryIndex + foundationOffset) % templates.length];
+      const templateCycle = Math.floor((categoryIndex + foundationOffset) / templates.length);
+      const cycleLabel = templateCycle ? ["复测", "强化", "迁移"][Math.min(templateCycle - 1, 2)] : "";
       generated.push({
         id: 1000 + sequence,
+        weekIndex,
         day: day.key,
         start: minutesToClock(start),
         end: minutesToClock(start + blockMinutes),
         category,
         displayIndex: categoryIndex,
-        title: template[0],
+        title: cycleLabel ? `${template[0]} · ${cycleLabel}` : template[0],
         note: `${settings.studyContent ? `${settings.studyContent.slice(0, 22)} · ` : ""}${template[1]}${weakTokens.map(normalizeStudyCategory).includes(category) ? " · 薄弱项加练" : ""}`,
         status: "planned",
         standards: completionStandards[category] || completionStandards.vocab
       });
       sequence += 1;
+      });
     });
-  });
+  }
   return generated;
 }
 let importFiles = [];
@@ -651,13 +1075,19 @@ function renderRecognizedImportItems(result) {
     <span class="overview-icon green">✓</span>
     <div><strong>识别到 ${recognizedImportItems.length} 道错题</strong><small>${clearCount}道可直接导入，${recognizedImportItems.length - clearCount}道建议确认</small></div>
   </div>${recognizedImportItems.map((item, index) => `<article class="recognized-item ${item.needsConfirmation ? "needs-check" : ""}">
-    <div><span class="tiny-label">${escapeImportText(item.section || "其他")}</span><span class="confidence ${item.confidence === "high" ? "high" : "low"}">${item.confidence === "high" ? "识别清晰" : "需要确认"}</span></div>
-    <strong>${escapeImportText(item.title || item.question || `错题 ${index + 1}`)}</strong>
-    <p>你的答案：${escapeImportText(item.userAnswer || "不确定")}　·　正确答案：${escapeImportText(item.correctAnswer || "待确认")}</p>
+    <div><label class="import-include"><input type="checkbox" data-import-include="${index}" checked />导入这题</label><span class="tiny-label">${escapeImportText(item.section || "其他")}</span><span class="confidence ${item.confidence === "high" ? "high" : "low"}">${item.confidence === "high" ? "识别清晰" : "需要确认"}</span></div>
+    <label>题目
+      <textarea rows="2" data-import-field="question" data-import-index="${index}" placeholder="请补全当前题目">${escapeImportText(item.question || item.title || "")}</textarea>
+    </label>
+    ${Array.isArray(item.options) && item.options.length ? `<ol class="import-options">${item.options.map((option, optionIndex) => `<li><b>${answerLetter(optionIndex)}.</b>${escapeImportText(option)}</li>`).join("")}</ol>` : ""}
+    <div class="import-answer-fields">
+      <label>你的答案<input data-import-field="userAnswer" data-import-index="${index}" value="${escapeImportText(item.userAnswer || "")}" placeholder="看不清可留空" /></label>
+      <label>正确答案<input data-import-field="correctAnswer" data-import-index="${index}" value="${escapeImportText(item.correctAnswer || "")}" placeholder="不确定可留空" /></label>
+    </div>
     <label>你当时为什么会错？
       <select class="import-reason" data-import-reason="${index}"><option>不理解知识点</option><option>凭熟悉感猜答案</option><option>看漏关键信息</option><option>不记得</option></select>
     </label>
-  </article>`).join("")}<p class="prototype-note">${escapeImportText(result?.summary || "请确认识别结果后再导入错题集。")}</p>`;
+  </article>`).join("")}<p class="prototype-note">${escapeImportText(result?.summary || "请确认识别结果后再导入错题集。识别不清的内容不会自动补猜。")}</p>`;
 }
 
 function renderLearningMaterialFiles() {
@@ -948,24 +1378,28 @@ const realMaterialQuestionBank = [
   }
 ];
 const materialPracticeBank = realMaterialQuestionBank;
-const topikIListeningFallbackScript = "남자: 민수 씨, 몇 시에 교실에 가요? 여자: 두 시에 가요. 오늘 한국어 수업이 있어요. 남자: 수업은 어디에서 해요? 여자: 학교 2층 교실에서 해요.";
-const topikIListeningFallbackScriptZh = "男：民秀，你几点去教室？女：两点去。今天有韩语课。男：课在哪里上？女：在学校二楼教室。";
+function topikIListeningFallback(audioText, transcriptZh, question = {}) {
+  return { audioText, transcript: audioText, transcriptZh, questionType: "topik1_listening", ...question };
+}
 const topikIListeningFallbackQuestions = [
-  { audioText: topikIListeningFallbackScript, transcript: topikIListeningFallbackScript, transcriptZh: topikIListeningFallbackScriptZh, questionType: "topik1_listening", stem: "여자는 몇 시에 교실에 갑니까?", stemZh: "女生几点去教室？", options: ["한 시", "두 시", "세 시", "네 시"], optionTranslations: ["一点", "两点", "三点", "四点"], answer: 1, answerZh: "两点", explanation: "여자는 두 시에 교실에 간다고 말했습니다.", explanationZh: "女生说自己两点去教室。", source: "TOPIK I listening fallback" },
-  { audioText: topikIListeningFallbackScript, transcript: topikIListeningFallbackScript, transcriptZh: topikIListeningFallbackScriptZh, questionType: "topik1_listening", stem: "오늘 무엇이 있습니까?", stemZh: "今天有什么？", options: ["한국어 수업", "친구 생일", "학교 시험", "운동 연습"], optionTranslations: ["韩语课", "朋友生日", "学校考试", "运动练习"], answer: 0, answerZh: "韩语课", explanation: "여자는 오늘 한국어 수업이 있다고 했습니다.", explanationZh: "女生说今天有韩语课。", source: "TOPIK I listening fallback" },
-  { audioText: topikIListeningFallbackScript, transcript: topikIListeningFallbackScript, transcriptZh: topikIListeningFallbackScriptZh, questionType: "topik1_listening", stem: "수업은 어디에서 합니까?", stemZh: "课在哪里上？", options: ["도서관", "학교 2층 교실", "운동장", "식당"], optionTranslations: ["图书馆", "学校二楼教室", "操场", "食堂"], answer: 1, answerZh: "学校二楼教室", explanation: "여자는 학교 2층 교실에서 수업을 한다고 했습니다.", explanationZh: "女生说课在学校二楼教室上。", source: "TOPIK I listening fallback" },
-  { audioText: topikIListeningFallbackScript, transcript: topikIListeningFallbackScript, transcriptZh: topikIListeningFallbackScriptZh, questionType: "topik1_listening", stem: "대화 내용과 같은 것을 고르십시오.", stemZh: "选择与对话内容一致的一项。", options: ["남자는 교실에 갑니다", "여자는 세 시에 갑니다", "오늘 한국어 수업이 있습니다", "수업은 도서관에서 합니다"], optionTranslations: ["男生去教室", "女生三点去", "今天有韩语课", "课在图书馆上"], answer: 2, answerZh: "今天有韩语课", explanation: "대화에서 오늘 한국어 수업이 있다고 했습니다.", explanationZh: "对话中说今天有韩语课。", source: "TOPIK I listening fallback" },
-  { audioText: topikIListeningFallbackScript, transcript: topikIListeningFallbackScript, transcriptZh: topikIListeningFallbackScriptZh, questionType: "topik1_listening", stem: "남자는 무엇을 물어봅니까?", stemZh: "男生问了什么？", options: ["교실에 가는 시간", "수업의 이름", "친구의 전화번호", "점심 메뉴"], optionTranslations: ["去教室的时间", "课程名称", "朋友的电话号码", "午饭菜单"], answer: 0, answerZh: "去教室的时间", explanation: "남자는 몇 시에 교실에 가는지 물어봤습니다.", explanationZh: "男生问女生几点去教室。", source: "TOPIK I listening fallback" }
+  topikIListeningFallback("여자: 준호 씨, 오늘 한국어 수업에 와요? 남자: 네, 두 시에 교실에 가요. 여자: 조금 일찍 오세요. 남자: 네, 알겠습니다.", "女：俊浩，你今天来上韩语课吗？男：是的，我两点去教室。女：请稍微早点来。男：好的，知道了。", { stem: "남자는 몇 시에 교실에 갑니까?", stemZh: "男生几点去教室？", options: ["한 시", "두 시", "세 시", "네 시"], optionTranslations: ["一点", "两点", "三点", "四点"], answer: 1, answerZh: "两点", explanation: "남자는 두 시에 교실에 간다고 했습니다.", explanationZh: "男生说两点去教室，所以答案是“两点”。", source: "TOPIK I 听力：时间信息" }),
+  topikIListeningFallback("남자: 수미 씨, 지금 어디에 가요? 여자: 우체국에 가요. 편지를 보내려고 해요. 남자: 우체국은 은행 옆에 있어요. 여자: 네, 고마워요.", "男：秀美，你现在去哪里？女：我去邮局，想寄信。男：邮局在银行旁边。女：好的，谢谢。", { stem: "여자는 어디에 갑니까?", stemZh: "女生去哪里？", options: ["은행", "우체국", "도서관", "병원"], optionTranslations: ["银行", "邮局", "图书馆", "医院"], answer: 1, answerZh: "邮局", explanation: "여자는 편지를 보내려고 우체국에 간다고 했습니다.", explanationZh: "女生说为了寄信要去邮局，所以答案是“邮局”。", source: "TOPIK I 听力：地点信息" }),
+  topikIListeningFallback("여자: 밖에 비가 많이 와요. 우산을 가져가세요. 남자: 우산이 어디에 있어요? 여자: 문 옆에 있어요. 남자: 네, 가져갈게요.", "女：外面雨下得很大，请带伞。男：伞在哪里？女：在门旁边。男：好的，我会带上。", { stem: "여자는 남자에게 무엇을 가져가라고 했습니까?", stemZh: "女生让男生带什么？", options: ["우산", "가방", "책", "모자"], optionTranslations: ["雨伞", "包", "书", "帽子"], answer: 0, answerZh: "雨伞", explanation: "여자는 비가 오니까 우산을 가져가라고 했습니다.", explanationZh: "女生因为下雨让男生带伞，所以答案是“雨伞”。", source: "TOPIK I 听力：物品信息" }),
+  topikIListeningFallback("남자: 학교에 어떻게 가요? 여자: 저는 버스를 타고 가요. 집 앞에서 12번 버스를 타면 돼요. 남자: 시간이 얼마나 걸려요? 여자: 십 분쯤 걸려요.", "男：你怎么去学校？女：我坐公交车去。在家门口坐12路公交车就可以。男：要花多长时间？女：大约十分钟。", { stem: "여자는 학교에 어떻게 갑니까?", stemZh: "女生怎么去学校？", options: ["걸어서", "버스로", "지하철로", "택시로"], optionTranslations: ["步行", "坐公交车", "坐地铁", "坐出租车"], answer: 1, answerZh: "坐公交车", explanation: "여자는 버스를 타고 학교에 간다고 했습니다.", explanationZh: "女生说自己坐公交车去学校，所以答案是“坐公交车”。", source: "TOPIK I 听力：交通方式" }),
+  topikIListeningFallback("여자: 한식당입니다. 무엇을 도와드릴까요? 남자: 오늘 저녁 일곱 시에 세 명 자리를 예약하고 싶어요. 여자: 네, 창가 자리로 준비하겠습니다. 남자: 감사합니다.", "女：这里是韩餐厅，有什么可以帮您？男：我想预约今晚七点的三人座。女：好的，会为您准备靠窗的位置。男：谢谢。", { stem: "대화 내용과 같은 것을 고르십시오.", stemZh: "请选择与对话内容一致的一项。", options: ["남자는 세 명 자리를 예약합니다", "남자는 점심에 식당에 갑니다", "창가 자리는 없습니다", "예약 시간은 여덟 시입니다"], optionTranslations: ["男生预约三人座", "男生中午去餐厅", "没有靠窗的位置", "预约时间是八点"], answer: 0, answerZh: "男生预约三人座", explanation: "남자는 오늘 저녁 일곱 시에 세 명 자리를 예약했습니다.", explanationZh: "男生预约了今晚七点的三人座，所以第一项与对话一致。", source: "TOPIK I 听力：内容一致" })
 ];
 
 const listeningFallbackScript = "남자: 수진 씨, 오늘 동아리 회의에 못 올 것 같아요. 갑자기 아르바이트 시간이 바뀌었거든요. 여자: 그래요? 그럼 내일 오전까지 의견을 문자로 보내 주세요. 회의에서 대신 말해 줄게요. 남자: 고마워요. 포스터 디자인에 대한 의견을 정리해서 보낼게요.";
 const listeningFallbackScriptZh = "男：秀珍，我今天可能去不了社团会议了。突然打工时间变了。女：是吗？那请你明天上午之前把意见用短信发给我吧。我会在会议上替你说。男：谢谢。我会整理好关于海报设计的意见发过去。";
+function topikIIListeningFallback(audioText, transcriptZh, question = {}) {
+  return { audioText, transcript: audioText, transcriptZh, questionType: "topik2_listening", ...question };
+}
 const listeningFallbackQuestions = [
-  { audioText: listeningFallbackScript, transcript: listeningFallbackScript, transcriptZh: listeningFallbackScriptZh, stem: "남자가 오늘 동아리 회의에 못 가는 이유는 무엇입니까?", options: ["포스터를 아직 만들지 못해서", "아르바이트 시간이 바뀌어서", "의견을 정리하지 못해서", "내일 오전에 약속이 있어서"], optionTranslations: ["因为还没做完海报", "因为打工时间变了", "因为还没整理好意见", "因为明天上午有约"], answer: 1, answerZh: "因为打工时间变了", explanation: "남자는 갑자기 아르바이트 시간이 바뀌어서 오늘 동아리 회의에 못 간다고 말했습니다.", explanationZh: "男生说自己突然打工时间变了，所以今天不能去社团会议。", source: "TOPIK II listening reason type" },
-  { audioText: listeningFallbackScript, transcript: listeningFallbackScript, transcriptZh: listeningFallbackScriptZh, stem: "여자는 남자에게 무엇을 하라고 했습니까?", options: ["회의에 늦게 오라고 했습니다", "포스터를 바로 만들라고 했습니다", "의견을 문자로 보내라고 했습니다", "아르바이트 시간을 바꾸라고 했습니다"], optionTranslations: ["让他晚点来会议", "让他马上做海报", "让他把意见用短信发过去", "让他改打工时间"], answer: 2, answerZh: "让他把意见用短信发过去", explanation: "여자는 내일 오전까지 의견을 문자로 보내 달라고 했습니다.", explanationZh: "女生让男生在明天上午之前把意见用短信发给她。", source: "TOPIK II listening action type" },
-  { audioText: listeningFallbackScript, transcript: listeningFallbackScript, transcriptZh: listeningFallbackScriptZh, stem: "남자는 무엇에 대한 의견을 보내겠다고 했습니까?", options: ["회의 시간", "포스터 디자인", "동아리 장소", "아르바이트 일정"], optionTranslations: ["会议时间", "海报设计", "社团地点", "打工日程"], answer: 1, answerZh: "海报设计", explanation: "남자는 포스터 디자인에 대한 의견을 정리해서 보내겠다고 했습니다.", explanationZh: "男生说会整理关于海报设计的意见并发过去。", source: "TOPIK II listening detail type" },
-  { audioText: listeningFallbackScript, transcript: listeningFallbackScript, transcriptZh: listeningFallbackScriptZh, stem: "대화 내용과 같은 것을 고르십시오.", options: ["남자는 회의에서 발표할 것입니다", "여자는 남자의 의견을 대신 말할 것입니다", "회의는 내일 오전에 열립니다", "포스터는 이미 완성되었습니다"], optionTranslations: ["男生会在会议上发表", "女生会代替男生转达意见", "会议会在明天上午举行", "海报已经完成了"], answer: 1, answerZh: "女生会代替男生转达意见", explanation: "여자는 회의에서 남자의 의견을 대신 말해 주겠다고 했습니다.", explanationZh: "女生说会在会议上替男生转达他的意见。", source: "TOPIK II listening matching type" },
-  { audioText: listeningFallbackScript, transcript: listeningFallbackScript, transcriptZh: listeningFallbackScriptZh, stem: "이 대화에서 남자의 말하기 목적은 무엇입니까?", options: ["회의에 못 가는 상황을 설명하려고", "포스터 디자인을 칭찬하려고", "아르바이트를 소개하려고", "회의 장소를 확인하려고"], optionTranslations: ["为了说明不能去会议的情况", "为了称赞海报设计", "为了介绍打工", "为了确认会议地点"], answer: 0, answerZh: "为了说明不能去会议的情况", explanation: "남자는 아르바이트 시간이 바뀌어 회의에 못 간다는 상황을 설명하고 있습니다.", explanationZh: "男生是在说明因为打工时间变动，所以不能参加会议。", source: "TOPIK II listening purpose type" }
+  topikIIListeningFallback(listeningFallbackScript, listeningFallbackScriptZh, { stem: "남자가 오늘 동아리 회의에 못 가는 이유는 무엇입니까?", stemZh: "男生今天不能参加社团会议的原因是什么？", options: ["포스터를 아직 만들지 못해서", "아르바이트 시간이 바뀌어서", "의견을 정리하지 못해서", "내일 오전에 약속이 있어서"], optionTranslations: ["因为还没做完海报", "因为打工时间变了", "因为还没整理好意见", "因为明天上午有约"], answer: 1, answerZh: "因为打工时间变了", explanation: "남자는 갑자기 아르바이트 시간이 바뀌어서 오늘 동아리 회의에 못 간다고 말했습니다.", explanationZh: "男生说自己突然打工时间变了，所以今天不能去社团会议。", source: "TOPIK II listening reason type" }),
+  topikIIListeningFallback("여자: 지훈 씨, 오늘 스터디는 어디에서 해요? 남자: 원래 도서관에서 하려고 했는데 자리가 없어서 학생회관 2층에서 해요. 여자: 알겠어요. 여섯 시까지 갈게요.", "女：志勋，今天学习小组在哪里进行？男：原来想在图书馆进行，但因为没有座位，改在学生会馆二楼。女：知道了，我会在六点前到。", { stem: "오늘 스터디는 어디에서 합니까?", stemZh: "今天的学习小组在哪里进行？", options: ["도서관", "학생회관 2층", "강의실", "식당"], optionTranslations: ["图书馆", "学生会馆二楼", "教室", "食堂"], answer: 1, answerZh: "学生会馆二楼", explanation: "남자는 도서관에 자리가 없어서 학생회관 2층에서 스터디를 한다고 했습니다.", explanationZh: "男生说图书馆没有座位，所以学习小组改在学生会馆二楼。", source: "TOPIK II listening place type" }),
+  topikIIListeningFallback("남자: 민지 씨, 발표 연습은 다 했어요? 여자: 아직 못 했어요. 오늘 세 시에 204호에서 같이 연습할래요? 남자: 좋아요. 제가 발표 자료를 가져갈게요.", "男：敏智，发表练习都做完了吗？女：还没有。今天三点在204教室一起练习好吗？男：好，我会带发表资料过去。", { stem: "두 사람은 어디에서 발표 연습을 합니까?", stemZh: "两个人在哪里进行发表练习？", options: ["204호", "도서관", "학생회관", "회의실"], optionTranslations: ["204教室", "图书馆", "学生会馆", "会议室"], answer: 0, answerZh: "204教室", explanation: "여자는 오늘 세 시에 204호에서 같이 연습하자고 했습니다.", explanationZh: "女生提议今天三点在204教室一起练习。", source: "TOPIK II listening place detail type" }),
+  topikIIListeningFallback("남자: 예약한 김민수인데요. 창가 자리를 부탁드렸어요. 여자: 네, 네 분 자리로 준비했습니다. 일곱 시까지 오시면 됩니다. 남자: 감사합니다. 조금 일찍 가겠습니다.", "男：我是预约过的金民秀。我之前要求了靠窗的位置。女：好的，已经准备了四人座。七点前过来就可以。男：谢谢，我会稍微早点到。", { stem: "대화 내용과 같은 것을 고르십시오.", stemZh: "请选择与对话内容一致的一项。", options: ["남자는 식당 자리를 예약했습니다", "두 사람만 식사할 것입니다", "남자는 일곱 시 이후에 갑니다", "창가 자리는 준비할 수 없습니다"], optionTranslations: ["男生预约了餐厅座位", "只有两个人用餐", "男生七点以后到", "无法准备靠窗座位"], answer: 0, answerZh: "男生预约了餐厅座位", explanation: "남자는 예약한 사람이라고 말했고 창가 자리도 부탁했다고 했습니다.", explanationZh: "男生说明自己已经预约，并确认了靠窗的四人座。", source: "TOPIK II listening matching type" }),
+  topikIIListeningFallback("여자: 실례합니다. 조금 전에 지하철에서 검은색 지갑을 잃어버렸어요. 역무원: 어느 칸에 타셨어요? 여자: 세 번째 칸이었고, 지갑 안에 학생증이 있어요.", "女：不好意思，我刚才在地铁里丢了一个黑色钱包。站务员：您坐的是哪一节车厢？女：第三节，钱包里有学生证。", { stem: "여자가 역무원에게 말하는 목적은 무엇입니까?", stemZh: "女生对站务员说这些话的目的是什么？", options: ["지갑을 잃어버렸다고 신고하려고", "지하철 시간을 확인하려고", "학생증을 새로 만들려고", "세 번째 칸을 예약하려고"], optionTranslations: ["为了报告钱包丢失", "为了确认地铁时间", "为了补办学生证", "为了预约第三节车厢"], answer: 0, answerZh: "为了报告钱包丢失", explanation: "여자는 지하철에서 잃어버린 검은색 지갑을 찾기 위해 역무원에게 말하고 있습니다.", explanationZh: "女生是在向站务员报告自己在地铁上丢失了黑色钱包。", source: "TOPIK II listening purpose type" })
 ];
 
 const examLabelMap = {
@@ -986,6 +1420,8 @@ let practiceWrongNotes = [];
 let practiceResults = [];
 let practiceIsSample = false;
 let practiceReviewMode = "learning";
+let practiceSessionStartedAt = "";
+let practiceQuestionTimer = { elapsedMs: 0, visibleStartedAt: 0 };
 const LISTENING_PLAY_LIMIT = 2;
 const LISTENING_TTS_RATE = 1;
 let listeningPlayCounts = {};
@@ -998,6 +1434,36 @@ const $$ = (selector) => [...document.querySelectorAll(selector)];
 
 const cloud = { config: null, session: null, saveTimer: null, syncing: false, savePending: false, lastError: "" };
 const dailyReminder = { timer: null };
+
+function startPracticeQuestionTimer() {
+  practiceQuestionTimer = {
+    elapsedMs: 0,
+    visibleStartedAt: document.visibilityState === "visible" ? Date.now() : 0
+  };
+}
+
+function pausePracticeQuestionTimer() {
+  if (!practiceQuestionTimer.visibleStartedAt) return;
+  practiceQuestionTimer.elapsedMs += Math.max(0, Date.now() - practiceQuestionTimer.visibleStartedAt);
+  practiceQuestionTimer.visibleStartedAt = 0;
+}
+
+function practiceQuestionElapsedSeconds() {
+  const activeMs = practiceQuestionTimer.visibleStartedAt
+    ? Math.max(0, Date.now() - practiceQuestionTimer.visibleStartedAt)
+    : 0;
+  return Math.max(1, Math.round((practiceQuestionTimer.elapsedMs + activeMs) / 1000));
+}
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState !== "visible") {
+    pausePracticeQuestionTimer();
+    return;
+  }
+  if (!$("#practiceModal")?.classList.contains("hidden") && !questionGraded && !practiceQuestionTimer.visibleStartedAt) {
+    practiceQuestionTimer.visibleStartedAt = Date.now();
+  }
+});
 
 function readReminderSettings() {
   const saved = JSON.parse(localStorage.getItem("topikPrototypeDailyReminder") || "null") || {};
@@ -1019,10 +1485,31 @@ function writeReminderSettings(next) {
 
 function cloudHeaders(token = "") {
   return {
-    apikey: cloud.config.anonKey,
-    Authorization: `Bearer ${token || cloud.config.anonKey}`,
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
     "Content-Type": "application/json"
   };
+}
+
+function cloudProxyFetch(path, options = {}) {
+  const headers = options.headers || {};
+  let payload = options.body;
+  if (typeof payload === "string") {
+    try { payload = JSON.parse(payload); }
+    catch { payload = {}; }
+  }
+  return fetch("/api/cloud-proxy", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(headers.Authorization ? { Authorization: headers.Authorization } : {})
+    },
+    body: JSON.stringify({
+      path,
+      method: options.method || "GET",
+      payload: payload ?? {},
+      prefer: headers.Prefer || ""
+    })
+  });
 }
 
 function currentCloudState() {
@@ -1036,7 +1523,8 @@ function currentCloudState() {
     planScope: localStorage.getItem("topikPrototypePlanScope") || "",
     tomorrowFocus: localStorage.getItem("topikPrototypeTomorrowFocus") || "",
     dailyReminder: readReminderSettings(),
-    rewards: readRewardState()
+    rewards: readRewardState(),
+    externalStudyRecords: readExternalStudyRecords()
   };
 }
 
@@ -1060,17 +1548,24 @@ function applyCloudState(data) {
   if (data.onboarded) localStorage.setItem("topikPrototypeOnboarded", data.onboarded);
   if (Array.isArray(data.tasks)) {
     const scopedTasks = constrainTasksToStudyScope(data.tasks, effectiveSettings, cloudStateHasReviewNeed(data));
+    const migratedTasks = data.planVersion !== planSchemaVersion
+      ? mergeGeneratedPlanWithLearningRecords(
+        constrainTasksToStudyScope(generatePlanFromSettings(effectiveSettings), effectiveSettings, cloudStateHasReviewNeed(data)),
+        scopedTasks
+      )
+      : scopedTasks;
     const effectiveScope = planScopeSignature(effectiveSettings);
-    if (JSON.stringify(scopedTasks) !== JSON.stringify(data.tasks) || data.planVersion !== planSchemaVersion || (data.planScope && data.planScope !== effectiveScope)) {
+    if (JSON.stringify(migratedTasks) !== JSON.stringify(data.tasks) || data.planVersion !== planSchemaVersion || (data.planScope && data.planScope !== effectiveScope)) {
       localStorage.setItem("topikPrototypeNeedsCloudRepair", "yes");
     }
-    localStorage.setItem("topikPrototypeTasks", JSON.stringify(scopedTasks));
+    localStorage.setItem("topikPrototypeTasks", JSON.stringify(migratedTasks));
     writePlanScope(effectiveSettings);
   }
   localStorage.setItem("topikPrototypePlanVersion", planSchemaVersion);
   if (data.tomorrowFocus) localStorage.setItem("topikPrototypeTomorrowFocus", data.tomorrowFocus);
   if (data.dailyReminder) localStorage.setItem("topikPrototypeDailyReminder", JSON.stringify(data.dailyReminder));
   if (data.rewards) localStorage.setItem("topikPrototypeRewards", JSON.stringify(data.rewards));
+  if (Array.isArray(data.externalStudyRecords)) writeExternalStudyRecords(data.externalStudyRecords);
 }
 
 function storeCloudSession(session) {
@@ -1103,12 +1598,12 @@ function readAuthRedirectSession() {
 }
 
 async function cloudRequest(path, options = {}, retry = true) {
-  const response = await fetch(`${cloud.config.url}${path}`, {
+  const response = await cloudProxyFetch(path, {
     ...options,
     headers: { ...cloudHeaders(cloud.session?.access_token), ...(options.headers || {}) }
   });
   if (response.status === 401 && retry && cloud.session?.refresh_token) {
-    const refreshed = await fetch(`${cloud.config.url}/auth/v1/token?grant_type=refresh_token`, {
+    const refreshed = await cloudProxyFetch("/auth/v1/token?grant_type=refresh_token", {
       method: "POST", headers: cloudHeaders(), body: JSON.stringify({ refresh_token: cloud.session.refresh_token })
     });
     if (refreshed.ok) {
@@ -1203,12 +1698,18 @@ async function authenticateCloud(mode) {
   try {
     const redirectTo = encodeURIComponent(location.origin + location.pathname);
     const path = mode === "signup" ? `/auth/v1/signup?redirect_to=${redirectTo}` : "/auth/v1/token?grant_type=password";
-    const response = await fetch(`${cloud.config.url}${path}`, { method: "POST", headers: cloudHeaders(), body: JSON.stringify({ email, password }) });
+    const response = await cloudProxyFetch(path, { method: "POST", headers: cloudHeaders(), body: JSON.stringify({ email, password }) });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) {
       const rawMessage = payload.message || payload.msg || payload.error_description || payload.error || "操作失败";
       const friendlyMessage = /invalid api key/i.test(rawMessage)
         ? "云同步密钥无效，请检查Vercel中的SUPABASE_ANON_KEY"
+        : /cloud service is temporarily unavailable|云同步服务当前不可用/i.test(rawMessage)
+          ? "云同步服务当前不可用，请稍后再试"
+        : /invalid login credentials/i.test(rawMessage)
+          ? "邮箱或密码不正确"
+          : /email not confirmed/i.test(rawMessage)
+            ? "邮箱尚未确认，请先完成邮箱验证"
         : /signup.*disabled|signups.*disabled/i.test(rawMessage)
           ? "当前项目尚未开启邮箱注册"
           : /password/i.test(rawMessage) && /least|characters|weak/i.test(rawMessage)
@@ -1226,7 +1727,12 @@ async function authenticateCloud(mode) {
       closeModal("accountModal");
       showToast(mode === "signup" ? "注册成功，已开启云同步" : "登录成功，正在恢复进度");
     }
-  } catch (error) { showToast(error.message || "操作失败，请重试"); }
+  } catch (error) {
+    const message = String(error?.message || "");
+    showToast(/failed to fetch|networkerror|load failed/i.test(message)
+      ? "云同步服务当前不可用，请稍后再试"
+      : (message || "操作失败，请重试"));
+  }
   finally {
     button.disabled = false;
     button.textContent = mode === "signup" ? "注册账号" : "登录并同步";
@@ -1237,7 +1743,16 @@ async function initializeCloud() {
   if (location.protocol === "file:") { updateCloudUI(); return; }
   try {
     const response = await fetch("/api/cloud-config", { cache: "no-store" });
-    cloud.config = await response.json();
+    const payload = await response.json();
+    const normalizedUrl = String(payload?.url || "")
+      .trim()
+      .replace(/\/+$/, "")
+      .replace(/\/(?:rest|auth|storage)\/v1$/i, "");
+    cloud.config = {
+      ...payload,
+      url: normalizedUrl,
+      enabled: Boolean(payload?.enabled && normalizedUrl)
+    };
   } catch { cloud.config = { enabled: false }; }
   const redirected = readAuthRedirectSession();
   const stored = redirected || JSON.parse(localStorage.getItem("studyPlannerCloudSession") || "null");
@@ -1271,14 +1786,416 @@ function completedPracticeTasks() {
   return tasks.filter(hasPracticeRecord);
 }
 
+function taskActualStudySeconds(task = {}) {
+  return Math.max(0, Number(task.checkin?.actualSeconds || 0));
+}
+
+function latestTaskAdjustment(task = {}, types = []) {
+  const allowed = new Set(Array.isArray(types) ? types : [types]);
+  return [...(task.adjustments || [])].reverse().find(adjustment =>
+    !allowed.size || allowed.has(adjustment.type)
+  ) || null;
+}
+
+function resultPriorityAdjustment(task = {}) {
+  return latestTaskAdjustment(task, ["result-priority"]);
+}
+
+function pendingTaskScheduleRank(task = {}) {
+  return taskScheduledDate(task).getTime() / 60000 + clockToMinutes(task.start, 0);
+}
+
+function nextPendingTaskInCategory(sourceTask = {}) {
+  const category = normalizeStudyCategory(sourceTask.category);
+  return tasks
+    .filter(task =>
+      task.id !== sourceTask.id
+      && task.status !== "cancelled"
+      && !hasPracticeRecord(task)
+      && normalizeStudyCategory(task.category) === category
+    )
+    .sort((first, second) => pendingTaskScheduleRank(first) - pendingTaskScheduleRank(second))[0] || null;
+}
+
+function applyPracticeResultToPlan(task = {}, result = {}) {
+  const total = Math.max(0, Number(result.total || 0));
+  const correct = Math.max(0, Number(result.correct || 0));
+  const wrongCount = Math.max(0, total - correct);
+  const rate = total ? Math.round(correct / total * 100) : 0;
+  const at = new Date().toISOString();
+  let planningImpact = "";
+
+  if (!wrongCount) {
+    planningImpact = `本组 ${rate}% 正确，暂不增加额外任务，继续原周计划。`;
+  } else if (rate >= 80) {
+    planningImpact = `本组 ${rate}% 正确，错题已进入复习清单；其余任务顺序不变。`;
+  } else {
+    const target = nextPendingTaskInCategory(task);
+    if (target) {
+      planningImpact = `${categoryLabel(task.category)}本次正确率 ${rate}%，已把「${taskDisplayTitle(target, tasks.indexOf(target))}」设为下一项同类重点。`;
+      target.adjustments = [...(target.adjustments || []), {
+        type: "result-priority",
+        at,
+        sourceTaskId: task.id,
+        accuracy: rate,
+        wrongCount,
+        reason: planningImpact
+      }];
+    } else {
+      planningImpact = `${categoryLabel(task.category)}本次正确率 ${rate}%，错题已进入复习清单；本周没有待完成的同类任务，因此不额外虚构计划。`;
+    }
+  }
+
+  task.checkin = {
+    ...(task.checkin || {}),
+    planningImpact
+  };
+  return planningImpact;
+}
+
+function recordPartialPlanImpact(task = {}, partialAnswered = 0, total = 0) {
+  if (!partialAnswered) return "";
+  const remaining = Math.max(1, Number(total || 0) - Number(partialAnswered || 0));
+  const unit = task.category === "dictation" ? "个词" : "题";
+  const reason = `本组已完成 ${partialAnswered} ${unit}，剩余 ${remaining} ${unit}；系统会优先保留为当前任务，不把部分学习算作完成。`;
+  const adjustments = [...(task.adjustments || [])];
+  const existingIndex = adjustments.findIndex(adjustment => adjustment.type === "partial-priority" && adjustment.sourceTaskId === task.id);
+  const adjustment = {
+    type: "partial-priority",
+    at: new Date().toISOString(),
+    sourceTaskId: task.id,
+    partialAnswered,
+    remaining,
+    reason
+  };
+  if (existingIndex >= 0) adjustments[existingIndex] = adjustment;
+  else adjustments.push(adjustment);
+  task.adjustments = adjustments;
+  return reason;
+}
+
+function repairUnverifiedTaskStatuses() {
+  let changed = false;
+  tasks.forEach(task => {
+    if ((task.status === "completed" || task.status === "progress") && !hasPracticeRecord(task) && !taskActualStudySeconds(task)) {
+      task.status = "planned";
+      changed = true;
+    }
+  });
+  if (changed) localStorage.setItem("topikPrototypeTasks", JSON.stringify(tasks));
+}
+
+function recommendedQuestionCountForTask(task = {}) {
+  const pendingCount = Array.isArray(task.checkin?.pendingPractice?.questions)
+    ? task.checkin.pendingPractice.questions.length
+    : 0;
+  if (pendingCount) return Math.min(20, Math.max(1, pendingCount));
+  const preparedCount = Number(task.checkin?.practiceQuestionCount || 0);
+  if (preparedCount) return Math.min(20, Math.max(1, preparedCount));
+  const standardText = Array.isArray(task.standards) ? task.standards.join(" ") : "";
+  const countMatch = standardText.match(/(\d+)\s*题/);
+  const requested = Number(countMatch?.[1] || 0);
+  if (requested >= 20) return 20;
+  if (requested >= 15) return 15;
+  if (requested >= 10) return 10;
+  if (requested >= 5) return 5;
+  const duration = minutesBetween(task.start || "00:00", task.end || "00:00");
+  if (duration >= 55) return 20;
+  if (duration >= 35) return 10;
+  return 5;
+}
+
+function currentTaskDecision() {
+  const hasSettings = Boolean(localStorage.getItem("topikPrototypeOnboarded") || localStorage.getItem("topikPrototypeSettings"));
+  if (!hasSettings) return { type: "setup" };
+  const todayKey = beijingDayKey();
+  const todayIndex = Math.max(0, baseDays.findIndex(day => day.key === todayKey));
+  const nowMinutes = minutesNowInBeijing();
+  const pending = tasks.filter(task => task.status !== "cancelled" && !hasPracticeRecord(task));
+  if (!pending.length) return { type: "complete" };
+  const externalByCategory = todayExternalStudyByCategory();
+  const candidates = pending.map((task, index) => {
+    const dayIndex = Math.max(0, baseDays.findIndex(day => day.key === task.day));
+    const scheduledDateKey = taskScheduledDateKey(task);
+    const isActive = task.status === "partial" || task.status === "in_progress";
+    const isPast = scheduledDateKey < beijingDateKey();
+    const isToday = scheduledDateKey === beijingDateKey();
+    const dayPriority = isActive ? 0 : (isPast ? 1 : (isToday ? 2 : 3));
+    const dayDistance = Math.round((taskScheduledDate(task).getTime() - buildCurrentWeekDays()[todayIndex].fullDate.getTime()) / 86400000);
+    const externalCoverage = isToday && Number(externalByCategory[task.category] || 0) >= 600 ? 1 : 0;
+    const adaptivePriority = Number(new Date(resultPriorityAdjustment(task)?.at || 0).getTime()) || 0;
+    return { task, index, dayIndex, dayPriority, dayDistance, isPast, isToday, scheduledDateKey, externalCoverage, adaptivePriority, startMinutes: clockToMinutes(task.start, 0), nowMinutes };
+  });
+  const baseRanked = [...candidates].sort((first, second) =>
+    first.dayPriority - second.dayPriority
+    || first.dayDistance - second.dayDistance
+    || first.startMinutes - second.startMinutes
+    || first.index - second.index
+  );
+  const ranked = [...candidates].sort((first, second) =>
+    first.dayPriority - second.dayPriority
+    || first.dayDistance - second.dayDistance
+    || second.adaptivePriority - first.adaptivePriority
+    || first.externalCoverage - second.externalCoverage
+    || first.startMinutes - second.startMinutes
+    || first.index - second.index
+  );
+  const baseCategorySeconds = Number(externalByCategory[baseRanked[0]?.task?.category] || 0);
+  const externalRotation = baseRanked[0]?.task?.id !== ranked[0]?.task?.id
+    && baseCategorySeconds >= 600
+    && !ranked[0]?.adaptivePriority
+    ? {
+        category: baseRanked[0].task.category,
+        seconds: baseCategorySeconds
+      }
+    : null;
+  return { type: "task", ...ranked[0], todayIndex, externalRotation };
+}
+
+function currentTaskTimeLabel(date = new Date()) {
+  const time = new Intl.DateTimeFormat("zh-CN", {
+    timeZone: "Asia/Shanghai",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false
+  }).format(date);
+  return `现在 ${time}`;
+}
+
+function currentTaskCopy(decision = currentTaskDecision()) {
+  if (decision.type === "setup") return {
+    title: "先生成你的课程学习计划",
+    meta: "填写目标、可用时间和要学习的模块。",
+    target: "计划只使用你选择的范围。",
+    reason: "生成后，系统会替你选出现在最该做的一项。",
+    button: "设置学习计划"
+  };
+  if (decision.type === "complete") return {
+    title: "本周没有待完成任务",
+    meta: `本周实际学习 ${formatActualStudyTime(weeklyPlanActualSummary().actualSeconds)}。`,
+    target: "可以查看真实学习记录和错题结果。",
+    reason: "新任务会继续依据你的学习范围和实际结果安排。",
+    button: "查看学习进度"
+  };
+  const task = decision.task;
+  const taskIndex = tasks.indexOf(task);
+  const taskDays = buildPlanWeekDays(taskWeekIndex(task));
+  const day = taskDays.find(item => item.key === task.day) || baseDays.find(item => item.key === task.day) || { name: "本周" };
+  const duration = Math.max(1, minutesBetween(task.start, task.end));
+  const partialAnswered = Number(task.checkin?.partialAnswered || 0);
+  const questionCount = recommendedQuestionCountForTask(task);
+  const remaining = partialAnswered ? Math.max(1, questionCount - partialAnswered) : questionCount;
+  const accuracyMatch = (task.standards || []).join(" ").match(/正确率(?:达到|目标)?\s*(\d+%)/);
+  const target = task.category === "dictation"
+    ? "完成本组听写，并标记不熟的词。"
+    : `完成${partialAnswered ? `剩余${remaining}` : questionCount}题${accuracyMatch ? `，目标正确率${accuracyMatch[1]}` : ""}。`;
+  let timing = `${day.name} ${task.start}，约${duration}分钟。`;
+  let reason = `这是周计划中下一项未完成任务。完成后自动记录用时、正确率和错题。`;
+  if (task.status === "partial" || task.status === "in_progress") {
+    timing = `现在继续，已记录 ${formatActualStudyTime(taskActualStudySeconds(task))}。`;
+    reason = task.checkin?.planningImpact || `${partialAnswered ? `上次已完成${partialAnswered}题` : "这项已经开始"}。完成后自动保存剩余结果。`;
+  } else if (decision.isPast) {
+    timing = `现在补上，原计划 ${day.name} ${task.start}。`;
+    reason = `这项尚未完成，所以优先于后面的任务。完成后自动记录真实结果。`;
+  } else if (decision.isToday && decision.startMinutes <= decision.nowMinutes) {
+    timing = `现在开始，约${duration}分钟。`;
+    reason = `这是今天尚未完成的下一项。完成后自动记录真实结果。`;
+  } else if (decision.isToday) {
+    reason = `这是今天最近的一项计划。完成后自动记录真实结果。`;
+  }
+  const adaptiveAdjustment = resultPriorityAdjustment(task);
+  if (adaptiveAdjustment?.reason && task.status !== "partial" && task.status !== "in_progress") {
+    reason = adaptiveAdjustment.reason;
+  }
+  if (decision.externalRotation) {
+    const covered = externalStudyCategoryLabel(decision.externalRotation.category);
+    reason = `刚补录了${formatActualStudyTime(decision.externalRotation.seconds)}${covered}，所以先安排${externalStudyCategoryLabel(task.category)}，避免连续重复；原计划仍保留。`;
+  }
+  return {
+    title: taskDisplayTitle(task, taskIndex),
+    meta: timing,
+    target,
+    reason,
+    button: task.status === "partial" || task.status === "in_progress" ? "继续学习" : "开始学习"
+  };
+}
+
+function renderCurrentTask() {
+  const card = $("#currentTaskCard");
+  if (!card) return;
+  const decision = currentTaskDecision();
+  const copy = currentTaskCopy(decision);
+  card.dataset.mode = decision.type;
+  card.dataset.taskId = decision.task?.id || "";
+  card.classList.toggle("is-empty", decision.type !== "task");
+  $("#currentTaskNow").textContent = currentTaskTimeLabel();
+  $("#currentTaskTitle").textContent = copy.title;
+  $("#currentTaskMeta").textContent = copy.meta;
+  $("#currentTaskTarget").textContent = copy.target;
+  $("#currentTaskReason").textContent = copy.reason;
+  $("#startCurrentTask").textContent = copy.button;
+  $("#adjustCurrentTask").classList.toggle("hidden", decision.type !== "task");
+  $("#skipCurrentTask").classList.toggle("hidden", decision.type !== "task");
+  renderExternalStudyEffect();
+}
+
+function renderExternalStudyEffect() {
+  const panel = $("#externalStudyEffect");
+  if (!panel) return;
+  const latest = readExternalStudyRecords()[0];
+  panel.classList.toggle("hidden", !latest);
+  if (!latest) return;
+  const duration = Number(latest.actualSeconds || 0);
+  const activities = Array.isArray(latest.activities) ? latest.activities : [];
+  $("#externalStudyEffectSummary").textContent = duration
+    ? `已补录：${externalStudyActivitySummary(activities, duration)}`
+    : "学习内容已保存";
+  $("#externalStudyEffectImpact").textContent = latest.planningImpact || "系统会据此重新判断当前任务。";
+}
+
+function startCurrentTask() {
+  const decision = currentTaskDecision();
+  if (decision.type === "setup") return openSettingsWizard(0);
+  if (decision.type === "complete") return switchView("progress");
+  const task = decision.task;
+  activeTaskId = task.id;
+  if (task.category === "dictation") {
+    return startDictationTask(task);
+  }
+  const countSelect = $("#practiceQuestionCount");
+  if (countSelect) countSelect.value = String(recommendedQuestionCountForTask(task));
+  startPractice("e1", task.id);
+}
+
+function adjustCurrentTask() {
+  const decision = currentTaskDecision();
+  if (decision.type !== "task") return;
+  openTask(decision.task.id);
+  toggleTaskEdit(true);
+}
+
+function skipCurrentTask() {
+  const decision = currentTaskDecision();
+  if (decision.type !== "task") return;
+  activeTaskId = decision.task.id;
+  rescheduleActiveTask();
+}
+
+function formatActualStudyTime(seconds = 0) {
+  const total = Math.max(0, Math.round(Number(seconds) || 0));
+  if (!total) return "暂无有效记录";
+  if (total < 60) return "不足 1 分钟";
+  const minutes = Math.round(total / 60);
+  if (minutes < 60) return `${minutes} 分钟`;
+  return `${Math.floor(minutes / 60)} 小时${minutes % 60 ? ` ${minutes % 60} 分钟` : ""}`;
+}
+
+function formatStudySummaryTime(seconds = 0) {
+  return Math.max(0, Number(seconds) || 0) ? formatActualStudyTime(seconds) : "0 分钟";
+}
+
+function practiceSessionSeconds() {
+  if (!practiceSessionStartedAt) return 0;
+  const startedAt = new Date(practiceSessionStartedAt).getTime();
+  if (!Number.isFinite(startedAt)) return 0;
+  return Math.max(0, Math.round((Date.now() - startedAt) / 1000));
+}
+
+function persistTasksAndRefresh() {
+  localStorage.setItem("topikPrototypeTasks", JSON.stringify(tasks));
+  renderCalendar();
+  updateTomorrowFocus();
+  scheduleCloudSave();
+}
+
 function accuracyFor(items = []) {
   const total = items.reduce((sum, task) => sum + Number(task.checkin?.total || 0), 0);
   const correct = items.reduce((sum, task) => sum + Number(task.checkin?.correct || 0), 0);
   return total ? Math.round((correct / total) * 100) : null;
 }
 
+function escapeText(text = "") {
+  return String(text).replace(/[&<>\"]/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;" }[character]));
+}
+
+function externalStudyRecordsCard(records = []) {
+  const items = records.slice(0, 8);
+  if (!items.length) {
+    return `<article class="chart-card progress-empty-card"><div class="card-title"><div><p>站外学习记录</p><strong>还没有补录</strong></div></div><p>补录的学习会显示在这里，并计入实际学习用时。</p></article>`;
+  }
+  return `<article class="chart-card wide external-records-card">
+    <div class="card-title"><div><p>站外学习记录</p><strong>已记录 ${records.length} 条</strong></div></div>
+    <p class="external-record-note">计入实际用时，并帮助系统调整下一项任务；不会代替计划打卡。</p>
+    <div class="external-record-list">${items.map(record => {
+      const time = record.createdAt ? new Date(record.createdAt).toLocaleString("zh-CN", { hour12: false }) : "刚刚";
+      const duration = Number(record.actualSeconds || 0) ? formatActualStudyTime(record.actualSeconds) : "未填写用时";
+      const impact = record.planningImpact ? `<p class="external-record-impact">${escapeText(record.planningImpact)}</p>` : "";
+      return `<div class="external-record-item"><div><strong>${escapeText(record.note || "站外学习")}</strong><p>${time}</p>${impact}</div><span>${duration}</span></div>`;
+    }).join("")}</div>
+  </article>`;
+}
+
+function currentWeekExternalStudyRecords(records = readExternalStudyRecords()) {
+  const weekStart = beijingDateKey(days[0]?.fullDate || new Date());
+  const weekEnd = beijingDateKey(days[6]?.fullDate || new Date());
+  return records.filter(record => {
+    if (!record.createdAt) return false;
+    const recordDate = beijingDateKey(new Date(record.createdAt));
+    return recordDate >= weekStart && recordDate <= weekEnd;
+  });
+}
+
+function weeklyPlanActualSummary(externalRecords = readExternalStudyRecords(), weekIndex = displayedWeekIndex) {
+  const weekTasks = tasks.filter(task => taskWeekIndex(task) === normalizedWeekIndex(weekIndex));
+  const plannedTasks = weekTasks.filter(task => task.status !== "cancelled");
+  const completedTasks = plannedTasks.filter(hasPracticeRecord);
+  const activeTasks = plannedTasks.filter(task => !hasPracticeRecord(task)
+    && (task.status === "partial" || task.status === "in_progress" || taskActualStudySeconds(task) > 0));
+  const systemStudySeconds = weekTasks.reduce((sum, task) => sum + taskActualStudySeconds(task), 0);
+  const externalStudySeconds = currentWeekExternalStudyRecords(externalRecords)
+    .reduce((sum, record) => sum + Math.max(0, Number(record.actualSeconds || 0)), 0);
+  const rescheduledCount = weekTasks.reduce((count, task) => count + (task.adjustments || []).filter(adjustment => adjustment.type === "skipped").length, 0);
+  const adaptiveCount = weekTasks.reduce((count, task) => count + (task.adjustments || []).filter(adjustment => ["result-priority", "partial-priority"].includes(adjustment.type)).length, 0);
+  return {
+    plannedTasks: plannedTasks.length,
+    completedTasks: completedTasks.length,
+    activeTasks: activeTasks.length,
+    cancelledTasks: weekTasks.filter(task => task.status === "cancelled").length,
+    rescheduledCount,
+    adaptiveCount,
+    plannedSeconds: plannedTasks.reduce((sum, task) => sum + Math.max(0, minutesBetween(task.start, task.end)) * 60, 0),
+    actualSeconds: systemStudySeconds + externalStudySeconds,
+    systemStudySeconds,
+    externalStudySeconds
+  };
+}
+
+function planActualCard(externalRecords = readExternalStudyRecords()) {
+  const summary = weeklyPlanActualSummary(externalRecords);
+  const statusParts = [];
+  if (summary.activeTasks) statusParts.push(`${summary.activeTasks}项进行中`);
+  if (summary.rescheduledCount) statusParts.push(`${summary.rescheduledCount}次未完成已重排`);
+  if (summary.adaptiveCount) statusParts.push(`${summary.adaptiveCount}次动态调整`);
+  if (summary.cancelledTasks) statusParts.push(`${summary.cancelledTasks}项已取消`);
+  const planState = summary.completedTasks === summary.plannedTasks
+    ? "本周计划任务已全部完成"
+    : "剩余任务仍按周计划保留";
+  const note = summary.plannedTasks
+    ? `${statusParts.join("，") || planState}。补录影响后续安排，但不代替计划打卡。`
+    : "还没有有效周计划。补录仍会保留为真实学习记录，但不会生成计划完成进度。";
+  return `<article class="chart-card wide plan-actual-card">
+    <div class="card-title"><div><p>计划与实际</p><strong>已完成 ${summary.completedTasks} / ${summary.plannedTasks} 项</strong></div></div>
+    <div class="plan-actual-stats">
+      <div><span>计划用时</span><strong>${formatStudySummaryTime(summary.plannedSeconds)}</strong></div>
+      <div><span>实际学习</span><strong>${formatStudySummaryTime(summary.actualSeconds)}</strong><small>站内 ${formatStudySummaryTime(summary.systemStudySeconds)} + 站外 ${formatStudySummaryTime(summary.externalStudySeconds)}</small></div>
+    </div>
+    <p class="plan-actual-note">${note}</p>
+  </article>`;
+}
+
 function renderProgressView() {
   const records = completedPracticeTasks();
+  const externalRecords = readExternalStudyRecords();
   const mockRecords = records.filter(task => task.category === "mock");
   const latestMockRate = accuracyFor(mockRecords.slice(-1));
   $("#scorePill").classList.toggle("is-empty", latestMockRate === null);
@@ -1287,13 +2204,9 @@ function renderProgressView() {
     : `<small>当前模拟</small><strong>${Math.round(latestMockRate * 2)} / 200</strong><span>按最近一次模拟估算</span>`;
 
   if (!records.length) {
-    $("#progressGrid").innerHTML = `<article class="chart-card wide progress-empty-card">
+    $("#progressGrid").innerHTML = `${planActualCard(externalRecords)}${externalStudyRecordsCard(externalRecords)}<article class="chart-card wide progress-empty-card">
       <div class="card-title"><div><p>真实学习数据</p><strong>暂无练习记录</strong></div></div>
       <p>完成第一组系统练习后，这里才会显示正确率、能力分布和连续学习。现在不会使用演示数据。</p>
-    </article>
-    <article class="chart-card progress-empty-card">
-      <div class="card-title"><div><p>能力分布</p><strong>等待答题数据</strong></div></div>
-      <p>听力、阅读、写作等分项会根据真实答题结果更新。</p>
     </article>
     <article class="chart-card">
       <div class="card-title"><div><p>本周习惯</p><strong>还未开始</strong></div></div>
@@ -1309,7 +2222,7 @@ function renderProgressView() {
   const completedDays = new Set(records.map(task => task.day));
   const streakDays = days.filter(day => completedDays.has(day.key)).length;
   const overallRate = accuracyFor(records);
-  $("#progressGrid").innerHTML = `<article class="chart-card wide">
+  $("#progressGrid").innerHTML = `${planActualCard(externalRecords)}${externalStudyRecordsCard(externalRecords)}<article class="chart-card wide">
     <div class="card-title"><div><p>最近练习正确率</p><strong>${overallRate}% · 来自真实答题</strong></div></div>
     <div class="bar-chart" aria-label="最近练习正确率柱状图">
       ${recent.map((task, index) => {
@@ -1334,9 +2247,18 @@ function renderProgressView() {
   </article>`;
 }
 
+function taskDisplayIndex(task = {}, fallback = 0) {
+  if (Number.isInteger(task.displayIndex)) return task.displayIndex;
+  const category = normalizeStudyCategory(task.category);
+  const categoryTasks = tasks.filter(item => normalizeStudyCategory(item.category) === category);
+  const categoryIndex = categoryTasks.indexOf(task);
+  return categoryIndex >= 0 ? categoryIndex : fallback;
+}
+
 function taskDisplayTitle(task = {}, index = 0) {
   const rawTitle = String(task.title || "");
   if (task.customTitle && rawTitle) return rawTitle;
+  if (rawTitle === "听下一步行动") return "听力 · 判断下一步行动";
   const cleanedTitle = rawTitle.replace(/^(听力|阅读|词汇\s*\/\s*语法|词汇|语法|写作|巩固练习|模拟测验|错题复盘)[：:]\s*/, "");
   if (cleanedTitle && cleanedTitle !== rawTitle) return cleanedTitle;
   if (/^(IELTS|雅思|学习)\s/.test(rawTitle)) return rawTitle;
@@ -1346,7 +2268,7 @@ function taskDisplayTitle(task = {}, index = 0) {
     ? "IELTS"
     : (settings.exam === "TOPIK" ? "" : (settings.customExamName || "学习"));
   const titleMap = {
-    listening: ["听人物和地点", "听下一步行动", "听原因和理由", "听数字和时间", "听内容一致", "听否定和时态", "看图听关键词", "听后复述"],
+    listening: ["听人物和地点", "听力 · 判断下一步行动", "听原因和理由", "听数字和时间", "听内容一致", "听否定和时态", "看图听关键词", "听后复述"],
     writing: ["写作：句子补全", "写作：短文逻辑补全", "写作：图表说明", "写作：议论文结构"],
     reading: ["通知公告阅读", "促销广告阅读", "短文大意理解", "题干关键词定位", "图表信息读取", "句子连接判断", "限时阅读"],
     vocab: ["生活场景词汇", "基础助词辨析", "动词形容词变形", "连接语尾基础", "固定搭配训练", "语境填空", "易混词辨析"],
@@ -1357,7 +2279,7 @@ function taskDisplayTitle(task = {}, index = 0) {
     mock: ["阶段模拟：限时综合练习"]
   };
   const options = titleMap[task.category] || ["学习任务"];
-  const displayIndex = Number.isInteger(task.displayIndex) ? task.displayIndex : index;
+  const displayIndex = taskDisplayIndex(task, index);
   return [examPrefix, options[displayIndex % options.length]].filter(Boolean).join(" ");
 }
 
@@ -1367,7 +2289,7 @@ function taskDisplayNote(task = {}, index = 0) {
   if (task.customTitle || settings.exam !== "TOPIK" || settings.level === "II") return rawNote;
   const token = normalizeStudyCategory(task.category);
   const templates = studyTemplates[token] || studyTemplates.consolidation || [];
-  const displayIndex = Number.isInteger(task.displayIndex) ? task.displayIndex : index;
+  const displayIndex = taskDisplayIndex(task, index);
   const templateNote = templates[displayIndex % templates.length]?.[1] || "";
   const looksLikeOldGeneratedNote = /^围绕目标\d级/.test(rawNote) || /综合同型题|基础句型和高频表达|公告、广告和短文信息/.test(rawNote);
   return looksLikeOldGeneratedNote && templateNote ? templateNote : rawNote;
@@ -1375,7 +2297,7 @@ function taskDisplayNote(task = {}, index = 0) {
 
 function taskTrainingPoint(task = {}, index = 0) {
   const title = taskDisplayTitle(task, index);
-  const parts = title.split("：");
+  const parts = title.split(/\s*[：·]\s*/);
   const hasModulePrefix = parts.length > 1;
   const moduleName = hasModulePrefix
     ? parts[0].replace(/^TOPIK\s+[I]{1,2}\s+/, "").replace(/^IELTS\s+/, "").trim()
@@ -1626,8 +2548,25 @@ async function speakKoreanDialogueText(text, options = {}) {
   return true;
 }
 
-function speakDictationText(text) {
-  speakKoreanText(text, { rate: 0.82 });
+function setDictationAudioState(state = "idle", message = "点播放，听完后输入韩文") {
+  const player = $("#dictationPrimaryAudio");
+  const status = $("#dictationAudioStatus");
+  if (!player || !status) return;
+  player.dataset.state = state;
+  player.disabled = state === "loading";
+  status.textContent = message;
+}
+
+async function speakDictationText(text, label = "单词") {
+  setDictationAudioState("loading", "正在准备音频…");
+  const played = await speakKoreanText(text, {
+    rate: 0.82,
+    onStart: () => setDictationAudioState("playing", `正在播放${label}`),
+    onEnd: () => setDictationAudioState("ended", "播放完成，点这里可以重听"),
+    onError: () => setDictationAudioState("error", "播放失败，点这里重试")
+  });
+  if (!played) setDictationAudioState("error", "播放失败，点这里重试");
+  return played;
 }
 
 function clearDictationCanvas() {
@@ -1635,6 +2574,11 @@ function clearDictationCanvas() {
   if (!canvas) return;
   const context = canvas.getContext("2d");
   context.clearRect(0, 0, canvas.width, canvas.height);
+  dictationInkStrokes = [];
+  const candidates = $("#dictationHandwritingCandidates");
+  if (candidates) candidates.innerHTML = "";
+  const status = $("#dictationHandwritingStatus");
+  if (status) status.textContent = "写完后点“识别韩文”";
 }
 
 function setupDictationCanvas() {
@@ -1651,15 +2595,18 @@ function setupDictationCanvas() {
   context.lineJoin = "round";
   context.strokeStyle = "#17202b";
   let drawing = false;
+  let activeStroke = null;
   const point = event => {
     const bounds = canvas.getBoundingClientRect();
-    return { x: event.clientX - bounds.left, y: event.clientY - bounds.top };
+    return { x: event.clientX - bounds.left, y: event.clientY - bounds.top, t: Date.now() };
   };
   canvas.onpointerdown = event => {
     event.preventDefault();
     drawing = true;
-    canvas.setPointerCapture(event.pointerId);
     const current = point(event);
+    activeStroke = { pointerType: event.pointerType || "mouse", startedAt: current.t, points: [current] };
+    dictationInkStrokes.push(activeStroke);
+    try { canvas.setPointerCapture(event.pointerId); } catch {}
     context.beginPath();
     context.moveTo(current.x, current.y);
   };
@@ -1667,12 +2614,14 @@ function setupDictationCanvas() {
     if (!drawing) return;
     event.preventDefault();
     const current = point(event);
+    activeStroke?.points.push(current);
     context.lineTo(current.x, current.y);
     context.stroke();
   };
   const stopDrawing = event => {
     if (!drawing) return;
     drawing = false;
+    activeStroke = null;
     try { canvas.releasePointerCapture(event.pointerId); } catch {}
   };
   canvas.onpointerup = stopDrawing;
@@ -1680,76 +2629,201 @@ function setupDictationCanvas() {
   canvas.onpointerleave = stopDrawing;
 }
 
+function setDictationInputValue(value = "") {
+  const input = $("#dictationInput");
+  if (!input) return;
+  input.value = value;
+  writeDictationState({ inputText: value });
+  input.focus();
+}
+
+function dictationCanvasImageData() {
+  const canvas = $("#dictationCanvas");
+  if (!canvas) return "";
+  const maxWidth = 1024;
+  const scale = Math.min(1, maxWidth / Math.max(1, canvas.width));
+  const output = document.createElement("canvas");
+  output.width = Math.max(1, Math.round(canvas.width * scale));
+  output.height = Math.max(1, Math.round(canvas.height * scale));
+  const context = output.getContext("2d");
+  context.fillStyle = "#ffffff";
+  context.fillRect(0, 0, output.width, output.height);
+  context.drawImage(canvas, 0, 0, output.width, output.height);
+  return output.toDataURL("image/jpeg", 0.88);
+}
+
+function renderDictationHandwritingCandidates(values = []) {
+  const candidates = $("#dictationHandwritingCandidates");
+  if (!candidates) return;
+  candidates.innerHTML = values.map((value, index) => `<button class="dictation-candidate ${index === 0 ? "is-selected" : ""}" type="button" data-dictation-candidate="${escapeImportText(value)}">${escapeImportText(value)}</button>`).join("");
+  $$('[data-dictation-candidate]').forEach(candidate => candidate.addEventListener("click", () => {
+    setDictationInputValue(candidate.dataset.dictationCandidate || "");
+    $$('[data-dictation-candidate]').forEach(item => item.classList.toggle("is-selected", item === candidate));
+  }));
+}
+
+async function recognizeDictationHandwritingOnline() {
+  const payload = await callStudyAssistant("handwriting", { image: dictationCanvasImageData() }, { timeoutMs: 25000 });
+  return [...new Set((payload?.candidates || []).map(value => String(value || "").trim()).filter(Boolean))].slice(0, 3);
+}
+
+async function recognizeDictationHandwriting() {
+  const status = $("#dictationHandwritingStatus");
+  const candidates = $("#dictationHandwritingCandidates");
+  if (!dictationInkStrokes.length) {
+    if (status) status.textContent = "先在上面写下韩文";
+    return;
+  }
+  const button = $("#recognizeDictationHandwriting");
+  if (button) {
+    button.disabled = true;
+    button.textContent = "识别中…";
+  }
+  if (status) status.textContent = "正在识别韩文，本次手写图片不会保存…";
+  try {
+    let values = [];
+    const supportsLocalRecognition = "createHandwritingRecognizer" in navigator && "HandwritingStroke" in window;
+    if (supportsLocalRecognition) {
+      try {
+        if (!dictationHandwritingRecognizer) {
+          if ("queryHandwritingRecognizer" in navigator) {
+            const support = await navigator.queryHandwritingRecognizer({ languages: ["ko"] });
+            if (!support) throw new Error("korean_handwriting_unsupported");
+          }
+          dictationHandwritingRecognizer = await navigator.createHandwritingRecognizer({ languages: ["ko"] });
+        }
+        const pointerType = dictationInkStrokes.at(-1)?.pointerType;
+        const inputType = pointerType === "pen" ? "stylus" : (["mouse", "touch", "stylus"].includes(pointerType) ? pointerType : "mouse");
+        const drawing = dictationHandwritingRecognizer.startDrawing({ recognitionType: "text", inputType, alternatives: 3 });
+        dictationInkStrokes.forEach(savedStroke => {
+          const stroke = new HandwritingStroke();
+          savedStroke.points.forEach(savedPoint => stroke.addPoint({
+            x: savedPoint.x,
+            y: savedPoint.y,
+            t: Math.max(0, savedPoint.t - savedStroke.startedAt)
+          }));
+          drawing.addStroke(stroke);
+        });
+        const predictions = await drawing.getPrediction();
+        values = [...new Set((predictions || []).map(item => String(item.text || "").trim()).filter(Boolean))].slice(0, 3);
+        drawing.clear?.();
+      } catch {
+        values = [];
+      }
+    }
+    if (!values.length) values = await recognizeDictationHandwritingOnline();
+    if (!values.length) throw new Error("no_handwriting_prediction");
+    setDictationInputValue(values[0]);
+    if (status) status.textContent = `已识别为“${values[0]}”，可选择其他结果`;
+    renderDictationHandwritingCandidates(values);
+  } catch (error) {
+    if (status) status.textContent = "没有识别出来，请写大一些、减少连笔后重试";
+    showToast("没有识别出来，可清空重写或直接使用韩文输入法");
+  } finally {
+    if (button) {
+      button.disabled = false;
+      button.textContent = "识别韩文";
+    }
+  }
+}
+
 function renderDictationView() {
   const view = $("#dictationView");
   if (!view) return;
   const state = readDictationState();
   const practiceItems = dictationPracticeItems();
+  const taskSession = dictationTaskSession(state);
   const item = currentDictationItem(state);
   const index = practiceItems.findIndex(entry => entry.id === item.id);
-  const safeIndex = Math.max(0, index);
-  const revealed = Boolean(state.revealed);
-  const inputText = String(state.inputText || "");
+  const safeIndex = taskSession
+    ? Math.max(0, Math.min(taskSession.itemIds.length - 1, Number(taskSession.currentPosition) || 0))
+    : Math.max(0, index);
+  const progressTotal = taskSession?.itemIds.length || practiceItems.length;
+  const answerState = normalizedDictationAnswerState(state, item, taskSession);
+  const revealed = answerState.revealed;
+  const inputText = answerState.inputText;
   const hasInput = Boolean(inputText.trim());
   const isCorrect = isDictationAnswerCorrect(inputText, item.text);
   const weakIds = new Set(state.weakIds || []);
+  const isMarkedWeak = weakIds.has(item.id);
+  const answeredCount = Object.keys(taskSession?.answers || {}).length;
+  const isLastTaskItem = Boolean(taskSession && safeIndex === taskSession.itemIds.length - 1);
+  const linkedTaskTitle = taskSession ? taskDisplayTitle(taskSession.task, tasks.indexOf(taskSession.task)) : "";
   view.innerHTML = `<div class="page-heading dictation-heading">
     <div>
-      <p class="section-kicker">听写训练 · 手写记忆</p>
+      <p class="section-kicker">${taskSession ? `周计划任务 · ${escapeImportText(linkedTaskTitle)}` : "听写训练 · 手写记忆"}</p>
       <h2>听写</h2>
-      <p>单词听写。先听音，再把韩文输入到答案框；手写区只做草稿。</p>
+      <p>${taskSession ? `完成本组 ${progressTotal} 个词，系统会记录正确率、不熟词和实际用时。` : "播放单词，输入听到的韩文，再核对答案。"}</p>
     </div>
-    <div class="score-pill">
-      <small>当前</small><strong>${safeIndex + 1} / ${practiceItems.length}</strong><span>${weakIds.size} 个不熟</span>
-    </div>
+    <button class="score-pill dictation-score-button${!taskSession && weakIds.size ? "" : " is-empty"}" id="reviewWeakDictation" type="button" ${!taskSession && weakIds.size ? "" : "disabled"} aria-label="${taskSession ? `本组已核对 ${answeredCount} 个词` : (weakIds.size ? `${weakIds.size} 个不熟词，点击重新练习` : "暂无不熟词")}">
+      <small>${taskSession ? "本组进度" : "当前进度"}</small><strong>${safeIndex + 1} / ${progressTotal}</strong><span>${taskSession ? `已核对 ${answeredCount} 个` : (weakIds.size ? `${weakIds.size} 个不熟，点此重做` : "暂无不熟词")}</span>
+    </button>
   </div>
   <div class="dictation-layout">
     <article class="dictation-workbench">
-      <div class="dictation-token">
-        <span>${escapeImportText(item.note)}</span>
-        <div><strong>${revealed ? escapeImportText(item.text) : "先听音，再输入韩文"}</strong><em>${escapeImportText(item.pos)}</em></div>
-        <p>${revealed ? `中文：${escapeImportText(item.zh)}` : "核对前不显示答案，先凭声音写。"}</p>
-        <small>${escapeImportText(item.source || "系统听写词库")}</small>
+      <div class="dictation-prompt">
+        <div><span>${escapeImportText(item.note)}</span><strong>${revealed ? escapeImportText(item.text) : `第 ${safeIndex + 1} 个词`}</strong></div>
+        <em>${escapeImportText(item.pos)}</em>
       </div>
-      <div class="dictation-audio-row">
-        <button class="dictation-audio-button" type="button" data-dictation-speak="${escapeImportText(item.text)}">播放原词</button>
-        <button class="dictation-audio-button" type="button" ${revealed ? "" : "disabled"} data-dictation-speak="${escapeImportText(item.pairing)}">搭配</button>
-        <button class="dictation-audio-button" type="button" ${revealed ? "" : "disabled"} data-dictation-speak="${escapeImportText(item.example)}">例句</button>
+      <button class="dictation-primary-audio" id="dictationPrimaryAudio" type="button" data-state="idle" data-dictation-primary-audio="${escapeImportText(item.text)}">
+        <span class="dictation-play-glyph" aria-hidden="true"></span>
+        <span class="dictation-audio-copy"><small>听写音频</small><strong id="dictationAudioStatus">点播放，听完后输入韩文</strong></span>
+        <span class="dictation-wave" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+      </button>
+      ${revealed ? `<div class="dictation-audio-row">
+        <button class="dictation-audio-button" type="button" data-dictation-speak="${escapeImportText(item.pairing)}" data-dictation-label="搭配">播放搭配</button>
+        <button class="dictation-audio-button" type="button" data-dictation-speak="${escapeImportText(item.example)}" data-dictation-label="例句">播放例句</button>
+      </div>` : ""}
+      <div class="dictation-input-card">
+        <div class="dictation-input-head">
+          <label for="dictationInput">输入答案</label>
+          <button class="dictation-handwriting-toggle" id="openDictationHandwriting" type="button" aria-expanded="false" aria-controls="dictationHandwritingPanel">
+            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 20h4l10.8-10.8a2.1 2.1 0 0 0-3-3L5 17v3Z"/><path d="m14.7 7.3 3 3"/></svg>
+            <span>打开手写板</span>
+          </button>
+        </div>
+        <input id="dictationInput" name="dictationAnswer" type="text" lang="ko" inputmode="text" enterkeyhint="done" autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" data-1p-ignore="true" data-lpignore="true" aria-label="听写答案" value="${escapeImportText(inputText)}" placeholder="在这里输入韩文" />
+        <small>手机和平板可直接使用系统韩文手写键盘。</small>
       </div>
-      <label class="dictation-input-card">
-        <span>答案输入框（用于核对）</span>
-        <input id="dictationInput" lang="ko" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" value="${escapeImportText(inputText)}" placeholder="用韩文键盘/手写输入这里" />
-        <small>iPad / iPhone 可用韩文手写键盘；写进这里后再点核对。</small>
-      </label>
-      <div class="dictation-board">
-        <canvas id="dictationCanvas" aria-label="听写手写区"></canvas>
-        <span class="dictation-write-line"></span>
-        <small>草稿区：这里不会自动识别文字</small>
+      <div class="dictation-handwriting hidden" id="dictationHandwritingPanel">
+        <div class="dictation-board">
+          <canvas id="dictationCanvas" aria-label="韩文手写识别区"></canvas>
+          <span class="dictation-write-line"></span>
+          <small id="dictationHandwritingStatus">写完后点“识别韩文”</small>
+        </div>
+        <div class="dictation-handwriting-controls">
+          <div class="dictation-candidates" id="dictationHandwritingCandidates"></div>
+          <button class="secondary-button compact" type="button" id="clearDictationCanvas">清空</button>
+          <button class="secondary-button compact" type="button" id="recognizeDictationHandwriting">识别韩文</button>
+        </div>
+        <p>优先使用设备识别；设备不支持时会在线识别。本次手写图片只用于识别，不会保存。</p>
       </div>
-      ${revealed ? `<div class="dictation-answer-card">
+      ${revealed ? `<div class="dictation-answer-card ${isCorrect ? "is-correct" : "is-wrong"}">
         <span>核对结果</span>
-        <strong class="${isCorrect ? "dictation-correct" : "dictation-wrong"}">${isCorrect ? "写对了" : "再对照一次"}</strong>
+        <strong class="${isCorrect ? "dictation-correct" : "dictation-wrong"}">${isCorrect ? "回答正确" : "答案不正确"}</strong>
         <p>你的答案：${hasInput ? escapeImportText(inputText) : "未输入"}</p>
-        <span>原词 / 原句</span>
-        <strong>${escapeImportText(item.text)}</strong>
+        ${isCorrect ? "" : `<span>正确答案</span><strong>${escapeImportText(item.text)}</strong>`}
+        <p class="dictation-result-note">${isMarkedWeak ? "已加入复习清单，之后会再次练习。" : "已记录为掌握。"}</p>
         <p>中文：${escapeImportText(item.zh)}</p>
         <p>搭配：${escapeImportText(item.pairing)} · ${escapeImportText(item.pairingZh)}</p>
         <p>例句：${escapeImportText(item.example)} · ${escapeImportText(item.exampleZh)}</p>
         <p>来源：${escapeImportText(item.source || "系统听写词库")}</p>
         <div class="dictation-answer-actions">
-          <button class="secondary-button compact" type="button" id="markDictationWeak">标记不熟</button>
-          <button class="secondary-button compact" type="button" id="markDictationKnown">已经掌握</button>
+          ${isMarkedWeak
+            ? `<button class="secondary-button compact" type="button" id="markDictationKnown">改为已掌握</button>`
+            : `<button class="secondary-button compact" type="button" id="markDictationWeak">加入复习清单</button>`}
         </div>
-      </div>` : `<div class="dictation-hint-card">先把韩文写进上面的答案输入框。草稿区只是练手，不参与判题。</div>`}
+      </div>` : `<div class="dictation-hint-card" aria-live="polite">
+        <strong>答案与解释</strong>
+        <p>输入韩文并点“核对答案”后，这里会显示正确答案、中文释义、常用搭配和例句。</p>
+      </div>`}
       <div class="dictation-actions">
-        <button class="secondary-button" type="button" id="prevDictationItem">上一条</button>
-        <button class="secondary-button" type="button" id="clearDictationCanvas">清空</button>
-        <button class="primary-button" type="button" id="${revealed ? "nextDictationItem" : "revealDictationAnswer"}">${revealed ? "下一条" : "核对"}</button>
+        <button class="secondary-button" type="button" id="prevDictationItem" ${taskSession && safeIndex === 0 ? "disabled" : ""}>上一条</button>
+        <button class="primary-button" type="button" id="${revealed ? (isLastTaskItem ? "completeDictationTask" : "nextDictationItem") : "revealDictationAnswer"}">${revealed ? (isLastTaskItem ? "完成本组" : "下一条") : "核对答案"}</button>
       </div>
     </article>
   </div>`;
   bindDictationEvents();
-  requestAnimationFrame(setupDictationCanvas);
 }
 
 function renderWordEliminationView() {
@@ -1758,43 +2832,33 @@ function renderWordEliminationView() {
   const state = readWordEliminationState();
   const items = dictationPracticeItems();
   const clearedIds = new Set(state.clearedIds || []);
-  const remainingWords = items.filter(item => !clearedIds.has(item.id));
-  const remainingMeanings = wordEliminationMeaningItems(items).filter(item => !clearedIds.has(item.id));
+  const remainingTiles = wordEliminationTiles(items).filter(item => !clearedIds.has(item.id));
+  const selectedType = state.selectedWordId ? "韩文" : state.selectedMeaningId ? "中文" : "";
   view.innerHTML = `<div class="page-heading">
     <div>
       <p class="section-kicker">词义配对 · 消除练习</p>
       <h2>单词消除</h2>
-      <p>左边点韩语单词，右边点对应中文释义。配对正确后，这组词会消失。</p>
+      <p>韩文和中文混排。先点任意一张，再点对应翻译。</p>
     </div>
     <div class="score-pill">
-      <small>已消除</small><strong>${clearedIds.size} / ${items.length}</strong><span>${remainingWords.length ? "继续配对" : "全部完成"}</span>
+      <small>进度</small><strong>${clearedIds.size} / ${items.length}</strong><span>${remainingTiles.length ? "继续配对" : "全部完成"}</span>
     </div>
   </div>
   <div class="word-elimination-panel">
     <div class="word-elimination-header">
       <div>
-        <strong>韩语单词 + 中文释义</strong>
-        <p>适合把听写里已经认识的词快速过一遍，不和听写混在一起。</p>
+        <strong>找到对应的韩文和中文</strong>
+        <p id="eliminationFeedback" role="status">${selectedType ? `已选${selectedType}，再点对应翻译` : "配对正确后，两张卡会一起消失"}</p>
       </div>
       <button class="secondary-button compact" type="button" id="resetWordElimination">重新开始</button>
     </div>
-    ${remainingWords.length ? `<div class="word-elimination-grid">
-      <section class="elimination-column">
-        <span>韩语单词</span>
-        <div class="elimination-list">
-          ${remainingWords.map(item => `<button class="elimination-option ${state.selectedWordId === item.id ? "is-selected" : ""}" type="button" data-elimination-word="${item.id}">
-            <strong>${escapeImportText(item.text)}</strong><small>${escapeImportText(item.pos)}</small>
-          </button>`).join("")}
-        </div>
-      </section>
-      <section class="elimination-column">
-        <span>中文释义</span>
-        <div class="elimination-list">
-          ${remainingMeanings.map(item => `<button class="elimination-option ${state.selectedMeaningId === item.id ? "is-selected" : ""}" type="button" data-elimination-meaning="${item.id}">
-            <strong>${escapeImportText(item.zh)}</strong><small>${escapeImportText(item.note)}</small>
-          </button>`).join("")}
-        </div>
-      </section>
+    ${remainingTiles.length ? `<div class="elimination-mixed-grid">
+      ${remainingTiles.map(tile => {
+        const selected = tile.type === "word" ? state.selectedWordId === tile.id : state.selectedMeaningId === tile.id;
+        return `<button class="elimination-tile ${selected ? "is-selected" : ""}" type="button" data-elimination-type="${tile.type}" data-elimination-id="${tile.id}" aria-pressed="${selected ? "true" : "false"}">
+          <small>${tile.language}</small><strong lang="${tile.type === "word" ? "ko" : "zh-CN"}">${escapeImportText(tile.label)}</strong>
+        </button>`;
+      }).join("")}
     </div>` : `<div class="elimination-empty">
       <strong>这一轮词都消除了</strong>
       <p>可以重新开始，或者回到听写继续练不熟词。</p>
@@ -1803,52 +2867,103 @@ function renderWordEliminationView() {
   bindWordEliminationEvents();
 }
 
-function resolveWordEliminationPair(patch = {}) {
+function selectWordEliminationTile(type = "", id = "") {
+  if (wordEliminationResolving || !["word", "meaning"].includes(type) || !id) return;
   const current = readWordEliminationState();
-  const next = { ...current, ...patch };
-  if (!next.selectedWordId || !next.selectedMeaningId) {
-    writeWordEliminationState(next);
+  const ownKey = type === "word" ? "selectedWordId" : "selectedMeaningId";
+  const otherKey = type === "word" ? "selectedMeaningId" : "selectedWordId";
+  if (current[ownKey] === id) {
+    writeWordEliminationState({ [ownKey]: "" });
     renderWordEliminationView();
     return;
   }
-  if (next.selectedWordId === next.selectedMeaningId) {
-    writeWordEliminationState({
-      selectedWordId: "",
-      selectedMeaningId: "",
-      clearedIds: [...new Set([...(current.clearedIds || []), next.selectedWordId])]
-    });
-    showToast("配对正确，已消除");
-  } else {
-    writeWordEliminationState({ ...next, selectedMeaningId: "" });
-    showToast("不是这一组，再试一次");
+  if (!current[otherKey]) {
+    writeWordEliminationState({ [ownKey]: id });
+    renderWordEliminationView();
+    return;
   }
-  renderWordEliminationView();
+
+  wordEliminationResolving = true;
+  const matched = current[otherKey] === id;
+  const clickedTile = document.querySelector(`[data-elimination-type="${type}"][data-elimination-id="${id}"]`);
+  const selectedTile = document.querySelector(".elimination-tile.is-selected");
+  const feedback = $("#eliminationFeedback");
+  clickedTile?.classList.add(matched ? "is-clearing" : "is-error");
+  selectedTile?.classList.add(matched ? "is-clearing" : "is-error");
+  if (feedback) feedback.textContent = matched ? "配对正确" : "不是这一组，再试一次";
+
+  wordEliminationTimer = window.setTimeout(() => {
+    if (matched) {
+      writeWordEliminationState({
+        selectedWordId: "",
+        selectedMeaningId: "",
+        clearedIds: [...new Set([...(current.clearedIds || []), id])]
+      });
+    } else {
+      writeWordEliminationState({ selectedWordId: "", selectedMeaningId: "" });
+    }
+    wordEliminationResolving = false;
+    wordEliminationTimer = null;
+    renderWordEliminationView();
+  }, matched ? 280 : 360);
 }
 
 function bindWordEliminationEvents() {
-  $$("[data-elimination-word]").forEach(button => button.addEventListener("click", () => {
-    resolveWordEliminationPair({ selectedWordId: button.dataset.eliminationWord || "" });
-  }));
-  $$("[data-elimination-meaning]").forEach(button => button.addEventListener("click", () => {
-    resolveWordEliminationPair({ selectedMeaningId: button.dataset.eliminationMeaning || "" });
+  $$("[data-elimination-type][data-elimination-id]").forEach(button => button.addEventListener("click", () => {
+    selectWordEliminationTile(button.dataset.eliminationType || "", button.dataset.eliminationId || "");
   }));
   $("#resetWordElimination")?.addEventListener("click", () => {
+    if (wordEliminationTimer) window.clearTimeout(wordEliminationTimer);
+    wordEliminationTimer = null;
+    wordEliminationResolving = false;
     writeWordEliminationState({ selectedWordId: "", selectedMeaningId: "", clearedIds: [] });
     renderWordEliminationView();
   });
 }
 
 function bindDictationEvents() {
-  $$("[data-dictation-speak]").forEach(button => button.addEventListener("click", () => speakDictationText(button.dataset.dictationSpeak || "")));
+  $("#reviewWeakDictation")?.addEventListener("click", () => {
+    const state = readDictationState();
+    const items = dictationPracticeItems();
+    const weakIndices = (state.weakIds || [])
+      .map(id => items.findIndex(item => item.id === id))
+      .filter(index => index >= 0);
+    if (!weakIndices.length) return;
+    const currentIndex = Math.max(0, Number(state.index) || 0);
+    const targetIndex = weakIndices.find(index => index > currentIndex) ?? weakIndices[0];
+    writeDictationState({ index: targetIndex, revealed: false, inputText: "" });
+    renderDictationView();
+    showToast(`已打开不熟词 ${weakIndices.indexOf(targetIndex) + 1}/${weakIndices.length}`);
+  });
+  $("#dictationPrimaryAudio")?.addEventListener("click", buttonEvent => speakDictationText(buttonEvent.currentTarget.dataset.dictationPrimaryAudio || "", "单词"));
+  $$("[data-dictation-speak]").forEach(button => button.addEventListener("click", () => speakDictationText(button.dataset.dictationSpeak || "", button.dataset.dictationLabel || "音频")));
   $("#dictationInput")?.addEventListener("input", event => {
     writeDictationState({ inputText: event.target.value });
   });
+  $(".dictation-input-card")?.addEventListener("click", event => {
+    if (event.target.closest("button")) return;
+    $("#dictationInput")?.focus({ preventScroll: true });
+  });
+  $("#openDictationHandwriting")?.addEventListener("click", event => {
+    const panel = $("#dictationHandwritingPanel");
+    if (!panel) return;
+    const willOpen = panel.classList.contains("hidden");
+    panel.classList.toggle("hidden", !willOpen);
+    event.currentTarget.setAttribute("aria-expanded", String(willOpen));
+    const toggleLabel = event.currentTarget.querySelector("span");
+    if (toggleLabel) toggleLabel.textContent = willOpen ? "收起手写板" : "打开手写板";
+    if (willOpen) {
+      dictationInkStrokes = [];
+      requestAnimationFrame(setupDictationCanvas);
+    }
+  });
+  $("#recognizeDictationHandwriting")?.addEventListener("click", recognizeDictationHandwriting);
   $("#revealDictationAnswer")?.addEventListener("click", () => {
     const state = readDictationState();
     const item = currentDictationItem(state);
     const inputText = ($("#dictationInput")?.value || "").trim();
     if (!inputText) {
-      showToast("先把听到的韩文写进输入框，再核对");
+      showToast("先把听到的韩文写进输入框，再核对答案");
       return;
     }
     const isCorrect = isDictationAnswerCorrect(inputText, item.text);
@@ -1858,11 +2973,32 @@ function bindDictationEvents() {
     const knownIds = isCorrect
       ? [...new Set([...(state.knownIds || []), item.id])]
       : (state.knownIds || []).filter(id => id !== item.id);
-    writeDictationState({ inputText, revealed: true, weakIds, knownIds });
+    const session = dictationTaskSession(state);
+    const taskSession = session ? {
+      ...dictationSessionState(session),
+      answers: {
+        ...(session.answers || {}),
+        [item.id]: { itemId: item.id, inputText, correct: isCorrect, checkedAt: new Date().toISOString() }
+      }
+    } : state.taskSession;
+    writeDictationState({ inputText, revealed: true, weakIds, knownIds, taskSession });
     renderDictationView();
   });
   $("#nextDictationItem")?.addEventListener("click", () => {
     const state = readDictationState();
+    const session = dictationTaskSession(state);
+    if (session) {
+      const nextPosition = Math.min(session.itemIds.length - 1, (Number(session.currentPosition) || 0) + 1);
+      const nextId = session.itemIds[nextPosition];
+      const savedAnswer = session.answers?.[nextId];
+      writeDictationState({
+        taskSession: { ...dictationSessionState(session), currentPosition: nextPosition },
+        revealed: Boolean(savedAnswer),
+        inputText: savedAnswer?.inputText || ""
+      });
+      renderDictationView();
+      return;
+    }
     const items = dictationPracticeItems();
     const nextIndex = ((Number(state.index) || 0) + 1) % items.length;
     writeDictationState({ index: nextIndex, revealed: false, inputText: "" });
@@ -1870,12 +3006,26 @@ function bindDictationEvents() {
   });
   $("#prevDictationItem")?.addEventListener("click", () => {
     const state = readDictationState();
+    const session = dictationTaskSession(state);
+    if (session) {
+      const previousPosition = Math.max(0, (Number(session.currentPosition) || 0) - 1);
+      const previousId = session.itemIds[previousPosition];
+      const savedAnswer = session.answers?.[previousId];
+      writeDictationState({
+        taskSession: { ...dictationSessionState(session), currentPosition: previousPosition },
+        revealed: Boolean(savedAnswer),
+        inputText: savedAnswer?.inputText || ""
+      });
+      renderDictationView();
+      return;
+    }
     const items = dictationPracticeItems();
     const previousIndex = ((Number(state.index) || 0) - 1 + items.length) % items.length;
     writeDictationState({ index: previousIndex, revealed: false, inputText: "" });
     renderDictationView();
   });
   $("#clearDictationCanvas")?.addEventListener("click", clearDictationCanvas);
+  $("#completeDictationTask")?.addEventListener("click", completeDictationTaskSession);
   $("#markDictationWeak")?.addEventListener("click", () => {
     const state = readDictationState();
     const item = currentDictationItem(state);
@@ -1900,12 +3050,80 @@ function bindDictationEvents() {
   }));
 }
 
+function ensureCalendarTaskTooltip() {
+  let tooltip = $("#calendarTaskTooltip");
+  if (tooltip) return tooltip;
+  tooltip = document.createElement("div");
+  tooltip.id = "calendarTaskTooltip";
+  tooltip.className = "calendar-task-tooltip";
+  tooltip.setAttribute("role", "tooltip");
+  tooltip.hidden = true;
+  tooltip.innerHTML = `<div class="calendar-task-tooltip-meta"></div><strong></strong><p></p><span class="calendar-task-tooltip-state"></span>`;
+  document.body.appendChild(tooltip);
+  return tooltip;
+}
+
+function calendarTaskStatusLabel(task, duration, priorityAdjustment = false) {
+  if (task.status === "completed") return "已完成";
+  if (task.status === "cancelled") return "已取消";
+  if (task.status === "partial") return `已完成部分${Number(task.checkin?.partialAnswered || 0) ? ` · ${Number(task.checkin.partialAnswered)}题` : ""}`;
+  if (task.status === "in_progress") return "学习中";
+  return priorityAdjustment ? `系统优先 · ${duration}分钟` : `${duration}分钟`;
+}
+
+function hideCalendarTaskTooltip(card) {
+  const tooltip = $("#calendarTaskTooltip");
+  if (tooltip) tooltip.hidden = true;
+  card?.removeAttribute("aria-describedby");
+}
+
+function showCalendarTaskTooltip(card, task) {
+  if (!card || !task) return;
+  const tooltip = ensureCalendarTaskTooltip();
+  const taskIndex = tasks.indexOf(task);
+  const meta = categoryMeta[task.category] || categoryMeta.consolidation;
+  const duration = minutesBetween(task.start, task.end);
+  const priorityAdjustment = resultPriorityAdjustment(task);
+  const title = taskDisplayTitle(task, taskIndex).replace(/^(听力|阅读|词汇\s*\/\s*语法|词汇|语法|写作|巩固练习|错题复盘)\s*[：:·]\s*/, "");
+  const note = `${priorityAdjustment ? "系统优先：" : ""}${taskDisplayNote(task, taskIndex)}`.trim();
+  tooltip.querySelector(".calendar-task-tooltip-meta").textContent = `${meta.label}　${task.start}-${task.end}　${duration}分钟`;
+  tooltip.querySelector("strong").textContent = title || taskDisplayTitle(task, taskIndex);
+  const noteElement = tooltip.querySelector("p");
+  noteElement.textContent = note;
+  noteElement.hidden = !note;
+  tooltip.querySelector(".calendar-task-tooltip-state").textContent = calendarTaskStatusLabel(task, duration, priorityAdjustment);
+  tooltip.hidden = false;
+  card.setAttribute("aria-describedby", tooltip.id);
+
+  const cardRect = card.getBoundingClientRect();
+  const tooltipRect = tooltip.getBoundingClientRect();
+  const viewportGap = 12;
+  const left = Math.min(
+    window.innerWidth - tooltipRect.width - viewportGap,
+    Math.max(viewportGap, cardRect.left + (cardRect.width - tooltipRect.width) / 2)
+  );
+  const topAbove = cardRect.top - tooltipRect.height - 8;
+  const topBelow = cardRect.bottom + 8;
+  const top = topAbove >= viewportGap
+    ? topAbove
+    : Math.min(window.innerHeight - tooltipRect.height - viewportGap, topBelow);
+  tooltip.style.left = `${Math.round(left)}px`;
+  tooltip.style.top = `${Math.round(Math.max(viewportGap, top))}px`;
+}
+
 function renderCalendar() {
-  days = buildCurrentWeekDays();
+  const weekCount = configuredPlanWeekCount();
+  displayedWeekIndex = Math.max(0, Math.min(displayedWeekIndex, weekCount - 1));
+  days = buildPlanWeekDays(displayedWeekIndex);
   const weekRangeTitle = $("#weekRangeTitle");
-  if (weekRangeTitle) weekRangeTitle.textContent = `${days[0].date}—${days[6].date}`;
+  if (weekRangeTitle) weekRangeTitle.textContent = `${days[0].date} - ${days[6].date}`;
+  if ($("#weekRoundLabel")) $("#weekRoundLabel").textContent = `第一轮 · 第 ${displayedWeekIndex + 1} 周`;
+  if ($("#prevWeek")) $("#prevWeek").disabled = displayedWeekIndex === 0;
+  if ($("#nextWeek")) $("#nextWeek").disabled = displayedWeekIndex >= weekCount - 1;
   const calendar = $("#weekCalendar");
-  const visibleCategories = new Set(tasks.filter(task => task.status !== "cancelled").map(task => task.category));
+  hideCalendarTaskTooltip();
+  const weekTasks = tasks.filter(task => taskWeekIndex(task) === displayedWeekIndex);
+  const visibleCategories = new Set(weekTasks.filter(task => task.status !== "cancelled").map(task => task.category));
   if (activeCalendarFilter !== "all" && !visibleCategories.has(activeCalendarFilter)) activeCalendarFilter = "all";
   $$("[data-calendar-filter]").forEach(button => {
     const filter = button.dataset.calendarFilter;
@@ -1917,35 +3135,90 @@ function renderCalendar() {
     button.classList.toggle("active", active);
     button.setAttribute("aria-pressed", active ? "true" : "false");
   });
-  calendar.innerHTML = days.map(day => {
-    const dayTasks = tasks.filter(task => task.day === day.key);
+  const categoryMatchesFilter = task => activeCalendarFilter === "all" || task.category === activeCalendarFilter;
+  const scheduledTasks = weekTasks.filter(task => categoryMatchesFilter(task)
+    && /^\d{2}:\d{2}$/.test(task.start || "")
+    && /^\d{2}:\d{2}$/.test(task.end || ""));
+  const firstTaskMinute = scheduledTasks.length ? Math.min(...scheduledTasks.map(task => clockToMinutes(task.start, 8 * 60))) : 8 * 60;
+  const lastTaskMinute = scheduledTasks.length ? Math.max(...scheduledTasks.map(task => clockToMinutes(task.end, 20 * 60))) : 20 * 60;
+  const timelineStart = Math.floor(firstTaskMinute / 60) * 60;
+  const timelineEnd = Math.max(timelineStart + 60, Math.ceil(lastTaskMinute / 60) * 60);
+  const pixelsPerMinute = 1.8;
+  const timelineHeight = (timelineEnd - timelineStart) * pixelsPerMinute;
+  const timelineLabels = Array.from({ length: Math.floor((timelineEnd - timelineStart) / 60) + 1 }, (_, index) => timelineStart + index * 60);
+  const timeAxis = `<aside class="time-axis" aria-label="计划时间线">
+    <div class="time-axis-head"><span>时间</span></div>
+    <div class="time-axis-body" style="height:${timelineHeight}px">
+      ${timelineLabels.map(minute => `<span class="time-axis-label" style="top:${(minute - timelineStart) * pixelsPerMinute}px">${String(Math.floor(minute / 60)).padStart(2, "0")}:00</span>`).join("")}
+    </div>
+  </aside>`;
+  calendar.innerHTML = timeAxis + days.map(day => {
+    const dayTasks = weekTasks.filter(task => task.day === day.key && categoryMatchesFilter(task));
     const activeDayTasks = dayTasks.filter(task => task.status !== "cancelled");
     const total = activeDayTasks.reduce((sum, task) => sum + minutesBetween(task.start, task.end), 0);
-    return `<article class="day-column ${day.featured ? "today" : ""}">
+    return `<article class="day-column timeline-day ${day.featured ? "today" : ""}">
       <header class="day-head">
         <p><span>${day.en}</span><span>${day.date}</span></p>
         <h3>${day.name}</h3>
         <small>${day.featured ? "今天 · " : ""}${Math.floor(total / 60)}小时${total % 60 ? `${total % 60}分钟` : ""}</small>
       </header>
-      ${dayTasks.map(task => {
+      <div class="day-timeline" style="height:${timelineHeight}px">
+        ${timelineLabels.map(minute => `<i class="timeline-grid-line" style="top:${(minute - timelineStart) * pixelsPerMinute}px" aria-hidden="true"></i>`).join("")}
+        ${dayTasks.map(task => {
         const meta = categoryMeta[task.category] || categoryMeta.consolidation;
         const duration = minutesBetween(task.start, task.end);
         const title = taskDisplayTitle(task, tasks.indexOf(task));
-        const dimmed = activeCalendarFilter !== "all" && task.category !== activeCalendarFilter;
-        return `<div class="task-card ${meta.className} ${task.status} ${dimmed ? "dimmed" : ""}" data-task-id="${task.id}" data-task-category="${task.category}" tabindex="0" role="button">
-          <div class="task-time"><span>◷ ${task.start}–${task.end}</span><span>${meta.label}</span></div>
-          <h4>${title}</h4>
-          <p>${taskDisplayNote(task, tasks.indexOf(task))}</p>
-          <span class="task-duration">${task.status === "cancelled" ? "已取消" : `${duration}分钟`}</span>
+        const calendarTitle = title.replace(/^(听力|阅读|词汇\s*\/\s*语法|词汇|语法|写作|巩固练习|错题复盘)\s*[：:·]\s*/, "");
+        const calendarCategoryLabel = {
+          "词汇 / 语法": "词汇语法",
+          "巩固练习": "巩固",
+          "错题复盘": "错题"
+        }[meta.label] || meta.label;
+        const priorityAdjustment = resultPriorityAdjustment(task);
+        const statusLabel = calendarTaskStatusLabel(task, duration, priorityAdjustment);
+        const taskTop = Math.max(0, (clockToMinutes(task.start, timelineStart) - timelineStart) * pixelsPerMinute);
+        const taskHeight = Math.max(34, duration * pixelsPerMinute - 4);
+        const displayNote = `${priorityAdjustment ? "系统优先 · " : ""}${taskDisplayNote(task, tasks.indexOf(task))}`;
+        return `<div class="task-card timeline-task ${duration < 50 ? "compact-task" : ""} ${priorityAdjustment ? "is-priority" : ""} ${meta.className} ${task.status}" style="top:${taskTop}px;height:${taskHeight}px" data-task-id="${task.id}" data-task-category="${task.category}" tabindex="0" role="button" aria-label="${day.name} ${task.start}到${task.end} ${title}">
+          <div class="task-time"><span>◷ ${task.start}-${task.end}</span><span>${calendarCategoryLabel} · ${duration}分</span></div>
+          <h4>${calendarTitle || title}</h4>
+          <p>${displayNote}</p>
+          <span class="task-duration">${statusLabel}</span>
         </div>`;
       }).join("")}
+      </div>
     </article>`;
   }).join("");
 
-  $$(".task-card").forEach(card => {
-    card.addEventListener("click", () => openTask(Number(card.dataset.taskId)));
-    card.addEventListener("keydown", event => { if (event.key === "Enter") openTask(Number(card.dataset.taskId)); });
+  calendar.querySelectorAll(".task-card").forEach(card => {
+    const task = tasks.find(entry => String(entry.id) === String(card.dataset.taskId));
+    card.addEventListener("mouseenter", () => showCalendarTaskTooltip(card, task));
+    card.addEventListener("mouseleave", () => hideCalendarTaskTooltip(card));
+    card.addEventListener("focus", () => showCalendarTaskTooltip(card, task));
+    card.addEventListener("blur", () => hideCalendarTaskTooltip(card));
+    card.addEventListener("click", () => {
+      hideCalendarTaskTooltip(card);
+      openTask(card.dataset.taskId);
+    });
+    card.addEventListener("keydown", event => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      hideCalendarTaskTooltip(card);
+      openTask(card.dataset.taskId);
+    });
   });
+  const calendarWrap = calendar.closest(".calendar-wrap");
+  if (calendarWrap && calendarWrap.scrollWidth > calendarWrap.clientWidth) {
+    const focusColumn = calendar.querySelector(".day-column.today")
+      || calendar.querySelector(".task-card")?.closest(".day-column");
+    if (focusColumn) {
+      window.requestAnimationFrame(() => {
+        const axisWidth = calendar.querySelector(".time-axis")?.offsetWidth || 0;
+        calendarWrap.scrollLeft = Math.max(0, focusColumn.offsetLeft - axisWidth - 8);
+      });
+    }
+  }
+  renderCurrentTask();
   updateProgress();
 }
 
@@ -1954,27 +3227,108 @@ function applyCalendarFilter(filter = "all") {
   renderCalendar();
 }
 
+function changeDisplayedWeek(offset = 0) {
+  const nextIndex = Math.max(0, Math.min(displayedWeekIndex + Number(offset || 0), configuredPlanWeekCount() - 1));
+  if (nextIndex === displayedWeekIndex) return;
+  displayedWeekIndex = nextIndex;
+  activeCalendarFilter = "all";
+  renderCalendar();
+  $("#weekCalendar")?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
 function updateProgress() {
-  const planned = tasks
-    .filter(task => task.status !== "cancelled")
-    .reduce((sum, task) => sum + minutesBetween(task.start, task.end), 0);
-  const completed = completedPracticeTasks().reduce((sum, task) => sum + minutesBetween(task.start, task.end), 0);
-  const percentage = planned ? Math.round(completed / planned * 100) : 0;
-  $("#plannedHours").textContent = `${(planned / 60).toFixed(1)} 小时`;
-  $("#completedHours").textContent = `${(completed / 60).toFixed(1)} 小时`;
+  const summary = weeklyPlanActualSummary();
+  const percentage = summary.plannedTasks
+    ? Math.round(summary.completedTasks / summary.plannedTasks * 100)
+    : 0;
+  $("#plannedHours").textContent = `${(summary.plannedSeconds / 3600).toFixed(1)} 小时`;
+  $("#completedHours").textContent = formatActualStudyTime(summary.actualSeconds);
   $("#progressText").textContent = `${percentage}%`;
   $("#progressBar").style.width = `${percentage}%`;
   renderProgressView();
 }
 
+function errorQuestionSnapshot(item = {}) {
+  const snapshot = item.questionSnapshot && typeof item.questionSnapshot === "object" ? item.questionSnapshot : {};
+  return {
+    ...snapshot,
+    stem: String(snapshot.stem || item.question || "").trim(),
+    options: Array.isArray(snapshot.options) ? snapshot.options : [],
+    optionTranslations: Array.isArray(snapshot.optionTranslations) ? snapshot.optionTranslations : []
+  };
+}
+
+function errorOriginalQuestionMarkup(item = {}) {
+  const question = errorQuestionSnapshot(item);
+  const hasSnapshot = Boolean(item.questionSnapshot && question.options.length);
+  const listening = isListeningQuestion(question) || item.category === "listening";
+  const transcript = String(question.transcript || question.audioText || "").trim();
+  const transcriptZh = String(question.transcriptZh || "").trim();
+  const passageZh = String(question.passageZh || "").trim();
+  const selectedIndex = Number(item.selectedIndex);
+  const correctIndex = Number.isInteger(Number(item.correctIndex)) ? Number(item.correctIndex) : Number(question.answer);
+  if (!question.stem && !question.materialImage && !transcript && !question.options.length) return "";
+
+  const options = question.options.length ? `<ol class="error-original-options">
+    ${question.options.map((option, index) => {
+      const optionZh = question.optionTranslations[index] || (index === correctIndex ? question.answerZh : "");
+      const stateClass = index === correctIndex ? "is-correct" : (index === selectedIndex ? "is-selected" : "");
+      const marker = index === correctIndex ? "正确答案" : (index === selectedIndex ? "你的选择" : "");
+      return `<li class="${stateClass}"><b>${answerLetter(index)}.</b><span>${escapeImportText(option)}${optionZh ? `<small>${escapeImportText(optionZh)}</small>` : ""}</span>${marker ? `<em>${marker}</em>` : ""}</li>`;
+    }).join("")}
+  </ol>` : "";
+
+  return `<section class="error-original-question">
+    <div class="error-original-head"><span>原题回看</span>${listening && hasSnapshot ? `<button class="secondary-button compact error-original-audio" type="button" data-error-audio-id="${escapeImportText(item.id)}">播放原题</button>` : ""}</div>
+    ${question.materialImage ? `<img class="error-original-image" src="${escapeImportText(question.materialImage)}" alt="当前错题的原始题图" loading="lazy" />` : ""}
+    ${question.stem ? `<div class="error-original-stem"><strong>${escapeImportText(question.instruction || question.stem)}</strong>${question.instructionZh ? `<p>${escapeImportText(question.instructionZh)}</p>` : ""}</div>` : ""}
+    ${question.passage ? `<div class="error-original-transcript"><span>阅读原文</span><p lang="ko">${escapeImportText(question.passage)}</p></div>` : ""}
+    ${transcript ? `<div class="error-original-transcript"><span>听力原文</span><p lang="ko">${escapeImportText(transcript)}</p>${transcriptZh ? `<span>中文释义</span><p>${escapeImportText(transcriptZh)}</p>` : ""}</div>` : ""}
+    ${passageZh && !transcriptZh ? `<div class="error-original-transcript"><span>原文释义</span><p>${escapeImportText(passageZh)}</p></div>` : ""}
+    ${options}
+    ${!hasSnapshot ? `<p class="error-original-legacy">这条错题来自旧记录，当时只保存了题干和作答结论；完整题图、原文和选项无法恢复。新产生的错题会完整保留。</p>` : ""}
+  </section>`;
+}
+
+async function playErrorOriginalQuestion(button) {
+  const item = errorItems.find(error => error.id === button.dataset.errorAudioId);
+  const question = errorQuestionSnapshot(item || {});
+  const audioSrc = listeningAudioFor(question);
+  const text = listeningTextFor(question);
+  if (!audioSrc && !text) return showToast("这条错题没有可播放的原始音频或原文");
+  const originalLabel = button.textContent;
+  button.disabled = true;
+  button.textContent = audioSrc ? "正在播放原音频…" : "正在生成朗读…";
+  const reset = () => {
+    button.disabled = false;
+    button.textContent = originalLabel;
+  };
+  if (audioSrc) {
+    playAudioFile(audioSrc, {
+      onStart: () => { button.textContent = "正在播放原音频…"; },
+      onEnd: reset,
+      onError: async () => {
+        if (!text) { reset(); return showToast("原始音频播放失败"); }
+        button.textContent = "原音频失败，正在朗读…";
+        const played = await speakKoreanDialogueText(text, { rate: LISTENING_TTS_RATE, onEnd: reset, onError: reset });
+        if (!played) reset();
+      }
+    });
+    return;
+  }
+  const played = await speakKoreanDialogueText(text, { rate: LISTENING_TTS_RATE, onEnd: reset, onError: reset });
+  if (!played) reset();
+}
+
 function renderErrors(filter = "all") {
+  refreshErrorReviewDueStates();
   $("#dueOverviewCount").textContent = `${errorItems.filter(item => item.due && !item.mastered).length} 个知识点`;
   $("#frequentOverviewCount").textContent = `${errorItems.filter(item => item.frequent && !item.mastered).length} 个强化包`;
   $("#masteredOverviewCount").textContent = `${errorItems.filter(item => item.mastered).length} 个知识点`;
   $("#errorBadge").textContent = errorItems.filter(item => !item.mastered).length;
   const dueItems = errorItems.filter(item => item.due && !item.mastered);
   $("#startDueReview").disabled = !dueItems.length;
-  $("#startDueReview").textContent = dueItems.length ? "开始今日复习 · 5题" : "暂无到期复习";
+  $("#startDueReview").textContent = dueItems.length ? `复习下一项 · ${dueItems.length}项待复习` : "暂无到期复习";
   if (!errorItems.length && !showingSampleErrors) {
     $("#errorList").innerHTML = `<div class="error-empty-state">
       <span class="error-empty-icon">◎</span>
@@ -1989,37 +3343,48 @@ function renderErrors(filter = "all") {
   const sourceItems = showingSampleErrors ? sampleErrorItems : errorItems;
   const items = sourceItems.filter(item => filter === "all" || item.filter.includes(filter));
   const sampleBanner = showingSampleErrors ? `<div class="sample-errors-banner"><div><strong>示例错题</strong><span>仅用于体验，不计入统计和复习安排。</span></div><button class="secondary-button" id="hideSampleErrors">返回我的错题集</button></div>` : "";
-  $("#errorList").innerHTML = sampleBanner + items.map(item => `<article class="error-card ${showingSampleErrors ? "sample-error-card" : ""}">
+  $("#errorList").innerHTML = sampleBanner + items.map(item => {
+    normalizeErrorReviewState(item);
+    const targetCount = Number(item.reinforcementCount || 0);
+    const reviewedToday = errorReviewedToday(item);
+    const practiceLabel = targetCount
+      ? `${reviewedToday ? "再练" : "开始"} ${targetCount} 题针对练习`
+      : (showingSampleErrors ? "体验示例练习" : (reviewedToday || item.nextReviewAt ? "提前复习这道题" : (item.frequent ? "强化这道错题" : "复习这道错题")));
+    return `<article class="error-card ${showingSampleErrors ? "sample-error-card" : ""}">
     <div class="error-top">
       <div>
         <div class="error-labels">
           <span class="tiny-label">${item.section}</span>
+          ${item.diagnosisType ? `<span class="tiny-label frequent">${escapeImportText(item.diagnosisType)}</span>` : ""}
           ${item.frequent ? '<span class="tiny-label frequent">高频错误</span>' : ""}
-          ${item.due ? '<span class="tiny-label due">今日到期</span>' : ""}
+          ${reviewedToday && !item.mastered ? '<span class="tiny-label reviewed">今日已复习</span>' : (item.due ? '<span class="tiny-label due">今日到期</span>' : "")}
+          ${!reviewedToday && !item.due && !item.mastered && item.nextReviewAt ? `<span class="tiny-label scheduled">${escapeImportText(formatReviewDate(item.nextReviewAt))}复习</span>` : ""}
           ${item.mastered ? '<span class="tiny-label mastered">已掌握</span>' : ""}
         </div>
-        <h3>${item.title}</h3>
-        <p class="source">${item.source}</p>
+        <h3>${escapeImportText(item.title)}</h3>
+        <p class="source">${escapeImportText(item.source)}</p>
       </div>
     </div>
+    ${errorOriginalQuestionMarkup(item)}
     <div class="error-grid">
-      <div class="error-field"><span>错题重点</span><p>${item.focus}</p></div>
-      <div class="error-field"><span>具体错误原因</span><p>${item.cause}</p></div>
-      <div class="error-field"><span>正确思考路径</span><p>${item.reasoning}</p></div>
-      <div class="error-field"><span>要改的习惯 → 改进动作</span><p>${item.habit}<br><strong>${item.action}</strong></p></div>
+      <div class="error-field"><span>错在哪里</span><p>${escapeImportText(item.cause || item.focus)}</p></div>
+      <div class="error-field"><span>正确思路</span><p>${escapeImportText(item.reasoning)}</p></div>
+      <div class="error-field"><span>改进建议</span><p>${escapeImportText(item.action)}</p></div>
     </div>
     <div class="error-actions">
       <div>
-        <div class="review-timeline">${item.reviews.map((state, index) => `<span class="review-dot ${state}">${[1,3,7,14][index]}天</span>`).join("")}</div>
-        <div class="pack-progress">${item.progress}</div>
+        <div class="review-timeline">${item.reviews.map((state, index) => `<span class="review-dot ${state}"${state === "current" && item.nextReviewAt ? ` title="计划于${escapeImportText(formatReviewDate(item.nextReviewAt))}复习"` : ""}>${[1,3,7,14][index]}天</span>`).join("")}</div>
+        <div class="pack-progress">${escapeImportText(item.progress)}</div>
       </div>
-      ${item.mastered ? `<button class="secondary-button mastery-record-trigger" data-mastery-id="${item.id}" data-sample="${showingSampleErrors}">查看记录</button>` : `<button class="${item.frequent ? "primary-button" : "secondary-button"} practice-trigger" data-error-id="${item.id}" data-sample="${showingSampleErrors}">${showingSampleErrors ? "体验示例练习" : (item.frequent ? "继续强化练习" : "开始复习")}</button>`}
+      ${item.mastered ? `<button class="secondary-button mastery-record-trigger" data-mastery-id="${item.id}" data-sample="${showingSampleErrors}">查看记录</button>` : `<button class="${targetCount ? "primary-button" : "secondary-button"} practice-trigger" data-error-id="${item.id}" data-sample="${showingSampleErrors}">${practiceLabel}</button>`}
     </div>
-  </article>`).join("") || '<div class="error-card"><p>这里暂时没有记录。</p></div>';
+  </article>`;
+  }).join("") || '<div class="error-card"><p>这里暂时没有记录。</p></div>';
 
   $("#hideSampleErrors")?.addEventListener("click", () => { showingSampleErrors = false; renderErrors("all"); });
   $$(".practice-trigger").forEach(button => button.addEventListener("click", () => startPractice(button.dataset.errorId, null, button.dataset.sample === "true")));
   $$(".mastery-record-trigger").forEach(button => button.addEventListener("click", () => openMasteryRecord(button.dataset.masteryId, button.dataset.sample === "true")));
+  $$(".error-original-audio").forEach(button => button.addEventListener("click", () => playErrorOriginalQuestion(button)));
 }
 
 function openMasteryRecord(id, isSample = false) {
@@ -2034,8 +3399,9 @@ function openMasteryRecord(id, isSample = false) {
 }
 
 function openTask(id) {
-  activeTaskId = id;
-  const task = tasks.find(item => item.id === id);
+  const task = tasks.find(item => String(item.id) === String(id));
+  if (!task) return showToast("没有找到这项任务，请刷新计划后重试");
+  activeTaskId = task.id;
   const taskModalPanel = $("#taskModal .task-panel");
   taskModalPanel?.classList.remove("is-editing");
   const meta = categoryMeta[task.category] || categoryMeta.consolidation;
@@ -2043,24 +3409,34 @@ function openTask(id) {
   const correct = Number(task.checkin?.correct || 0);
   const rate = total ? Math.round(correct / total * 100) : null;
   const hasLearningRecord = total > 0;
+  const actualSeconds = taskActualStudySeconds(task);
+  const partialAnswered = Number(task.checkin?.partialAnswered || 0);
+  const partialCorrect = Number(task.checkin?.partialCorrect || 0);
+  const latestAdjustment = [...(task.adjustments || [])].at(-1);
+  const taskDays = buildPlanWeekDays(taskWeekIndex(task));
+  const adjustmentFrom = baseDays.find(day => day.key === latestAdjustment?.fromDay)?.name || latestAdjustment?.fromDay || "原计划";
+  const adjustmentTo = baseDays.find(day => day.key === latestAdjustment?.toDay)?.name || latestAdjustment?.toDay || "下一个学习日";
   $("#taskModalCategory").textContent = meta.label;
   $("#taskModalCategory").className = `modal-category legend-${meta.className === "vocab" ? "vocab" : meta.className}`;
   $("#taskModalTitle").textContent = taskDisplayTitle(task, tasks.indexOf(task));
-  $("#taskModalMeta").textContent = `${days.find(day => day.key === task.day).name} · ${task.start}–${task.end} · ${minutesBetween(task.start, task.end)}分钟`;
+  const taskDay = taskDays.find(day => day.key === task.day) || baseDays.find(day => day.key === task.day);
+  $("#taskModalMeta").textContent = `第${taskWeekIndex(task) + 1}周 · ${taskDay?.name || "学习日"} ${taskDay?.date || ""} · ${task.start}-${task.end} · ${minutesBetween(task.start, task.end)}分钟`;
   const focus = taskTrainingPoint(task, tasks.indexOf(task));
-  $("#taskFocusBox").innerHTML = `<span>${focus.moduleName}</span><strong>${focus.point}</strong><p>${focus.note || "系统会按这组训练点生成练习并记录结果。"}</p>`;
-  const hasSeenTaskFlow = localStorage.getItem("topikPrototypeTaskFlowSeen") === "yes";
-  $("#taskFlowIntro").classList.toggle("hidden", hasSeenTaskFlow);
-  if (!hasSeenTaskFlow) localStorage.setItem("topikPrototypeTaskFlowSeen", "yes");
+  $("#taskFocusBox").innerHTML = `<span>训练重点</span><p>${focus.note || focus.point || "完成当前训练并记录真实结果。"}</p>`;
   const isMockTask = task.category === "mock";
-  $("#practiceModeNote").innerHTML = isMockTask
-    ? `<span>模拟考试</span><strong>先完整答完本组，再统一查看答案、中文解析和错题。</strong>`
-    : `<span>学习模式</span><strong>提交后显示中文解析，帮你把这一题学懂。</strong>`;
-  $("#practiceModeNote").classList.add("hidden");
-  $("#taskRecordTitle").textContent = hasLearningRecord ? "答题结果" : "本组设置";
+  const hasRecordSummary = Boolean(total || actualSeconds || latestAdjustment);
+  $("#taskRecordTitle").textContent = hasLearningRecord ? "答题结果" : "实际记录";
+  $("#taskRecordTitle").classList.toggle("hidden", !hasRecordSummary);
+  $("#taskAutoRecord").classList.toggle("hidden", !hasRecordSummary);
   $("#taskAutoRecord").innerHTML = total
-    ? `<span>系统已记录</span><strong>${correct} / ${total} 题正确 · ${rate}%</strong><p>${task.checkin?.source || "系统练习自动统计"} · ${task.checkin?.updatedAt ? new Date(task.checkin.updatedAt).toLocaleString("zh-CN", { hour12: false }) : "刚刚"}</p>`
-    : `<span>系统自动记录</span><strong>答题后自动统计正确率、错题和用时。</strong>`;
+    ? `<span>系统已记录</span><strong>${correct} / ${total} 题正确 · ${rate}%</strong><p>实际用时 ${formatActualStudyTime(actualSeconds)} · ${task.checkin?.updatedAt ? new Date(task.checkin.updatedAt).toLocaleString("zh-CN", { hour12: false }) : "刚刚"}</p>${task.checkin?.planningImpact ? `<p>${escapeText(task.checkin.planningImpact)}</p>` : ""}`
+    : actualSeconds
+      ? `<span>真实学习记录</span><strong>${partialAnswered ? `已完成 ${partialAnswered} 题，答对 ${partialCorrect} 题` : "本组尚未作答完成"}</strong><p>${escapeText(task.checkin?.planningImpact || `已记录实际用时 ${formatActualStudyTime(actualSeconds)}，可稍后继续。`)}</p>`
+      : latestAdjustment?.type === "skipped"
+        ? `<span>已按实际情况调整</span><strong>这次未完成，已重新安排。</strong><p>${escapeText(latestAdjustment.reason || `${adjustmentFrom} → ${adjustmentTo}`)} · ${new Date(latestAdjustment.at).toLocaleString("zh-CN", { hour12: false })}</p>`
+        : latestAdjustment?.type === "result-priority"
+          ? `<span>根据真实结果调整</span><strong>这项已设为同类学习重点。</strong><p>${escapeText(latestAdjustment.reason || "系统已根据最近正确率调整优先级。")}</p>`
+        : `<span>系统自动记录</span><strong>答题后自动统计正确率、错题和用时。</strong>`;
   $("#reflectionField").classList.add("hidden");
   $("#taskNote").disabled = !hasLearningRecord;
   $("#taskNote").value = hasLearningRecord ? (task.checkin?.reflection || "") : "";
@@ -2076,7 +3452,9 @@ function openTask(id) {
   fillTaskEditForm(task);
   $("#openPractice").classList.toggle("hidden", task.status === "cancelled");
   $("#openPractice").disabled = task.status === "cancelled";
-  $("#openPractice").textContent = isMockTask ? "开始模拟" : "开始学习";
+  $("#openPractice").textContent = isMockTask ? "开始模拟" : (partialAnswered ? "继续本组练习" : "开始学习");
+  $("#skipTaskPlan").classList.toggle("hidden", hasLearningRecord || task.status === "cancelled");
+  $("#skipTaskPlan").disabled = hasLearningRecord || task.status === "cancelled";
   openModal("taskModal");
 }
 
@@ -2091,6 +3469,19 @@ function fillTaskEditForm(task) {
   $("#editTaskEnd").value = task.end;
   $("#editTaskTitle").value = taskDisplayTitle(task, tasks.indexOf(task));
   $("#editTaskNote").value = task.note || "";
+}
+
+function focusCalendarTask(taskId) {
+  switchView("calendar", { scroll: false });
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    const card = $$(".task-card[data-task-id]").find(item => String(item.dataset.taskId) === String(taskId));
+    if (!card) return;
+    const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    card.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "center", inline: "center" });
+    card.classList.add("is-plan-updated");
+    card.focus({ preventScroll: true });
+    window.setTimeout(() => card.classList.remove("is-plan-updated"), 2400);
+  }));
 }
 
 function toggleTaskEdit(forceOpen = null) {
@@ -2117,7 +3508,7 @@ function saveTaskEdit() {
   const startMinutes = clockToMinutes(start);
   const endMinutes = clockToMinutes(end);
   const selectedDayName = days.find(item => item.key === day)?.name || "当前日期";
-  if (overlapsProtectedBreak(startMinutes, endMinutes) && !window.confirm(`确认保存：${selectedDayName} ${start}–${end}`)) return;
+  if (overlapsProtectedBreak(startMinutes, endMinutes) && !window.confirm(`确认保存：${selectedDayName} ${start}-${end}`)) return;
   if (!title) return showToast("请填写任务标题");
   task.day = day;
   task.category = category;
@@ -2132,8 +3523,9 @@ function saveTaskEdit() {
   updateTomorrowFocus();
   scheduleCloudSave();
   toggleTaskEdit(false);
-  openTask(task.id);
-  showToast("计划已更新，后续出题会按新内容执行");
+  closeModal("taskModal");
+  focusCalendarTask(task.id);
+  showToast("计划已更新，已在周计划中定位");
 }
 
 function cancelActiveTaskPlan() {
@@ -2159,18 +3551,64 @@ function cancelActiveTaskPlan() {
   showToast("已取消这个计划");
 }
 
+function nextStudyDayForTask(task = {}) {
+  const settings = readStudySettings();
+  const studyDays = Array.isArray(settings.studyDays) && settings.studyDays.length
+    ? settings.studyDays
+    : baseDays.map(day => day.key);
+  const startDayIndex = Math.max(0, baseDays.findIndex(day => day.key === task.day));
+  const startAbsoluteDay = taskWeekIndex(task) * baseDays.length + startDayIndex;
+  const maximumAbsoluteDay = configuredPlanWeekCount(settings) * baseDays.length - 1;
+  for (let absoluteDay = startAbsoluteDay + 1; absoluteDay <= maximumAbsoluteDay; absoluteDay += 1) {
+    const candidateDay = baseDays[absoluteDay % baseDays.length]?.key;
+    if (candidateDay && studyDays.includes(candidateDay)) {
+      const candidate = { ...task, day: candidateDay, weekIndex: Math.floor(absoluteDay / baseDays.length) };
+      const conflicts = tasks.some(existing => existing.id !== task.id
+        && existing.status !== "cancelled"
+        && tasksOverlap(candidate, existing));
+      if (!conflicts) return { day: candidateDay, weekIndex: candidate.weekIndex };
+    }
+  }
+  return { day: task.day, weekIndex: taskWeekIndex(task) };
+}
+
+function rescheduleActiveTask() {
+  const task = tasks.find(item => item.id === activeTaskId);
+  if (!task || hasPracticeRecord(task) || task.status === "cancelled") return;
+  const fromDay = task.day;
+  const fromWeekIndex = taskWeekIndex(task);
+  const nextSchedule = nextStudyDayForTask(task);
+  const nextDay = nextSchedule.day;
+  const nextWeekIndex = nextSchedule.weekIndex;
+  task.adjustments = [...(task.adjustments || []), {
+    type: "skipped",
+    at: new Date().toISOString(),
+    fromDay,
+    fromWeekIndex,
+    toDay: nextDay,
+    toWeekIndex: nextWeekIndex,
+    reason: `这次未完成，已从第${fromWeekIndex + 1}周${baseDays.find(day => day.key === fromDay)?.name || "原计划"}调整到第${nextWeekIndex + 1}周${baseDays.find(day => day.key === nextDay)?.name || "下一个学习日"} ${task.start}；原记录保留。`
+  }];
+  task.day = nextDay;
+  task.weekIndex = nextWeekIndex;
+  task.status = "planned";
+  persistTasksAndRefresh();
+  closeModal("taskModal");
+  const dayName = baseDays.find(day => day.key === nextDay)?.name || "下一个学习日";
+  showToast(`这次未完成，已重新安排到第${nextWeekIndex + 1}周${dayName} ${task.start}`);
+}
+
 function defaultTomorrowFocus() {
-  const settings = JSON.parse(localStorage.getItem("topikPrototypeSettings") || "null") || {};
-  if (settings.exam === "IELTS") return "先做一组 Listening 精听，再完成一组 Reading 同义替换题。";
-  if (settings.exam === "OTHER") return "先完成一个核心知识模块，再用练习题检验理解。";
-  return "明天按学习计划完成第一组系统练习，系统会根据答题结果整理错题。";
+  return "暂无复习重点。完成一组系统练习后，系统会根据真实答题结果生成。";
 }
 
 function nextStudyDayKey(fromKey = beijingDayKey()) {
-  const selected = days.filter(day => tasks.some(task => task.day === day.key));
-  if (!selected.length) return days[(days.findIndex(day => day.key === fromKey) + 1 + days.length) % days.length].key;
-  const currentIndex = selected.findIndex(day => day.key === fromKey);
-  return selected[(currentIndex + 1 + selected.length) % selected.length].key;
+  const pending = tasks
+    .filter(task => task.status !== "cancelled" && !hasPracticeRecord(task))
+    .sort((first, second) => pendingTaskScheduleRank(first) - pendingTaskScheduleRank(second));
+  const future = pending.find(task => taskScheduledDateKey(task) > beijingDateKey());
+  const candidate = future || pending[0];
+  return candidate ? { day: candidate.day, weekIndex: taskWeekIndex(candidate) } : { day: fromKey, weekIndex: 0 };
 }
 
 function taskFocusLabel(task) {
@@ -2210,17 +3648,21 @@ function tomorrowPriorityTask(tomorrowTasks = [], profile = studyPerformanceProf
 }
 
 function tomorrowPlanFocus(profile = studyPerformanceProfile()) {
-  const tomorrowKey = nextStudyDayKey();
-  const tomorrowTasks = tasks.filter(task => task.day === tomorrowKey && task.status !== "cancelled");
+  const tomorrowSchedule = nextStudyDayKey();
+  const tomorrowTasks = tasks.filter(task => task.day === tomorrowSchedule.day
+    && taskWeekIndex(task) === tomorrowSchedule.weekIndex
+    && task.status !== "cancelled");
   if (!tomorrowTasks.length) return defaultTomorrowFocus();
   const priority = tomorrowPriorityTask(tomorrowTasks, profile) || tomorrowTasks[0];
   const moreCount = Math.max(0, tomorrowTasks.filter(task => task !== priority && !hasPracticeRecord(task)).length);
   const weakPrefix = profile.weakCategory && profile.weakAccuracy !== null && profile.weakWrong > 0
     ? `最近${categoryLabel(profile.weakCategory)}正确率 ${profile.weakAccuracy}%`
     : "";
+  const priorityAdjustment = resultPriorityAdjustment(priority);
   const action = moreCount
     ? `明天先做${taskFocusLabel(priority)}，再完成另外 ${moreCount} 组学习任务。`
     : `明天先做${taskFocusLabel(priority)}。`;
+  if (priorityAdjustment?.reason) return compactRepeatedClauses(`${priorityAdjustment.reason} ${action}`);
   return weakPrefix ? `${weakPrefix}，${action}` : `按 T+1 学习计划，${action}`;
 }
 
@@ -2228,6 +3670,9 @@ function todayWrongFocus(profile = studyPerformanceProfile()) {
   const wrongTask = profile.todayWrongTask;
   if (!wrongTask) return "";
   const wrongCount = taskWrongCount(wrongTask);
+  if (wrongTask.category === "dictation") {
+    return `先重听今天${taskFocusLabel(wrongTask)}中写错的 ${wrongCount} 个词。`;
+  }
   const note = compactRepeatedClauses(String(wrongTask.checkin.note || wrongTask.checkin.reflection || "")
     .replace(/^AI自动记录：/, "")
     .replace(/^错\d+题[；;。]*/, "")).slice(0, 36);
@@ -2238,7 +3683,9 @@ function todayWrongFocus(profile = studyPerformanceProfile()) {
 
 function buildTomorrowFocus() {
   const profile = studyPerformanceProfile();
+  if (!profile.records.length) return defaultTomorrowFocus();
   const wrongFocus = todayWrongFocus(profile);
+  if (!wrongFocus && profile.weakWrong === 0) return "今天没有产生错题，明日无需额外复习。";
   const planFocus = tomorrowPlanFocus(profile);
   return compactRepeatedClauses(wrongFocus ? `${wrongFocus} ${planFocus}` : planFocus);
 }
@@ -2246,6 +3693,7 @@ function buildTomorrowFocus() {
 function updateTomorrowFocus(text = "") {
   const focus = text || buildTomorrowFocus();
   $("#tomorrowFocus").textContent = focus;
+  $("#tomorrowFocusCard")?.classList.toggle("hidden", completedPracticeTasks().length === 0 && !hasActualReviewNeed());
   localStorage.setItem("topikPrototypeTomorrowFocus", focus);
 }
 
@@ -2667,7 +4115,22 @@ function restartPracticeWithQuestions(questions) {
   questionGraded = false;
   listeningPlayCounts = {};
   resetPracticeControls();
+  startPracticeQuestionTimer();
   renderQuestion();
+}
+
+function splitPracticeStem(item = {}) {
+  const rawStem = String(item.stem || item.question || "").trim();
+  const explicitInstruction = String(item.instruction || item.prompt || item.questionPrompt || "").trim();
+  const explicitPassage = String(item.passage || item.sourceText || item.readingText || "").trim();
+  if (explicitInstruction || explicitPassage) {
+    return { instruction: explicitInstruction || rawStem, passage: explicitPassage };
+  }
+  const parts = rawStem.split(/\n\s*\n+/).map(part => part.trim()).filter(Boolean);
+  if (parts.length > 1 && /읽고|글|내용|빈칸|중심|태도/.test(parts[0])) {
+    return { instruction: parts[0], passage: parts.slice(1).join("\n\n") };
+  }
+  return { instruction: rawStem, passage: "" };
 }
 
 function normalizePracticeQuestions(items, limit = 5) {
@@ -2675,8 +4138,12 @@ function normalizePracticeQuestions(items, limit = 5) {
     const options = Array.isArray(item.options) ? item.options.map(String).slice(0, 4) : [];
     const answer = Number(item.answer);
     const audioText = String(item.audioText || item.audio || item.transcript || "").trim();
+    const content = splitPracticeStem(item);
     return {
-      stem: String(item.stem || item.question || "").trim(),
+      stem: content.instruction,
+      instruction: content.instruction,
+      instructionZh: String(item.instructionZh || item.promptZh || item.questionPromptZh || "").trim(),
+      passage: content.passage,
       stemZh: String(item.stemZh || item.questionZh || item.stemChinese || "").trim(),
       options,
       optionTranslations: Array.isArray(item.optionTranslations || item.optionsZh) ? (item.optionTranslations || item.optionsZh).map(String).slice(0, 4) : [],
@@ -2710,18 +4177,28 @@ function answerLetter(index) {
 }
 
 function questionMeaningText(question = {}) {
+  if (question.instructionZh) return question.instructionZh;
+  const stem = String(question.instruction || question.stem || "").trim();
+  if (/글의 중심 생각/.test(stem)) return "阅读原文，选择最能概括文章中心思想的一项。";
+  if (/내용과 같은 것을/.test(stem)) return "阅读原文，选择与文章内容一致的一项。";
+  if (/내용과 다른 것을/.test(stem)) return "阅读原文，选择与文章内容不一致的一项。";
+  if (/필자의 태도/.test(stem)) return "阅读原文，选择最符合作者态度的一项。";
+  if (/빈칸에 들어갈/.test(stem)) return "阅读原文，选择最适合填入空白处的一项。";
   if (question.stemZh) return question.stemZh;
-  if (question.transcriptZh) return `听力原文大意：${question.transcriptZh}`;
-  if (question.stem) return question.stem;
+  if (/이유는 무엇입니까|왜\s/.test(stem)) return "题目在问事情发生的原因，请根据原文选择正确原因。";
+  if (/무엇을 하라고 했습니까/.test(stem)) return "题目在问一个人让另一个人做什么，请选择原文中的具体行动。";
+  if (/내용과 같은 것을 고르십시오/.test(stem)) return "请选择与原文内容一致的一项。";
+  if (/내용과 다른 것을 고르십시오/.test(stem)) return "请选择与原文内容不一致的一项。";
+  if (/말하기 목적/.test(stem)) return "题目在问说话人的表达目的，请根据整段内容判断。";
+  if (/어디에서|장소/.test(stem)) return "题目在问地点，请根据原文选择正确位置。";
+  if (/몇 시|언제/.test(stem)) return "题目在问时间，请根据原文选择正确时间。";
+  if (stem) return `请根据原文回答题目：${stem}`;
   return "当前题目内容暂未返回中文说明。";
 }
 
 function originalMeaningText(question = {}) {
   if (question.passageZh) return question.passageZh;
-  if (question.transcriptZh) return question.transcriptZh;
-  if (question.stemZh) return question.stemZh;
-  if (question.stem) return question.stem;
-  return "当前题目暂未返回原文释义。";
+  return "";
 }
 
 function practiceExplanationText(question = {}) {
@@ -2733,14 +4210,230 @@ function persistErrorItems() {
   localStorage.setItem("topikPrototypePracticeErrors", JSON.stringify(errorItems.filter(item => String(item.id).startsWith("practice-"))));
 }
 
+const ERROR_REVIEW_STAGE_DAYS = [1, 3, 7, 14];
+
+function normalizeErrorReviewState(item = {}) {
+  item.filter = Array.isArray(item.filter) ? item.filter : [];
+  item.reviews = Array.isArray(item.reviews) && item.reviews.length === ERROR_REVIEW_STAGE_DAYS.length
+    ? item.reviews.slice(0, ERROR_REVIEW_STAGE_DAYS.length)
+    : ["current", "", "", ""];
+  const currentStage = item.reviews.findIndex(state => state === "current");
+  item.reviewStage = Number.isInteger(Number(item.reviewStage))
+    ? Math.max(0, Math.min(ERROR_REVIEW_STAGE_DAYS.length - 1, Number(item.reviewStage)))
+    : Math.max(0, currentStage);
+  item.reviewAttempts = Array.isArray(item.reviewAttempts) ? item.reviewAttempts : [];
+  item.masteryHistory = Array.isArray(item.masteryHistory) ? item.masteryHistory : [];
+  const legacyReinforcementCount = Number(item.reinforcementCount || 0);
+  if (item.frequent && legacyReinforcementCount > 0 && legacyReinforcementCount < 5) {
+    item.reinforcementCount = legacyReinforcementCount === 2 ? 5 : 10;
+  }
+  return item;
+}
+
+function errorReviewedToday(item = {}) {
+  if (!item.lastReviewedAt) return false;
+  const reviewedAt = new Date(item.lastReviewedAt);
+  return !Number.isNaN(reviewedAt.getTime()) && beijingDateKey(reviewedAt) === beijingDateKey();
+}
+
+function formatReviewDate(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "待安排";
+  return new Intl.DateTimeFormat("zh-CN", {
+    timeZone: "Asia/Shanghai",
+    month: "numeric",
+    day: "numeric"
+  }).format(date);
+}
+
+function reviewDateAfterDays(days, from = new Date()) {
+  const next = new Date(from);
+  next.setDate(next.getDate() + Number(days || 1));
+  return next.toISOString();
+}
+
+function setErrorDueState(item, due) {
+  item.due = Boolean(due) && !item.mastered;
+  item.filter = Array.isArray(item.filter) ? item.filter.filter(value => value !== "due") : [];
+  if (item.due) item.filter.unshift("due");
+}
+
+function refreshErrorReviewDueStates() {
+  let changed = false;
+  const now = Date.now();
+  errorItems.forEach(item => {
+    normalizeErrorReviewState(item);
+    if (item.mastered || !item.nextReviewAt) return;
+    const scheduledAt = new Date(item.nextReviewAt).getTime();
+    if (Number.isNaN(scheduledAt)) return;
+    const shouldBeDue = scheduledAt <= now;
+    if (Boolean(item.due) !== shouldBeDue) {
+      setErrorDueState(item, shouldBeDue);
+      changed = true;
+    }
+  });
+  if (changed) {
+    persistErrorItems();
+    scheduleCloudSave();
+  }
+}
+
+function applyErrorReviewResult(item, { correct = 0, total = 0, rate = 0, completedAt = new Date().toISOString() } = {}) {
+  normalizeErrorReviewState(item);
+  const stage = item.reviewStage;
+  const passed = total > 0 && rate >= 80;
+  const stageLabel = `${ERROR_REVIEW_STAGE_DAYS[stage]}天复习`;
+  const attempt = {
+    completedAt,
+    stage,
+    correct,
+    total,
+    rate,
+    passed
+  };
+  item.lastReviewedAt = completedAt;
+  item.lastReviewResult = attempt;
+  item.reviewAttempts = [...item.reviewAttempts, attempt].slice(-20);
+  item.masteryHistory = [...item.masteryHistory, {
+    date: formatReviewDate(completedAt),
+    stage: stageLabel,
+    result: `${correct} / ${total}`,
+    note: passed ? "达到80%，进入下一次延迟复习" : "未达到80%，次日重做本阶段"
+  }].slice(-20);
+
+  if (!passed) {
+    item.nextReviewAt = reviewDateAfterDays(1, new Date(completedAt));
+    setErrorDueState(item, false);
+    item.progress = `本次复习 ${correct} / ${total}题 · ${rate}%；${formatReviewDate(item.nextReviewAt)}再练`;
+    const currentCount = Number(item.reinforcementCount || 0);
+    item.reinforcementCount = currentCount >= 20 ? 20 : currentCount >= 10 ? 10 : 5;
+    return item;
+  }
+
+  item.reviews[stage] = "done";
+  item.reinforcementCount = 0;
+  if (stage >= ERROR_REVIEW_STAGE_DAYS.length - 1) {
+    item.mastered = true;
+    item.masteredAt = new Date(completedAt).toLocaleDateString("zh-CN", { timeZone: "Asia/Shanghai" });
+    item.nextReviewAt = "";
+    item.reviews = ERROR_REVIEW_STAGE_DAYS.map(() => "done");
+    item.filter = item.filter.filter(value => value !== "due" && value !== "frequent" && value !== "mastered");
+    item.filter.push("mastered");
+    item.due = false;
+    item.frequent = false;
+    item.progress = `本次复习 ${correct} / ${total}题 · ${rate}%；已完成14天复习`;
+    return item;
+  }
+
+  item.reviewStage = stage + 1;
+  item.reviews[item.reviewStage] = "current";
+  item.nextReviewAt = reviewDateAfterDays(ERROR_REVIEW_STAGE_DAYS[item.reviewStage], new Date(completedAt));
+  setErrorDueState(item, false);
+  item.progress = `本次复习 ${correct} / ${total}题 · ${rate}%；下次 ${formatReviewDate(item.nextReviewAt)}`;
+  return item;
+}
+
+function diagnosePracticeError(task = {}, result = {}) {
+  const question = result.question || {};
+  const isListening = isListeningQuestion(question) || task.category === "listening";
+  const questionSignals = [
+    question.questionType,
+    question.skillLabel,
+    question.trainingPoint,
+    question.sourceTitle,
+    question.materialSetTitle,
+    question.stem,
+    question.stemZh
+  ].filter(Boolean).join(" ");
+  const isVocabularyQuestion = /词汇|词义|生词|近义|反义|어휘|단어|유의어|반의어/i.test(questionSignals);
+  const isGrammarQuestion = task.category === "grammar"
+    || (task.category !== "reading" && looksLikeGrammarFillQuestion(question));
+  const elapsedSeconds = Number(result.elapsedSeconds || 0);
+  const hasMaterial = Boolean(question.materialImage || question.passageZh || question.sourceTitle || question.materialSetTitle);
+  if (isListening) return {
+    type: "听错关键词",
+    wrong: "没有等完整信息，或漏掉了决定答案的关键词。",
+    next: "复听原文，先标出否定、时间、人物动作等关键信息，再选答案。"
+  };
+  if (elapsedSeconds >= 180) return {
+    type: "时间分配问题",
+    wrong: `本题实际作答约 ${Math.max(3, Math.round(elapsedSeconds / 60))} 分钟，单题停留过久影响整组节奏。`,
+    next: "先用 60 秒定位依据；90 秒仍不确定就标记后跳过，整组完成后再回来。"
+  };
+  if (isVocabularyQuestion) return {
+    type: "生词影响",
+    wrong: "题干或选项中的核心词义没有确认，导致理解方向偏离。",
+    next: "只记录本题决定答案的核心生词和一条原句，再做一题同义辨析。"
+  };
+  if (task.category === "vocab" || isGrammarQuestion) return {
+    type: "知识点不会",
+    wrong: "当前题考查的词义、助词或句型规则还没有掌握。",
+    next: "先用正确答案回看规则，再做一题同型辨析确认理解。"
+  };
+  if (task.category === "reading" || hasMaterial) return {
+    type: "题目理解错误",
+    wrong: "题干要求或原文条件没有逐项对照，导致把局部信息当成答案。",
+    next: "先圈出题干问什么，再回原文核对时间、对象和条件。"
+  };
+  return {
+    type: "注意力或粗心",
+    wrong: "已经接近正确思路，但作答前没有完成最后一次条件核对。",
+    next: "提交前用 5 秒复核题干、选项和你找到的依据是否一致。"
+  };
+}
+
+function koreanKeywords(text = "") {
+  const ignored = new Set(["사람", "것을", "것이", "하는", "있는", "없는", "입니다", "합니다"]);
+  return [...new Set(String(text).match(/[가-힣]{2,}/g) || [])].filter(token => !ignored.has(token)).slice(0, 2);
+}
+
+function buildPracticeImprovementAdvice(task = {}, question = {}, result = {}) {
+  const correctOption = String(question.options?.[question.answer] || result.answer || "").trim();
+  const correctOptionZh = String(question.answerZh || question.optionTranslations?.[question.answer] || result.answerZh || "").trim();
+  const selectedOption = String(question.options?.[result.selected] || "").trim();
+  const selectedOptionZh = String(question.optionTranslations?.[result.selected] || "").trim();
+  const correctKeywords = koreanKeywords(correctOption);
+  const selectedKeywords = koreanKeywords(selectedOption);
+  const correctCue = correctKeywords.length ? correctKeywords.join("、") : (correctOption || correctOptionZh || "正确选项");
+  const selectedCue = selectedKeywords.length ? selectedKeywords.join("、") : (selectedOption || selectedOptionZh || "错误选项");
+  const correctMeaning = correctOptionZh || correctOption || "正确答案";
+
+  if (isListeningQuestion(question) || task.category === "listening") {
+    return `复听时重点确认“${correctCue}”，不要因为听到相近场景就联想到“${selectedCue}”。听完先用中文复述“${correctMeaning}”，再选择。`;
+  }
+  if (Number(result.elapsedSeconds || 0) >= 180) {
+    return `本题先限时 90 秒：前 60 秒定位题干条件和原文依据，后 30 秒排除“${selectedOptionZh || selectedOption || "错误选项"}”；仍不确定就先标记，完成整组后再回来。`;
+  }
+  if (task.category === "reading" || question.materialImage || question.passageZh) {
+    return `回到原文找到支持“${correctMeaning}”的具体句子，并在“${selectedOptionZh || selectedOption || "错误选项"}”旁写出不符合题干的条件；找不到原文证据就不选。`;
+  }
+  if (task.category === "vocab" || task.category === "grammar" || looksLikeGrammarFillQuestion(question)) {
+    return `把“${correctOption || correctMeaning}”和“${selectedOption || "错误选项"}”放回当前句子各读一遍，写下只有正确答案成立的词义或语法条件，再做下一题。`;
+  }
+  return `提交前用题干逐项排除“${selectedOptionZh || selectedOption || "错误选项"}”，并说出支持“${correctMeaning}”的一条原文证据。`;
+}
+
+function createPracticeQuestionSnapshot(question = {}) {
+  const normalized = normalizePracticeQuestions([question], 1)[0];
+  return normalized || {
+    stem: String(question.stem || question.question || "").trim(),
+    stemZh: String(question.stemZh || question.questionZh || "").trim(),
+    options: Array.isArray(question.options) ? question.options.map(String) : [],
+    optionTranslations: Array.isArray(question.optionTranslations) ? question.optionTranslations.map(String) : [],
+    answer: Number(question.answer) || 0
+  };
+}
+
 function createPracticeErrorItems(task, wrongResults = []) {
   if (!task || !wrongResults.length) return [];
   const taskIndex = tasks.indexOf(task);
   const title = taskDisplayTitle(task, taskIndex);
   const section = categoryMeta[task.category]?.label || "练习";
   const timestamp = Date.now();
-  const created = wrongResults.map((result, index) => {
+  const created = [];
+  wrongResults.forEach((result, index) => {
     const question = result.question || {};
+    const diagnosis = diagnosePracticeError(task, result);
     const correctOption = question.options?.[question.answer] || result.answer || "";
     const correctOptionZh = question.answerZh || question.optionTranslations?.[question.answer] || result.answerZh || "";
     const selectedOption = question.options?.[result.selected] || "";
@@ -2748,24 +4441,36 @@ function createPracticeErrorItems(task, wrongResults = []) {
     const focus = question.questionType || question.sourceTitle || question.materialSetTitle || title;
     const correctLine = [correctOption, correctOptionZh].filter(Boolean).join(" / ");
     const selectedLine = selectedOption ? [selectedOption, selectedOptionZh].filter(Boolean).join(" / ") : "未作答";
-    return {
+    const repeatedCount = errorItems.concat(created).filter(item =>
+      !item.mastered && item.section === section && item.diagnosisType === diagnosis.type
+    ).length;
+    const reinforcementCount = repeatedCount >= 3 ? 20 : repeatedCount === 2 ? 10 : repeatedCount === 1 ? 5 : 0;
+    created.push({
       id: `practice-${task.id || "task"}-${timestamp}-${index}`,
-      filter: ["due"],
+      filter: repeatedCount ? ["due", "frequent"] : ["due"],
       section,
+      category: task.category,
       title: `${title} · 第 ${result.index + 1} 题`,
       source: "系统练习自动整理",
       due: true,
+      frequent: repeatedCount > 0,
+      diagnosisType: diagnosis.type,
       focus: focus || "回看本题题干与正确答案依据。",
-      cause: `你的选择：${selectedLine}`,
+      cause: `${diagnosis.wrong} 你的选择：${selectedLine}`,
       reasoning: `正确答案：${answerLetter(question.answer)}. ${correctLine || "回看正确选项"}。${practiceExplanationText(question)}`,
-      habit: isListeningQuestion(question) ? "听到关键词后过早选答案，没等完整信息。" : "只抓到局部信息，没有逐项核对选项。",
-      action: isListeningQuestion(question) ? "复听原文，标出没听清的关键词。" : "先定位题干信息，再逐项排除不一致选项。",
-      progress: "待复盘 0 / 1题",
+      action: buildPracticeImprovementAdvice(task, question, result),
+      reinforcementCount,
+      progress: reinforcementCount ? `同类错误重复，待做 ${reinforcementCount} 题针对练习` : "待复盘 0 / 1题",
       reviews: ["current", "", "", ""],
+      reviewStage: 0,
+      reviewAttempts: [],
       taskId: task.id || "",
       question: question.stem || "",
+      questionSnapshot: createPracticeQuestionSnapshot(question),
+      selectedIndex: Number.isInteger(Number(result.selected)) ? Number(result.selected) : -1,
+      correctIndex: Number.isInteger(Number(question.answer)) ? Number(question.answer) : -1,
       createdAt: new Date().toISOString()
-    };
+    });
   });
   errorItems.unshift(...created);
   persistErrorItems();
@@ -2775,23 +4480,33 @@ function createPracticeErrorItems(task, wrongResults = []) {
 function renderPracticeFeedback(question = {}, correct = false) {
   const correctOption = question.options?.[question.answer] || "";
   const correctOptionZh = question.answerZh || question.optionTranslations?.[question.answer] || "";
+  const listening = isListeningQuestion(question);
+  const transcript = listeningTextFor(question);
+  const transcriptZh = String(question.transcriptZh || "").trim();
+  const originalMeaning = originalMeaningText(question);
+  const sourceMeaning = listening && transcript
+    ? `<div class="feedback-mini-line feedback-source-line"><span>听力原文</span><p lang="ko">${escapeImportText(transcript)}</p>${transcriptZh ? `<span>中文释义</span><p>${escapeImportText(transcriptZh)}</p>` : ""}</div>`
+    : originalMeaning
+      ? `<div class="feedback-mini-line feedback-source-line"><span>原文释义</span><p>${escapeImportText(originalMeaning)}</p></div>`
+      : "";
   return `<div class="feedback-answer-line">
     <span>${correct ? "回答正确" : "正确答案"}</span>
     <strong>${answerLetter(question.answer)}. ${escapeImportText(correctOption)}</strong>
     ${correctOptionZh ? `<p>${escapeImportText(correctOptionZh)}</p>` : ""}
   </div>
   <div class="feedback-mini-line"><span>题目要求</span><p>${escapeImportText(questionMeaningText(question))}</p></div>
-  <div class="feedback-mini-line"><span>原题释义</span><p>${escapeImportText(originalMeaningText(question))}</p></div>
+  ${sourceMeaning}
   <div class="feedback-mini-line"><span>答题解析</span><p>${escapeImportText(practiceExplanationText(question))}</p></div>`;
 }
 
 function getPracticeContext(errorId, linkedTaskId) {
   const settings = readStudySettings();
   const task = linkedTaskId ? tasks.find(item => item.id === linkedTaskId) : null;
+  const error = linkedTaskId ? null : errorItems.find(item => item.id === errorId);
   const examLabel = getExamPracticeLabel(settings);
-  const category = task?.category || (errorId === "imported-1" ? "review" : "vocab");
-  const title = task ? taskDisplayTitle(task, tasks.indexOf(task)) : (errorId === "imported-1" ? "导入错题诊断" : "错题变式复习");
-  return { settings, task, examLabel, category, title };
+  const category = task?.category || error?.category || (errorId === "imported-1" ? "review" : "vocab");
+  const title = task ? taskDisplayTitle(task, tasks.indexOf(task)) : (error?.title || (errorId === "imported-1" ? "导入错题诊断" : "错题变式复习"));
+  return { settings, task, error, examLabel, category, title };
 }
 
 async function loadExamDrivenPractice(errorId, linkedTaskId, questionCount = 5) {
@@ -2808,6 +4523,7 @@ async function loadExamDrivenPractice(errorId, linkedTaskId, questionCount = 5) 
       category: context.category,
       taskTitle: context.title,
       taskNote: context.task?.note || "",
+      errorDiagnosis: context.error?.diagnosisType || "",
       standards: context.task?.standards || [],
       weak: context.settings.weak || [],
       studyContent: context.settings.studyContent || "",
@@ -2815,20 +4531,15 @@ async function loadExamDrivenPractice(errorId, linkedTaskId, questionCount = 5) 
       sourcePolicy: "优先参考官方公开样题、公开真题题型和用户资料来校准考试模块与难度；按当前训练点生成原创同型练习，不把训练标签写成官方分类，也不直接复刻受版权限制的整套真题。"
     }
   };
-  const timeoutMs = 60000;
-  let lastError = null;
-  for (let attempt = 1; attempt <= 2; attempt += 1) {
-    try {
-      const result = await callStudyAssistant("practice", requestPayload, { timeoutMs });
-      const questions = normalizePracticeQuestions(result?.questions || result?.practice?.questions, questionCount);
-      if (questions.length) return questions;
-      lastError = new Error("No generated questions returned");
-    } catch (error) {
-      lastError = error;
-    }
-    if (attempt === 1 && linkedTaskId) showToast("在线出题还没完成，系统正在自动重试一次");
-  }
-  throw lastError || new Error("Practice generation failed");
+  const result = await callStudyAssistant("practice", requestPayload, { timeoutMs: 16000 });
+  const questions = normalizePracticeQuestions(result?.questions || result?.practice?.questions, questionCount);
+  if (!questions.length) throw new Error("No generated questions returned");
+  return {
+    questions,
+    fallbackUsed: Boolean(result?.quality?.fallbackUsed),
+    generatedCount: Number(result?.quality?.passed || 0),
+    providerIssue: String(result?.quality?.providerIssue || "")
+  };
 }
 
 function beijingDateKey(date = new Date()) {
@@ -2855,11 +4566,20 @@ function dailyReviewSummary() {
   const today = beijingDateKey();
   const todayTasks = tasks.filter(task => task.checkin?.updatedAt && beijingDateKey(new Date(task.checkin.updatedAt)) === today);
   const checkedTasks = todayTasks.filter(task => task.status === "completed" || task.checkin?.note || task.checkin?.total);
-  if (!checkedTasks.length) {
+  const externalToday = readExternalStudyRecords().filter(record => record.createdAt && beijingDateKey(new Date(record.createdAt)) === today);
+  if (!checkedTasks.length && !externalToday.length) {
     return {
       hasCheckin: false,
       focus: buildTomorrowFocus(),
-      message: "今天还没有完成系统练习，明日重点先按 T+1 学习计划生成。"
+      message: "今天还没有完成系统练习；完成后会根据真实答题结果生成明日重点。"
+    };
+  }
+  if (!checkedTasks.length && externalToday.length) {
+    const duration = externalToday.reduce((sum, record) => sum + Math.max(0, Number(record.actualSeconds || 0)), 0);
+    return {
+      hasCheckin: true,
+      focus: buildTomorrowFocus(),
+      message: `已记录 ${externalToday.length} 条站外学习${duration ? `，共 ${formatActualStudyTime(duration)}` : ""}。`
     };
   }
   const focus = buildTomorrowFocus();
@@ -2874,14 +4594,18 @@ function renderReminderUI() {
   if (!$("#dailyReminderEnabled")) return;
   const settings = readReminderSettings();
   const summary = dailyReviewSummary();
+  const headerButton = $("#openReminder");
   $("#dailyReminderEnabled").checked = settings.enabled;
   $("#dailyReminderTime").value = settings.time;
-  $("#dailyReminderTitle").textContent = settings.enabled ? `每日 ${settings.time} 复盘` : "每日复盘提醒";
+  $("#reminderHeaderState").textContent = settings.enabled ? settings.time : "未开启";
+  headerButton?.classList.toggle("is-active", settings.enabled);
+  headerButton?.setAttribute("aria-label", settings.enabled ? `学习提醒已开启，每日 ${settings.time}` : "打开学习提醒");
+  $("#dailyReminderTitle").textContent = settings.enabled ? `每日 ${settings.time} 自动整理` : "明日重点提醒";
   $("#dailyReminderText").textContent = settings.enabled
-    ? (summary.hasCheckin ? `今晚 ${settings.time} 会根据今天的打卡生成明日重点。` : summary.message)
-    : "开启后，晚上根据当天打卡整理明日重点。";
+    ? (summary.hasCheckin ? `今晚 ${settings.time}，系统会自动整理明日重点并提醒你查看。` : summary.message)
+    : "开启后，系统会根据当天真实学习记录自动整理明日重点。";
   if ("Notification" in window) {
-    $("#dailyReminderNotify").textContent = Notification.permission === "granted" ? "通知已开启" : "浏览器通知";
+    $("#dailyReminderNotify").textContent = Notification.permission === "granted" ? "浏览器通知已允许" : "允许浏览器通知";
     $("#dailyReminderNotify").disabled = Notification.permission === "denied";
   } else {
     $("#dailyReminderNotify").textContent = "不支持通知";
@@ -2891,7 +4615,7 @@ function renderReminderUI() {
 
 function sendDailyNotification(message) {
   if (!("Notification" in window) || Notification.permission !== "granted") return;
-  new Notification("今晚复盘：明天先抓一个重点", { body: message });
+  new Notification("明日重点已整理", { body: message });
 }
 
 async function runDailyReminder(manual = false) {
@@ -3147,6 +4871,119 @@ async function saveReflection() {
   await saveCloudState(false);
 }
 
+function saveExternalStudyRecord() {
+  const noteInput = $("#externalStudyNote");
+  const note = normalizeExternalStudyNote(noteInput?.value || "");
+  if (!note) return showToast("用一句话写下刚才学了什么");
+  if (noteInput) noteInput.value = note;
+  const activities = externalStudyActivitiesFromText(note);
+  const actualSeconds = activities.reduce((sum, activity) => sum + activity.actualSeconds, 0);
+  const category = externalStudyRecordCategory(activities);
+  const previousDecision = currentTaskDecision();
+  const record = {
+    id: `external-${Date.now()}`,
+    note: note.slice(0, 160),
+    category,
+    actualSeconds,
+    activities,
+    createdAt: new Date().toISOString()
+  };
+  const previousRecords = readExternalStudyRecords();
+  writeExternalStudyRecords([record, ...previousRecords]);
+  const nextDecision = currentTaskDecision();
+  if (!actualSeconds) {
+    record.planningImpact = "已保存内容；未识别到用时，因此暂不调整当前任务。";
+  } else if (category === "other") {
+    record.planningImpact = "已计入实际用时；未识别到学习模块，当前任务顺序不变。";
+  } else if (previousDecision.task?.id && nextDecision.task?.id !== previousDecision.task.id) {
+    record.planningImpact = `当前推荐已调整为「${taskDisplayTitle(nextDecision.task, tasks.indexOf(nextDecision.task))}」；原周计划和完成状态不变。`;
+  } else {
+    const currentTitle = nextDecision.task
+      ? `「${taskDisplayTitle(nextDecision.task, tasks.indexOf(nextDecision.task))}」`
+      : "原周计划";
+    record.planningImpact = `当前推荐仍是${currentTitle}；补录已计入实际用时，但不会冒充计划完成。`;
+  }
+  writeExternalStudyRecords([record, ...previousRecords]);
+  $("#externalStudyNote").value = "";
+  updateProgress();
+  renderCurrentTask();
+  renderReminderUI();
+  scheduleCloudSave();
+  closeModal("externalRecordModal");
+  if (!actualSeconds) {
+    showToast("没有识别到用时，请写“30分钟”或“半小时”");
+  } else if (category === "other") {
+    showToast(`已记录 ${formatActualStudyTime(actualSeconds)}；未识别学习模块`);
+  } else {
+    showToast(`已记录：${externalStudyActivitySummary(activities, actualSeconds)}；当前任务已重新判断`);
+  }
+}
+
+function correctExternalStudyNote() {
+  const note = $("#externalStudyNote");
+  if (!note) return false;
+  const corrected = normalizeExternalStudyNote(note.value);
+  if (!corrected || corrected === note.value.trim()) return false;
+  note.value = corrected;
+  return true;
+}
+
+function setExternalVoiceState(active, status = "") {
+  const button = $("#startExternalVoiceInput");
+  const statusText = $("#externalVoiceStatus");
+  button?.classList.toggle("is-listening", active);
+  button?.setAttribute("aria-pressed", String(active));
+  button?.setAttribute("aria-label", active ? "停止语音输入" : "开始语音输入");
+  button?.setAttribute("title", active ? "停止语音输入" : "开始语音输入");
+  if (statusText) statusText.textContent = status || (active ? "正在听，说完再点一次停止。" : "点输入框右侧的麦克风开始，说完再点一次结束。");
+}
+
+function startExternalVoiceInput() {
+  const note = $("#externalStudyNote");
+  if (externalVoiceRecognition) {
+    externalVoiceRecognition.stop();
+    return;
+  }
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    note?.focus();
+    setExternalVoiceState(false, "当前浏览器不支持网页语音，请用系统键盘麦克风。");
+    showToast("请点键盘上的麦克风说话，文字会自动填入这里");
+    return;
+  }
+  const recognition = new SpeechRecognition();
+  externalVoiceRecognition = recognition;
+  recognition.lang = "zh-CN";
+  recognition.interimResults = true;
+  recognition.continuous = true;
+  externalVoiceBaseText = note?.value || "";
+  let voiceErrorMessage = "";
+  setExternalVoiceState(true);
+  recognition.onresult = event => {
+    const text = Array.from(event.results).map(result => result[0]?.transcript || "").join("");
+    if (note) note.value = `${externalVoiceBaseText}${externalVoiceBaseText && text ? " " : ""}${text}`.slice(0, 160);
+  };
+  recognition.onend = () => {
+    externalVoiceRecognition = null;
+    const corrected = correctExternalStudyNote();
+    setExternalVoiceState(false, voiceErrorMessage || (corrected ? "已自动修正明显错别字，可修改后确定。" : "语音已转成文字，可修改后确定。"));
+  };
+  recognition.onerror = () => {
+    externalVoiceRecognition = null;
+    voiceErrorMessage = "未能启动语音，请用系统键盘麦克风。";
+    setExternalVoiceState(false, voiceErrorMessage);
+    note?.focus();
+    showToast("语音输入未启动，请使用键盘上的麦克风");
+  };
+  try {
+    recognition.start();
+  } catch {
+    externalVoiceRecognition = null;
+    note?.focus();
+    setExternalVoiceState(false, "未能启动语音，请用系统键盘麦克风。");
+  }
+}
+
 async function startPractice(errorId = "e1", linkedTaskId = null, isSample = false) {
   resetPracticeControls();
   practiceReviewMode = linkedTaskId ? reviewModeForTask(linkedTaskId) : "learning";
@@ -3156,32 +4993,91 @@ async function startPractice(errorId = "e1", linkedTaskId = null, isSample = fal
   practiceWrongNotes = [];
   practiceResults = [];
   listeningPlayCounts = {};
+  practiceSessionStartedAt = "";
   stopListeningAudio();
   const context = getPracticeContext(errorId, linkedTaskId);
-  const questionCount = linkedTaskId ? readPracticeQuestionCount() : 5;
-  activePractice = localFallbackForContext(errorId, context);
-  questionIndex = 0;
-  selectedAnswer = null;
-  questionGraded = false;
-  practiceCorrect = 0;
-  $("#practiceEyebrow").textContent = errorId === "imported-1" ? "导入错题诊断 · 5题" : `${context.examLabel} · 系统出题`;
-  $("#practiceTitle").textContent = "正在生成练习题";
-  $("#questionProgress").textContent = "请稍候";
+  const originalErrorPractice = !linkedTaskId && context.error && !Number(context.error.reinforcementCount || 0)
+    ? normalizePracticeQuestions([errorQuestionSnapshot(context.error)], 1)
+    : [];
+  let pendingPractice = null;
+  if (linkedTaskId) {
+    const task = tasks.find(item => item.id === linkedTaskId);
+    if (task && !hasPracticeRecord(task)) {
+      pendingPractice = task.checkin?.pendingPractice || null;
+      practiceSessionStartedAt = new Date().toISOString();
+      task.status = "in_progress";
+      task.checkin = {
+        ...(task.checkin || {}),
+        startedAt: task.checkin?.startedAt || practiceSessionStartedAt,
+        lastStartedAt: practiceSessionStartedAt
+      };
+      persistTasksAndRefresh();
+    }
+  }
+  const questionCount = pendingPractice?.questions?.length
+    || originalErrorPractice.length
+    || (linkedTaskId ? readPracticeQuestionCount() : (Number(context.error?.reinforcementCount) || 5));
+  activePractice = Array.isArray(pendingPractice?.questions) && pendingPractice.questions.length
+    ? pendingPractice.questions
+    : (originalErrorPractice.length ? originalErrorPractice : localFallbackForContext(errorId, context));
+  questionIndex = Math.max(0, Math.min(activePractice.length - 1, Number(pendingPractice?.questionIndex) || 0));
+  selectedAnswer = pendingPractice?.selectedAnswer ?? null;
+  questionGraded = Boolean(pendingPractice?.questionGraded);
+  practiceResults = Array.isArray(pendingPractice?.results) ? pendingPractice.results : [];
+  practiceCorrect = currentPracticeScore();
+  $("#practiceEyebrow").textContent = originalErrorPractice.length
+    ? "错题原题复习 · 1题"
+    : (errorId === "imported-1" ? "导入错题诊断 · 5题" : `${context.examLabel} · 系统出题 · ${questionCount}题`);
+  $("#practiceTitle").textContent = "正在准备练习题";
+  $("#questionProgress").textContent = "已等待 0 秒";
   $("#questionArea").innerHTML = `<div class="practice-loading-state" role="status" aria-live="polite">
     <span class="loading-spinner" aria-hidden="true"></span>
     <div>
-      <p class="section-kicker">系统出题中</p>
-      <h3>正在按你的考试目标生成 ${questionCount} 道题</h3>
-      <p>会参考考试模块、目标等级、本组训练点和已确认资料来出题。系统最多等待 1 分钟；如果失败会自动再试一次。</p>
+      <p class="section-kicker" id="practiceLoadingStage">正在连接在线题库</p>
+      <h3>正在按你的考试目标准备 ${questionCount} 道题</h3>
+      <p>在线题最多等待 12 秒；未及时完成会立即使用已验证题库。</p>
     </div>
   </div>`;
   if (!questionGraded) $("#practiceFeedback").className = "practice-feedback hidden";
   $("#prevQuestion").disabled = true;
   $("#nextQuestion").disabled = true;
-  $("#nextQuestion").textContent = "正在生成";
+  $("#prevQuestion").style.display = "none";
+  $("#nextQuestion").style.display = "none";
   openModal("practiceModal");
+  if (pendingPractice?.questions?.length) {
+    resetPracticeControls();
+    $("#practiceTitle").textContent = context.title;
+    $("#nextQuestion").disabled = false;
+    if (!questionGraded) startPracticeQuestionTimer();
+    renderQuestion();
+    $("#nextQuestion").textContent = questionGraded ? (questionIndex === activePractice.length - 1 ? "查看本组结果" : "下一题") : "提交答案";
+    showToast("已恢复到上次未完成的题目");
+    return;
+  }
+  if (originalErrorPractice.length) {
+    resetPracticeControls();
+    $("#practiceEyebrow").textContent = "错题原题复习 · 1题";
+    $("#practiceTitle").textContent = context.title;
+    $("#nextQuestion").disabled = false;
+    startPracticeQuestionTimer();
+    renderQuestion();
+    return;
+  }
+  const loadingStartedAt = Date.now();
+  const loadingTimer = setInterval(() => {
+    const elapsedSeconds = Math.floor((Date.now() - loadingStartedAt) / 1000);
+    if ($("#questionProgress")) $("#questionProgress").textContent = `已等待 ${elapsedSeconds} 秒`;
+    if ($("#practiceLoadingStage")) {
+      $("#practiceLoadingStage").textContent = elapsedSeconds < 5
+        ? "正在连接在线题库"
+        : elapsedSeconds < 12
+          ? "在线生成题目中"
+          : "正在切换到系统题库";
+    }
+  }, 1000);
   try {
-    const generated = await loadExamDrivenPractice(errorId, linkedTaskId, questionCount);
+    const practiceLoad = await loadExamDrivenPractice(errorId, linkedTaskId, questionCount);
+    const generated = practiceLoad.questions;
     const usableGenerated = isListeningPracticeContext(context)
       ? generated.filter(isPlayableListeningPracticeQuestion)
       : generated;
@@ -3193,12 +5089,36 @@ async function startPractice(errorId = "e1", linkedTaskId = null, isSample = fal
           : "暂未生成新题，已使用本地兜底练习",
       );
     }
-  } catch {
-    if (linkedTaskId) showToast("在线出题两次失败，已进入本地兜底练习");
+    if (practiceLoad.fallbackUsed) {
+      const availableCount = usableGenerated.length || activePractice.length;
+      const reason = practiceLoad.providerIssue === "provider_timeout"
+        ? "在线出题超时"
+        : /^(?:openai|qwen)_http_(401|403)$/.test(practiceLoad.providerIssue)
+          ? "在线出题服务权限异常"
+          : "在线出题暂不可用";
+      showToast(availableCount < questionCount
+        ? `${reason}，系统题库先提供 ${availableCount} 题`
+        : `${reason}，已切换到系统题库`);
+    }
+  } catch (error) {
+    if (linkedTaskId) showToast(error?.name === "AbortError" ? "在线生成超时，已切换到系统题库" : "在线服务暂不可用，已切换到系统题库");
+  } finally {
+    clearInterval(loadingTimer);
   }
   if (isListeningPracticeContext(context)) {
     const playablePractice = activePractice.filter(isPlayableListeningPracticeQuestion);
     activePractice = playablePractice.length ? playablePractice : listeningFallbackForContext(context);
+  }
+  activePractice = activePractice.slice(0, questionCount);
+  if (linkedTaskId && activePractice.length) {
+    const task = tasks.find(item => item.id === linkedTaskId);
+    if (task && !hasPracticeRecord(task)) {
+      task.checkin = {
+        ...(task.checkin || {}),
+        practiceQuestionCount: activePractice.length
+      };
+      persistTasksAndRefresh();
+    }
   }
   questionIndex = 0;
   selectedAnswer = null;
@@ -3206,8 +5126,13 @@ async function startPractice(errorId = "e1", linkedTaskId = null, isSample = fal
   practiceCorrect = 0;
   practiceWrongNotes = [];
   practiceResults = [];
+  resetPracticeControls();
+  $("#practiceEyebrow").textContent = errorId === "imported-1"
+    ? `导入错题诊断 · ${activePractice.length}题`
+    : `${context.examLabel} · 系统出题 · ${activePractice.length}题`;
   $("#practiceTitle").textContent = context.title;
   $("#nextQuestion").disabled = false;
+  startPracticeQuestionTimer();
   renderQuestion();
 }
 
@@ -3218,7 +5143,6 @@ function renderQuestion() {
   const transcript = listeningTextFor(question);
   const hasOriginalAudio = Boolean(listeningAudioFor(question));
   const hasPlayableAudio = Boolean(hasOriginalAudio || transcript);
-  const transcriptZh = String(question.transcriptZh || "").trim();
   const playbackKey = `${questionIndex}`;
   const playCount = listeningPlayCounts[playbackKey] || 0;
   const remainingPlays = Math.max(0, LISTENING_PLAY_LIMIT - playCount);
@@ -3230,6 +5154,10 @@ function renderQuestion() {
   const listeningPlayerClass = ["listening-player", hasOriginalAudio ? "" : "is-muted", playbackBusy ? "is-active" : "", playbackFailed ? "is-error" : ""].filter(Boolean).join(" " );
   const listeningButtonClass = ["secondary-button compact", playbackFailed ? "is-error" : ""].filter(Boolean).join(" " );
   const materialLabel = question.skillLabel || question.materialSetTitle || question.sourceTitle || "";
+  const questionContent = question.passage
+    ? `<div class="question-instruction"><span>题目要求</span><p lang="ko">${escapeImportText(question.instruction || question.stem)}</p></div>
+      <article class="question-passage"><span>阅读原文</span><p lang="ko">${escapeImportText(question.passage)}</p></article>`
+    : `<p class="question-stem">${escapeImportText(question.stem)}</p>`;
   $("#questionProgress").textContent = `${questionIndex + 1} / ${activePractice.length}`;
   $("#questionArea").innerHTML = `${listening ? `<div class="${listeningPlayerClass}">
     <div><span>${hasOriginalAudio ? "听力音频" : "AI 朗读"}</span><strong>${audioStatus}</strong></div>
@@ -3237,12 +5165,12 @@ function renderQuestion() {
   </div>` : ""}
   ${materialLabel ? `<div class="material-source-pill">资料题 · ${escapeImportText(materialLabel)}</div>` : ""}
   ${question.materialImage ? `<button class="question-material-image" type="button" id="openMaterialImage" aria-label="查看原始资料图"><img src="${escapeImportText(question.materialImage)}" alt="原始资料页" loading="lazy" /></button>` : ""}
-  <p class="question-stem">${escapeImportText(question.stem)}</p><div class="answer-options">
+  ${questionContent}<div class="answer-options">
     ${question.options.map((option, index) => `<label class="answer-option ${selectedAnswer === index ? "selected" : ""}">
       <input type="radio" name="answer" value="${index}" />
       <span class="answer-letter">${answerLetter(index)}</span><span>${escapeImportText(option)}</span>
     </label>`).join("")}
-  </div>${listening && learningMode && questionGraded && transcript ? `<div class="transcript-box"><span>听力原文</span><p>${escapeImportText(transcript)}</p>${transcriptZh ? `<span>中文翻译</span><p>${escapeImportText(transcriptZh)}</p>` : ""}</div>` : ""}`;
+  </div>`;
   if (!questionGraded) $("#practiceFeedback").className = "practice-feedback hidden";
   $("#nextQuestion").textContent = "提交答案";
   $("#prevQuestion").disabled = questionIndex === 0;
@@ -3264,6 +5192,7 @@ function advanceQuestion() {
       question,
       selected: selectedAnswer,
       correct,
+      elapsedSeconds: practiceQuestionElapsedSeconds(),
       answer: question.options[question.answer] || "",
       answerZh: question.answerZh || question.optionTranslations?.[question.answer] || "",
       explanation: question.explanation || "",
@@ -3290,6 +5219,7 @@ function advanceQuestion() {
     questionIndex += 1;
     selectedAnswer = null;
     questionGraded = false;
+    startPracticeQuestionTimer();
     renderQuestion();
   } else {
     renderPracticeResultBoard();
@@ -3304,6 +5234,8 @@ function completePracticeSession() {
   if (practiceTaskId) {
     const task = tasks.find(item => item.id === practiceTaskId);
     if (task) {
+      const completedAt = new Date().toISOString();
+      const actualSeconds = taskActualStudySeconds(task) + practiceSessionSeconds();
       const wrongNoteParts = uniqueTextParts(practiceWrongNotes.map(item => item.listeningMistake || item.explanationZh || item.explanation)).slice(0, 2);
       const autoNote = wrongCount
         ? `AI自动记录：错${wrongCount}题${wrongNoteParts.length ? `；${wrongNoteParts.join("；")}` : ""}`
@@ -3319,25 +5251,32 @@ function completePracticeSession() {
         note: autoNote,
         reflection: resultReflection || task.checkin?.reflection || "",
         source: "系统练习自动统计",
-        updatedAt: new Date().toISOString(),
+        startedAt: task.checkin?.startedAt || practiceSessionStartedAt || completedAt,
+        completedAt,
+        updatedAt: completedAt,
+        actualSeconds,
         errorIds: createdErrors.map(item => item.id)
       };
-      localStorage.setItem("topikPrototypeTasks", JSON.stringify(tasks));
-      renderCalendar();
-      updateTomorrowFocus();
+      applyPracticeResultToPlan(task, { correct: practiceCorrect, total });
+      persistTasksAndRefresh();
       recordCheckinReward(task);
       renderErrors();
-      scheduleCloudSave();
     }
   }
   const error = practiceIsSample ? null : errorItems.find(item => item.id === practiceErrorId);
   if (error) {
-    error.progress = `本次练习 ${practiceCorrect} / ${total}题 · ${rate}%`;
+    applyErrorReviewResult(error, {
+      correct: practiceCorrect,
+      total,
+      rate,
+      completedAt: new Date().toISOString()
+    });
     persistErrorItems();
     if (rate >= 80) recordSolvedErrorReward(rate);
     renderErrors();
     scheduleCloudSave();
   }
+  practiceSessionStartedAt = "";
   closeModal("practiceModal");
   showToast(practiceIsSample ? "示例练习已完成，不会写入你的错题集" : (practiceTaskId ? (resultReflection ? "学习结果和反思已保存" : "学习行为已自动记录") : "练习结果已更新到错题集"));
   practiceTaskId = null;
@@ -3348,12 +5287,50 @@ function completePracticeSession() {
 
 function resetPracticeControls() {
   $("#prevQuestion").style.display = "";
+  $("#nextQuestion").style.display = "";
+  $("#prevQuestion").disabled = false;
   $("#nextQuestion").onclick = advanceQuestion;
 }
 
 function openModal(id) { $("#" + id).classList.remove("hidden"); document.body.style.overflow = "hidden"; }
 function closeModal(id) {
-  if (id === "practiceModal") stopListeningAudio();
+  if (id === "practiceModal") {
+    pausePracticeQuestionTimer();
+    if (practiceTaskId && practiceSessionStartedAt) {
+      const task = tasks.find(item => item.id === practiceTaskId);
+      if (task && !hasPracticeRecord(task)) {
+        const partialAnswered = practiceResults.filter(Boolean).length;
+        const partialCorrect = practiceResults.filter(item => item?.correct).length;
+        const pausedAt = new Date().toISOString();
+        const planningImpact = recordPartialPlanImpact(task, partialAnswered, activePractice.length);
+        task.status = partialAnswered ? "partial" : "planned";
+        task.checkin = {
+          ...(task.checkin || {}),
+          startedAt: task.checkin?.startedAt || practiceSessionStartedAt,
+          lastPausedAt: pausedAt,
+          partialAnswered,
+          partialCorrect,
+          pendingPractice: partialAnswered ? {
+            questions: activePractice,
+            results: practiceResults,
+            questionIndex,
+            selectedAnswer,
+            questionGraded
+          } : null,
+          actualSeconds: taskActualStudySeconds(task) + practiceSessionSeconds(),
+          planningImpact
+        };
+        persistTasksAndRefresh();
+      }
+      practiceSessionStartedAt = "";
+    }
+    stopListeningAudio();
+  }
+  if (id === "externalRecordModal" && externalVoiceRecognition) {
+    externalVoiceRecognition.stop();
+    externalVoiceRecognition = null;
+    setExternalVoiceState(false);
+  }
   if (id === "rewardModal") $("#rewardVisual").innerHTML = "";
   $("#" + id).classList.add("hidden");
   document.body.style.overflow = "";
@@ -3367,6 +5344,165 @@ function showToast(message) {
 }
 
 let pendingSettings = null;
+let settingsWizardStep = 0;
+
+const settingsStepCopy = [
+  "先确认学习目标，已有选项可以直接继续。",
+  "选择真实可学习的日期和时间，系统只在这些时段排课。",
+  "资料是可选项，没有教材或链接也可以直接生成计划。"
+];
+
+function renderSettingsWizard(step = settingsWizardStep) {
+  settingsWizardStep = Math.max(0, Math.min(2, Number(step) || 0));
+  $$("[data-settings-step]").forEach(section => {
+    const active = Number(section.dataset.settingsStep) === settingsWizardStep;
+    section.hidden = !active;
+    section.classList.toggle("active", active);
+  });
+  $$("[data-settings-step-tab]").forEach(tab => {
+    const tabStep = Number(tab.dataset.settingsStepTab);
+    const active = tabStep === settingsWizardStep;
+    tab.classList.toggle("active", active);
+    tab.classList.toggle("completed", tabStep < settingsWizardStep);
+    if (active) tab.setAttribute("aria-current", "step");
+    else tab.removeAttribute("aria-current");
+  });
+  $("#settingsStepIntro").textContent = settingsStepCopy[settingsWizardStep];
+  $("#settingsStepNote").textContent = `第 ${settingsWizardStep + 1} 步，共 3 步`;
+  $("#settingsBack").classList.toggle("hidden", settingsWizardStep === 0);
+  $("#settingsNext").classList.toggle("hidden", settingsWizardStep === 2);
+  $("#settingsSubmit").classList.toggle("hidden", settingsWizardStep !== 2);
+  const panel = $("#settingsModal .settings-panel");
+  if (panel) panel.scrollTop = 0;
+}
+
+function openSettingsWizard(step = 0) {
+  resetPlanGenerationStatus();
+  renderSettingsWizard(step);
+  openModal("settingsModal");
+}
+
+const planGenerationCopy = [
+  ["正在整理学习设置", "确认目标、学习时间和资料范围。"],
+  ["正在生成课程安排", "只使用你选择的模块和可学习时间。"],
+  ["正在保留真实学习记录", "完成、部分完成、取消和调整记录不会被覆盖。"],
+  ["周计划已经生成", "正在返回周计划并定位课程表。"]
+];
+
+function setPlanGenerationState(step = 0, detail = "") {
+  const safeStep = Math.max(0, Math.min(3, Number(step) || 0));
+  const status = $("#planGenerationStatus");
+  if (!status) return;
+  status.classList.remove("hidden");
+  status.classList.remove("is-error");
+  status.classList.toggle("is-complete", safeStep === 3);
+  $("#planGenerationTitle").textContent = planGenerationCopy[safeStep][0];
+  $("#planGenerationDetail").textContent = detail || planGenerationCopy[safeStep][1];
+  $("#planGenerationBar").style.width = `${[12, 46, 76, 100][safeStep]}%`;
+  $$("[data-plan-generation-step]").forEach(item => {
+    const itemStep = Number(item.dataset.planGenerationStep);
+    item.classList.toggle("active", itemStep === safeStep);
+    item.classList.toggle("completed", itemStep < safeStep);
+  });
+}
+
+function setPlanGenerationError(message = "生成没有完成，请稍后重试。已有学习记录不会被修改。") {
+  const status = $("#planGenerationStatus");
+  if (!status) return;
+  status.classList.remove("hidden", "is-complete");
+  status.classList.add("is-error");
+  $("#planGenerationTitle").textContent = "周计划生成失败";
+  $("#planGenerationDetail").textContent = message;
+}
+
+function resetPlanGenerationStatus() {
+  const status = $("#planGenerationStatus");
+  if (!status) return;
+  status.classList.add("hidden");
+  status.classList.remove("is-complete", "is-error");
+  $("#planGenerationBar").style.width = "0%";
+}
+
+function validateSettingsStep(step = settingsWizardStep) {
+  const exam = $('input[name="exam"]:checked')?.value || "TOPIK";
+  if (step === 0) {
+    if (exam === "OTHER" && !$("#customExamName").value.trim()) {
+      showToast("请填写考试或学习项目名称");
+      $("#customExamName").focus();
+      return false;
+    }
+    const firstRoundWeeks = Number($("#firstRoundWeeks").value);
+    if (!firstRoundWeeks) {
+      showToast("请填写第一轮计划用时");
+      $("#firstRoundWeeks").focus();
+      return false;
+    }
+  }
+  if (step === 1) {
+    const studyDays = $$('input[name="studyDay"]:checked');
+    const availableStart = $("#availableStart").value;
+    const availableEnd = $("#availableEnd").value;
+    const intensity = $('input[name="intensity"]:checked')?.value || "中等";
+    const minHours = Number($("#durationMin").value);
+    const maxHours = Number($("#durationMax").value);
+    if (!studyDays.length) {
+      showToast("请至少选择一个学习日");
+      return false;
+    }
+    if (!availableStart || !availableEnd || availableStart >= availableEnd) {
+      showToast("请填写有效的学习时间范围");
+      $("#availableStart").focus();
+      return false;
+    }
+    if (intensity === "自定义" && (!minHours || !maxHours || minHours > maxHours)) {
+      showToast(!minHours || !maxHours ? "请填写完整的自定义时长" : "每天最少时长不能大于最多时长");
+      $("#durationMin").focus();
+      return false;
+    }
+  }
+  return true;
+}
+
+function settingsFromForm() {
+  const exam = $('input[name="exam"]:checked')?.value || "TOPIK";
+  const level = $('input[name="level"]:checked')?.value || "I";
+  const targetGrade = exam === "TOPIK" ? ($('input[name="targetGrade"]:checked')?.value || (level === "II" ? "4" : "2")) : "";
+  const foundation = $('input[name="foundation"]:checked')?.value || "不确定";
+  const weak = $$('input[name="weak"]:checked').map(input => input.value);
+  const times = $$('input[name="time"]:checked').map(input => input.value);
+  const intensity = $('input[name="intensity"]:checked')?.value || "中等";
+  const minHours = Number($("#durationMin").value);
+  const maxHours = Number($("#durationMax").value);
+  const materialFiles = learningMaterialFiles.map(file => ({
+    name: file.name,
+    type: file.type || "未知类型",
+    size: file.size,
+    sizeLabel: file.size >= 1024 * 1024 ? `${(file.size / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(file.size / 1024))} KB`
+  }));
+  return {
+    exam,
+    level,
+    targetGrade,
+    foundation,
+    weak,
+    times,
+    intensity,
+    minHours,
+    maxHours,
+    intensityLabel: intensity === "自定义" ? `${minHours}-${maxHours}小时/天` : (intensity === "高强度" ? "高强度" : `${intensity}强度`),
+    customExamName: exam === "OTHER" ? $("#customExamName").value.trim() : "",
+    customExamGoal: exam === "OTHER" ? $("#customExamGoal").value.trim() : "",
+    studyContent: $("#studyContent").value.trim(),
+    examDate: $("#examDate").value,
+    firstRoundWeeks: Number($("#firstRoundWeeks").value),
+    studyDays: $$('input[name="studyDay"]:checked').map(input => input.value),
+    availableStart: $("#availableStart").value,
+    availableEnd: $("#availableEnd").value,
+    resourceLinks: $("#resourceLinks").value.split(/\n+/).map(link => link.trim()).filter(Boolean),
+    materialFiles,
+    autoResearch: $("#autoResearch").checked
+  };
+}
 
 async function callStudyAssistant(action, settings, options = {}) {
   if (location.protocol === "file:") return null;
@@ -3416,6 +5552,7 @@ function normalizeAiTasks(aiTasks, settings) {
     const category = normalizeStudyCategory(task.category);
     const normalized = {
       id: 3000 + index,
+      weekIndex: 0,
       day: task.day,
       start: task.start,
       end: task.end,
@@ -3431,44 +5568,116 @@ function normalizeAiTasks(aiTasks, settings) {
   });
 }
 
+function alignAiContentToLocalSchedule(aiTasks = [], localPlan = []) {
+  const available = aiTasks.map((task, index) => ({ task, index, used: false }));
+  return localPlan.filter(task => taskWeekIndex(task) === 0).map(slot => {
+    const match = available.find(item => !item.used && item.task.category === slot.category);
+    if (!match) return slot;
+    match.used = true;
+    return {
+      ...slot,
+      title: match.task.title || slot.title,
+      note: match.task.note || slot.note,
+      standards: match.task.standards?.length ? match.task.standards : slot.standards
+    };
+  });
+}
+
+function taskHasLearningTrace(task = {}) {
+  return hasPracticeRecord(task)
+    || taskActualStudySeconds(task) > 0
+    || ["partial", "in_progress", "cancelled"].includes(task.status)
+    || Boolean(task.checkin?.startedAt || task.checkin?.completedAt || task.checkin?.updatedAt || task.checkin?.note || task.checkin?.reflection)
+    || Boolean((task.adjustments || []).length);
+}
+
+function tasksOverlap(first = {}, second = {}) {
+  if (taskWeekIndex(first) !== taskWeekIndex(second) || first.day !== second.day) return false;
+  const firstStart = clockToMinutes(first.start || "00:00");
+  const firstEnd = clockToMinutes(first.end || "00:00");
+  const secondStart = clockToMinutes(second.start || "00:00");
+  const secondEnd = clockToMinutes(second.end || "00:00");
+  return firstStart < secondEnd && secondStart < firstEnd;
+}
+
+function mergeGeneratedPlanWithLearningRecords(generatedTasks = [], existingTasks = tasks) {
+  const preserved = existingTasks.filter(taskHasLearningTrace).map(task => ({ ...task, weekIndex: taskWeekIndex(task) }));
+  const preservedIds = new Set(preserved.map(task => String(task.id)));
+  const available = generatedTasks.filter(task => !preserved.some(record => tasksOverlap(record, task)));
+  const timestamp = Date.now();
+  const normalized = available.map((task, index) => {
+    const id = preservedIds.has(String(task.id)) ? `plan-${timestamp}-${index}` : task.id;
+    preservedIds.add(String(id));
+    return { ...task, weekIndex: taskWeekIndex(task), id };
+  });
+  return [...preserved, ...normalized];
+}
+
 async function commitPlanSettings(settings) {
-  const button = $("#confirmPlanSources");
+  const button = $("#settingsSubmit");
+  const originalButtonLabel = button.textContent;
   button.disabled = true;
-  button.textContent = "正在生成…";
-  const persistentSettings = { ...settings, localFileCount: settings.materialFiles?.length || 0, materialFiles: [] };
-  localStorage.setItem("topikPrototypeSettings", JSON.stringify(persistentSettings));
-  applyExamBrand(settings.exam, settings.level, settings.targetGrade);
-  let aiGenerated = false;
+  button.textContent = "生成中";
+  $("#settingsBack").disabled = true;
+  $$("[data-settings-step-tab]").forEach(tab => { tab.disabled = true; });
+  setPlanGenerationState(0);
+  let succeeded = false;
   try {
-    const result = await callStudyAssistant("plan", {
+    const effectiveSettings = {
       ...settings,
-      materialFiles: settings.materialFiles?.map(({ name, type, sizeLabel }) => ({ name, type, sizeLabel }))
-    });
-    const generatedTasks = normalizeAiTasks(result?.tasks, settings);
-    if (generatedTasks.length) {
-      tasks = generatedTasks;
-      aiGenerated = true;
-    } else {
-      tasks = generatePlanFromSettings(settings);
+      planStartDate: settings.planStartDate || initialPlanStartDate(settings)
+    };
+    const persistentSettings = { ...effectiveSettings, localFileCount: settings.materialFiles?.length || 0, materialFiles: [] };
+    localStorage.setItem("topikPrototypeSettings", JSON.stringify(persistentSettings));
+    applyExamBrand(settings.exam, settings.level, settings.targetGrade);
+    let generatedPlan = [];
+    try {
+      setPlanGenerationState(1);
+      const result = await callStudyAssistant("plan", {
+        ...effectiveSettings,
+        planningProfile: studyPerformanceProfile(),
+        materialFiles: settings.materialFiles?.map(({ name, type, sizeLabel }) => ({ name, type, sizeLabel }))
+      });
+      const generatedTasks = normalizeAiTasks(result?.tasks, effectiveSettings);
+      const localPlan = generatePlanFromSettings(effectiveSettings);
+      generatedPlan = generatedTasks.length
+        ? [...alignAiContentToLocalSchedule(generatedTasks, localPlan), ...localPlan.filter(task => taskWeekIndex(task) > 0)]
+        : localPlan;
+    } catch {
+      setPlanGenerationState(1, "在线生成暂不可用，正在使用已确认的题型与时间生成计划。");
+      generatedPlan = generatePlanFromSettings(effectiveSettings);
     }
-  } catch {
-    tasks = generatePlanFromSettings(settings);
+    setPlanGenerationState(2);
+    generatedPlan = constrainTasksToStudyScope(generatedPlan, effectiveSettings);
+    tasks = mergeGeneratedPlanWithLearningRecords(generatedPlan);
+    localStorage.setItem("topikPrototypeTasks", JSON.stringify(tasks));
+    localStorage.setItem("topikPrototypePlanVersion", planSchemaVersion);
+    writePlanScope(effectiveSettings);
+    renderCalendar();
+    updateTomorrowFocus();
+    $("#profileIntensity").textContent = settings.intensityLabel;
+    updateExamOptions(settings.exam, settings.level);
+    localStorage.setItem("topikPrototypeOnboarded", "yes");
+    scheduleCloudSave();
+    setPlanGenerationState(3);
+    await new Promise(resolve => window.setTimeout(resolve, 450));
+    closeModal("resourceConfirmModal");
+    closeModal("settingsModal");
+    switchView("calendar", { scroll: false });
+    window.setTimeout(() => $("#weekCalendar")?.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
+    succeeded = true;
+    showToast("周计划已更新，已有学习记录已保留");
+  } catch (error) {
+    console.error("Plan generation failed", error);
+    setPlanGenerationError();
+    showToast("周计划没有生成，请稍后重试");
+  } finally {
+    button.disabled = false;
+    button.textContent = originalButtonLabel;
+    $("#settingsBack").disabled = false;
+    $$("[data-settings-step-tab]").forEach(tab => { tab.disabled = false; });
+    if (succeeded) resetPlanGenerationStatus();
   }
-  tasks = constrainTasksToStudyScope(tasks, settings);
-  localStorage.setItem("topikPrototypeTasks", JSON.stringify(tasks));
-  localStorage.setItem("topikPrototypePlanVersion", planSchemaVersion);
-  writePlanScope(settings);
-  renderCalendar();
-  updateTomorrowFocus();
-  $("#profileIntensity").textContent = settings.intensityLabel;
-  updateExamOptions(settings.exam, settings.level);
-  localStorage.setItem("topikPrototypeOnboarded", "yes");
-  scheduleCloudSave();
-  closeModal("resourceConfirmModal");
-  closeModal("settingsModal");
-  button.disabled = false;
-  button.textContent = "确认并生成计划";
-  showToast(aiGenerated ? "AI已根据确认资料生成周计划" : "已使用本地生成器创建周计划");
 }
 
 function suggestedSourcesFor(settings) {
@@ -3520,7 +5729,7 @@ async function showResourceConfirmation(settings) {
   ].filter(Boolean);
   $("#confirmStudyScope").textContent = scopeParts.join("；") || "将根据考试目标整理核心科目";
   const dayNames = { mon: "周一", tue: "周二", wed: "周三", thu: "周四", fri: "周五", sat: "周六", sun: "周日" };
-  $("#confirmStudySchedule").textContent = `${(settings.studyDays || []).map(day => dayNames[day]).join("、") || "每天"} · ${settings.availableStart}–${settings.availableEnd} · 第一轮 ${settings.firstRoundWeeks} 周${settings.examDate ? ` · 考试日 ${settings.examDate}` : ""}`;
+  $("#confirmStudySchedule").textContent = `${(settings.studyDays || []).map(day => dayNames[day]).join("、") || "每天"} · ${settings.availableStart}-${settings.availableEnd} · 第一轮 ${settings.firstRoundWeeks} 周${settings.examDate ? ` · 考试日 ${settings.examDate}` : ""}`;
   const sources = suggestedSourcesFor(settings);
   renderSourceChoices(sources);
   $("#researchNote").classList.toggle("hidden", !settings.autoResearch);
@@ -3576,41 +5785,68 @@ function showImportResults(result = null) {
 }
 
 function confirmImportedErrors() {
-  const imported = recognizedImportItems.length ? recognizedImportItems : [{
-    section: "词汇 / 语法", title: "场所助词 에 与 에서", focus: "区分存在或到达的地点，与动作发生的地点。",
-    reasoning: "先看谓语，再判断地点承担什么作用。", habit: "只记中文意思，没有结合谓语判断。", action: "作答前先圈出谓语。"
-  }];
+  const imported = recognizedImportItems;
+  if (!imported.length) return showToast("没有可导入的识别结果");
+  let importedCount = 0;
   imported.forEach((item, index) => {
+    if (!$(`[data-import-include="${index}"]`)?.checked) return;
+    const question = $(`[data-import-field="question"][data-import-index="${index}"]`)?.value.trim() || "";
+    const userAnswer = $(`[data-import-field="userAnswer"][data-import-index="${index}"]`)?.value.trim() || "";
+    const correctAnswer = $(`[data-import-field="correctAnswer"][data-import-index="${index}"]`)?.value.trim() || "";
+    if (!question) return;
     const reason = $(`[data-import-reason="${index}"]`)?.value || "待完成诊断后确认";
+    const options = Array.isArray(item.options) ? item.options.slice(0, 6).map(String) : [];
+    const selectedIndex = Number.isInteger(Number(item.selectedIndex)) ? Number(item.selectedIndex) : options.findIndex(option => option === userAnswer);
+    const correctIndex = Number.isInteger(Number(item.correctIndex)) ? Number(item.correctIndex) : options.findIndex(option => option === correctAnswer);
+    const category = ["listening", "reading", "writing", "vocab"].includes(item.category)
+      ? item.category
+      : (/听力/.test(item.section || "") ? "listening" : (/阅读/.test(item.section || "") ? "reading" : (/写作/.test(item.section || "") ? "writing" : "vocab")));
     errorItems.unshift({
-      id: `imported-${Date.now()}-${index}`, filter: ["due"], section: item.section || "其他", title: item.title || item.question || `导入错题 ${index + 1}`, source: "从历史错题照片导入 · AI识别", due: true,
+      id: `imported-${Date.now()}-${index}`, filter: ["due"], section: item.section || "其他", category, title: item.title || question.slice(0, 60) || `导入错题 ${index + 1}`, source: "从历史错题照片导入 · AI识别后确认", due: true,
       focus: item.focus || "根据题干和正确答案确认考查重点。",
       cause: reason,
-      reasoning: item.reasoning || "先定位题干关键信息，再排除不符合条件的选项。",
+      reasoning: item.reasoning || item.explanation || "先回到当前题干，定位决定答案的具体信息。",
       habit: item.habit || "作答过程待进一步诊断。",
-      action: item.action || "下次作答前圈出关键词，并说出选择依据。",
-      progress: "待完成诊断 0 / 3题", reviews: ["current", "", "", ""]
+      action: item.action || `重做这道题时，先说明“${question.slice(0, 24)}”要求判断什么，再选择。`,
+      question,
+      userAnswer: userAnswer || "未确认",
+      correctAnswer: correctAnswer || "待确认",
+      selectedIndex,
+      correctIndex,
+      questionSnapshot: {
+        stem: question,
+        instruction: question,
+        options,
+        answer: correctIndex,
+        explanation: item.explanation || item.reasoning || "",
+        source: "用户历史错题照片"
+      },
+      progress: "待重做原题", reviews: ["current", "", "", ""], reviewStage: 0, reviewAttempts: [], reinforcementCount: 0
     });
+    importedCount += 1;
   });
+  if (!importedCount) return showToast("请至少保留一道有题目的错题");
   persistErrorItems();
   showingSampleErrors = false;
   scheduleCloudSave();
   renderErrors();
   $("#errorBadge").textContent = errorItems.filter(item => !item.mastered).length;
   closeModal("importModal");
-  showToast("已导入错题集，并安排3道诊断题");
+  showToast(`已导入${importedCount}道原题，并加入复习队列`);
 }
 
-function switchView(view) {
+function switchView(view, { scroll = true } = {}) {
   const target = $("#" + view + "View");
   if (!target) return;
+  const leavingDictationTask = view !== "dictation" && $("#dictationView")?.classList.contains("active") && dictationTaskSession();
+  if (leavingDictationTask) pauseDictationTaskSession();
   $$(".tab").forEach(tab => tab.classList.toggle("active", tab.dataset.view === view));
   $$(".view").forEach(section => section.classList.remove("active"));
   target.classList.add("active");
   if (view === "dictation") renderDictationView();
   if (view === "wordElimination") renderWordEliminationView();
   if (view === "progress") renderProgressView();
-  window.scrollTo({ top: 0, behavior: "smooth" });
+  if (scroll) window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 function applyErrorFilter(filter) {
@@ -3623,6 +5859,7 @@ function applyErrorFilter(filter) {
 }
 
 function initializeEvents() {
+  window.addEventListener("pagehide", () => pauseDictationTaskSession({ refresh: false }));
   $$(".tab").forEach(tab => tab.addEventListener("click", () => switchView(tab.dataset.view)));
   $$("[data-view-jump]").forEach(button => button.addEventListener("click", () => switchView(button.dataset.viewJump)));
   $$("[data-close]").forEach(button => button.addEventListener("click", () => closeModal(button.dataset.close)));
@@ -3633,7 +5870,22 @@ function initializeEvents() {
     $("#errorList").scrollIntoView({ behavior: "smooth", block: "start" });
   }));
   $("#saveReflection").addEventListener("click", saveReflection);
+  $("#startCurrentTask").addEventListener("click", startCurrentTask);
+  $("#adjustCurrentTask").addEventListener("click", adjustCurrentTask);
+  $("#skipCurrentTask").addEventListener("click", skipCurrentTask);
+  $("#openExternalRecord").addEventListener("click", () => {
+    setExternalVoiceState(false);
+    openModal("externalRecordModal");
+    window.setTimeout(() => $("#externalStudyNote")?.focus(), 80);
+  });
+  $("#saveExternalRecord").addEventListener("click", saveExternalStudyRecord);
+  $("#startExternalVoiceInput").addEventListener("click", startExternalVoiceInput);
+  $("#viewExternalStudyEffect").addEventListener("click", () => switchView("progress"));
+  $("#externalStudyNote").addEventListener("blur", () => {
+    if (correctExternalStudyNote()) setExternalVoiceState(false, "已自动修正明显错别字，可继续修改。");
+  });
   $("#cancelTaskPlan").addEventListener("click", cancelActiveTaskPlan);
+  $("#skipTaskPlan").addEventListener("click", rescheduleActiveTask);
   $("#editTaskPlan").addEventListener("click", () => toggleTaskEdit());
   $("#discardTaskEdit").addEventListener("click", () => toggleTaskEdit(false));
   $("#saveTaskEdit").addEventListener("click", saveTaskEdit);
@@ -3642,9 +5894,7 @@ function initializeEvents() {
     const task = tasks.find(item => item.id === linkedTaskId);
     closeModal("taskModal");
     if (task?.category === "dictation") {
-      writeDictationState({ revealed: false });
-      switchView("dictation");
-      return;
+      return startDictationTask(task);
     }
     startPractice("e1", linkedTaskId);
   });
@@ -3657,13 +5907,22 @@ function initializeEvents() {
   $("#prevQuestion").addEventListener("click", () => {
     if (questionIndex > 0) { questionIndex -= 1; selectedAnswer = null; questionGraded = false; renderQuestion(); }
   });
-  $("#openSettings").addEventListener("click", () => openModal("settingsModal"));
+  $("#openSettings").addEventListener("click", () => {
+    openSettingsWizard(0);
+  });
+  $("#openReminder").addEventListener("click", () => {
+    renderReminderUI();
+    openModal("reminderModal");
+  });
   $("#openAccount").addEventListener("click", () => openModal("accountModal"));
   $("#signUpButton").addEventListener("click", () => authenticateCloud("signup"));
-  $("#signInButton").addEventListener("click", () => authenticateCloud("signin"));
+  $("#signedOutAccount").addEventListener("submit", event => {
+    event.preventDefault();
+    authenticateCloud("signin");
+  });
   $("#skipLoginButton").addEventListener("click", () => {
     closeModal("accountModal");
-    if (!localStorage.getItem("topikPrototypeOnboarded")) openModal("settingsModal");
+    if (!localStorage.getItem("topikPrototypeOnboarded")) openSettingsWizard(0);
   });
   $("#syncNowButton").addEventListener("click", () => saveCloudState(true));
   $("#signOutButton").addEventListener("click", async () => {
@@ -3720,8 +5979,25 @@ function initializeEvents() {
   $("#analyzeImport").addEventListener("click", async () => {
     if (!importFiles.length) return showToast("请先选择照片，或使用示例照片体验");
     if ($("#useSampleImport").dataset.sample) {
-      recognizedImportItems = [];
-      return showImportResults();
+      return showImportResults({
+        items: [{
+          section: "词汇 / 语法",
+          category: "vocab",
+          title: "场所助词 에 / 에서",
+          question: "저는 학교 (  ) 공부해요.",
+          options: ["에", "에서", "부터", "에게"],
+          userAnswer: "에",
+          correctAnswer: "에서",
+          selectedIndex: 0,
+          correctIndex: 1,
+          focus: "区分存在或到达的地点与动作发生地点",
+          reasoning: "공부해요 是在某处进行的动作，所以学校后使用 에서。",
+          action: "先圈出谓语，再判断地点是目的地还是动作发生地。",
+          confidence: "high",
+          needsConfirmation: false
+        }],
+        summary: "这是示例识别结果；真实照片会由在线视觉模型提取，并在导入前让你确认。"
+      });
     }
     if (location.protocol === "file:") return showToast("真实识别请使用已发布的在线网址");
     const button = $("#analyzeImport");
@@ -3729,7 +6005,7 @@ function initializeEvents() {
     button.textContent = "正在识别…";
     try {
       const images = await Promise.all(importFiles.map(async item => ({ name: item.name, dataUrl: await compressImage(item.file) })));
-      const result = await callStudyAssistant("vision", { images });
+      const result = await callStudyAssistant("vision", { images }, { timeoutMs: 25_000 });
       if (!result?.items?.length) throw new Error("未识别到清晰错题");
       showImportResults(result);
       showToast(`已识别 ${result.items.length} 道错题，请确认`);
@@ -3741,7 +6017,7 @@ function initializeEvents() {
     }
   });
   $("#confirmImport").addEventListener("click", confirmImportedErrors);
-  $("#backToSettings").addEventListener("click", () => { closeModal("resourceConfirmModal"); openModal("settingsModal"); });
+  $("#backToSettings").addEventListener("click", () => { closeModal("resourceConfirmModal"); openSettingsWizard(2); });
   $("#confirmPlanSources").addEventListener("click", () => {
     if (!pendingSettings) return;
     const selectedIndexes = $$('[data-confirm-source]:checked').map(input => Number(input.dataset.confirmSource));
@@ -3752,11 +6028,11 @@ function initializeEvents() {
   $("#dailyReminderEnabled").addEventListener("change", async event => {
     if (event.target.checked && "Notification" in window && Notification.permission === "default") await Notification.requestPermission();
     writeReminderSettings({ enabled: event.target.checked });
-    showToast(event.target.checked ? "已开启每日复盘提醒" : "已关闭每日复盘提醒");
+    showToast(event.target.checked ? "已开启明日重点提醒" : "已关闭明日重点提醒");
   });
   $("#dailyReminderTime").addEventListener("change", event => {
     writeReminderSettings({ time: event.target.value || "21:30" });
-    showToast(`复盘提醒时间已改为 ${readReminderSettings().time}`);
+    showToast(`明日重点提醒时间已改为 ${readReminderSettings().time}`);
   });
   $("#dailyReminderNotify").addEventListener("click", async () => {
     if (!("Notification" in window)) return showToast("当前浏览器不支持系统通知");
@@ -3774,53 +6050,37 @@ function initializeEvents() {
   $$("[data-calendar-filter]").forEach(button => button.addEventListener("click", () => {
     applyCalendarFilter(button.dataset.calendarFilter);
   }));
+  $("#settingsNext").addEventListener("click", () => {
+    if (!validateSettingsStep(settingsWizardStep)) return;
+    renderSettingsWizard(settingsWizardStep + 1);
+  });
+  $("#settingsBack").addEventListener("click", () => renderSettingsWizard(settingsWizardStep - 1));
+  $$("[data-settings-step-tab]").forEach(tab => tab.addEventListener("click", () => {
+    const targetStep = Number(tab.dataset.settingsStepTab);
+    if (targetStep > settingsWizardStep && !validateSettingsStep(settingsWizardStep)) return;
+    renderSettingsWizard(targetStep);
+  }));
   $("#settingsForm").addEventListener("submit", event => {
     event.preventDefault();
-    const exam = $('input[name="exam"]:checked').value;
-    const level = $('input[name="level"]:checked').value;
-    const targetGrade = exam === "TOPIK" ? ($('input[name="targetGrade"]:checked')?.value || (level === "II" ? "4" : "2")) : "";
-    const foundation = $('input[name="foundation"]:checked')?.value || "不确定";
-    const weak = $$('input[name="weak"]:checked').map(input => input.value);
-    const times = $$('input[name="time"]:checked').map(input => input.value);
-    const intensity = $('input[name="intensity"]:checked').value;
-    const minHours = Number($("#durationMin").value);
-    const maxHours = Number($("#durationMax").value);
-    const customExamName = exam === "OTHER" ? $("#customExamName").value.trim() : "";
-    const customExamGoal = exam === "OTHER" ? $("#customExamGoal").value.trim() : "";
-    const studyContent = $("#studyContent").value.trim();
-    const examDate = $("#examDate").value;
-    const firstRoundWeeks = Number($("#firstRoundWeeks").value);
-    const studyDays = $$("input[name=\"studyDay\"]:checked").map(input => input.value);
-    const availableStart = $("#availableStart").value;
-    const availableEnd = $("#availableEnd").value;
-    const resourceLinks = $("#resourceLinks").value.split(/\n+/).map(link => link.trim()).filter(Boolean);
-    const materialFiles = learningMaterialFiles.map(file => ({
-      name: file.name,
-      type: file.type || "未知类型",
-      size: file.size,
-      sizeLabel: file.size >= 1024 * 1024 ? `${(file.size / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(file.size / 1024))} KB`
-    }));
-    const autoResearch = $("#autoResearch").checked;
-    if (exam === "OTHER" && !customExamName) return showToast("请填写考试或学习项目名称");
-    if (exam === "OTHER" && !studyContent && !resourceLinks.length && !materialFiles.length && !autoResearch) return showToast("请填写补充学习范围、添加资料，或允许AI搜索");
-    if (!studyDays.length) return showToast("请至少选择一个学习日");
-    if (!firstRoundWeeks) return showToast("请填写第一轮计划用时");
-    if (!availableStart || !availableEnd || availableStart >= availableEnd) return showToast("请填写有效的学习时间范围");
-    if (intensity === "自定义" && minHours > maxHours) return showToast("每天最少时长不能大于最多时长");
-    if (intensity === "自定义" && (!minHours || !maxHours)) return showToast("请填写完整的自定义时长");
-    const intensityLabel = intensity === "自定义" ? `${minHours}–${maxHours}小时/天` : (intensity === "高强度" ? "高强度" : `${intensity}强度`);
-    const settings = { exam, level, targetGrade, foundation, weak, times, intensity, minHours, maxHours, intensityLabel, customExamName, customExamGoal, studyContent, examDate, firstRoundWeeks, studyDays, availableStart, availableEnd, resourceLinks, materialFiles, autoResearch };
-    showResourceConfirmation(settings);
+    if (!validateSettingsStep(0) || !validateSettingsStep(1)) return;
+    commitPlanSettings(settingsFromForm());
   });
-  ["prevWeek", "nextWeek", "todayButton"].forEach(id => $("#" + id).addEventListener("click", () => showToast("原型当前展示第一周计划")));
+  $("#prevWeek")?.addEventListener("click", () => changeDisplayedWeek(-1));
+  $("#nextWeek")?.addEventListener("click", () => changeDisplayedWeek(1));
 }
 
+repairUnverifiedTaskStatuses();
 renderCalendar();
 renderErrors();
 initializeEvents();
+setInterval(renderCurrentTask, 60000);
 const previewRewardId = new URLSearchParams(location.search).get("previewReward");
 const savedSettings = JSON.parse(localStorage.getItem("topikPrototypeSettings") || "null");
 if (savedSettings) {
+  if (!savedSettings.planStartDate) {
+    savedSettings.planStartDate = initialPlanStartDate(savedSettings);
+    localStorage.setItem("topikPrototypeSettings", JSON.stringify(savedSettings));
+  }
   const savedExam = $(`input[name="exam"][value="${savedSettings.exam || "TOPIK"}"]`);
   if (savedExam) savedExam.checked = true;
   const savedLevel = $(`input[name="level"][value="${savedSettings.level || "I"}"]`);
@@ -3851,7 +6111,8 @@ if (savedSettings) {
   applyExamBrand(savedSettings.exam || "TOPIK", savedSettings.level || "I", savedSettings.targetGrade);
   const startupSavedSettings = { ...readStudySettings(), ...savedSettings };
   if (localStorage.getItem("topikPrototypePlanVersion") !== planSchemaVersion || !savedPlanScopeMatches(startupSavedSettings)) {
-    tasks = constrainTasksToStudyScope(generatePlanFromSettings(startupSavedSettings), startupSavedSettings);
+    const regeneratedTasks = constrainTasksToStudyScope(generatePlanFromSettings(startupSavedSettings), startupSavedSettings);
+    tasks = mergeGeneratedPlanWithLearningRecords(regeneratedTasks);
     localStorage.setItem("topikPrototypeTasks", JSON.stringify(tasks));
     localStorage.setItem("topikPrototypePlanVersion", planSchemaVersion);
     writePlanScope(startupSavedSettings);
@@ -3861,13 +6122,14 @@ if (savedSettings) {
   updateExamOptions("TOPIK", "I");
 }
 const startupSettings = savedSettings ? { ...readStudySettings(), ...savedSettings } : readStudySettings();
+displayedWeekIndex = planWeekIndexForDate(new Date(), startupSettings);
 syncTasksToStudyScope(startupSettings);
 renderCalendar();
 updateTomorrowFocus();
 initializeCloud().finally(() => {
   if (previewRewardId && rewardCatalog[previewRewardId]) return;
   if (localStorage.getItem("topikPrototypeOnboarded")) return;
-  if (cloud.session?.access_token) openModal("settingsModal");
+  if (cloud.session?.access_token) openSettingsWizard(0);
   else openModal("accountModal");
 });
 updateTomorrowFocus();

@@ -1,6 +1,6 @@
 # 产品文档索引
 
-更新时间：2026-07-01
+更新时间：2026-07-14
 项目仓库：https://github.com/bzz0309/adaptive-study-planner  
 线上奖励系统预览：https://reward-companion-system.vercel.app
 
@@ -124,3 +124,14 @@
 - 涉及错题闭环，更新 `WRONG_QUESTION_SYSTEM.md`
 - 涉及已完成的重要版本，更新 `CHANGELOG.md`
 - `PRODUCT_REQUIREMENTS.md` 只维护索引和阅读路径
+
+## 7. 当前主站学习行为规范
+
+阅读：[MAIN_APP_REQUIREMENTS.md](./MAIN_APP_REQUIREMENTS.md) 的“学习行为驱动的动态排期与当前任务聚焦”“错题诊断与同型补强”“听写、背写与写作复盘”。
+
+当前规范明确：
+
+- 以真实学习行为驱动动态排期、明日重点和复盘，不使用虚构学习数据。
+- 用户只选择听力、阅读时，不主动安排词汇或语法独立任务。
+- 默认页面聚焦一个当前任务，最多三段短信息和一个主操作。
+- 周日复盘、补做和生词整理由本周真实结果生成，不固定预设。

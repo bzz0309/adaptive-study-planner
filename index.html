@@ -3,9 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#f6f5ef" />
+  <meta name="theme-color" content="#f3f5f2" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%23142132'/%3E%3Ctext x='32' y='43' text-anchor='middle' font-size='35' font-family='sans-serif' font-weight='700' fill='white'%3E%E3%85%8E%3C/text%3E%3C/svg%3E" />
   <title>TOPIK 学习计划</title>
-  <link rel="stylesheet" href="styles.css?v=20260710-practice-polish" />
+  <link rel="stylesheet" href="styles.css?v=20260719-cloud-auth-status-v14" />
+  <link rel="stylesheet" href="visual-system.css?v=20260719-cloud-auth-status-v14" />
 </head>
 <body>
   <div class="app-shell">
@@ -16,7 +18,12 @@
         <h1 id="plannerTitle">韩语备考周计划</h1>
       </div>
       <div class="header-actions">
-        <button class="icon-button" id="todayButton" title="回到本周">今</button>
+        <button class="icon-button hidden" id="todayButton" type="button" title="回到本周" aria-label="回到本周">本周</button>
+        <button class="quick-record-button" id="openExternalRecord" type="button" title="补录站外学习" aria-label="补录站外学习"><span aria-hidden="true">＋</span><strong>补录</strong></button>
+        <button class="reminder-button" id="openReminder" type="button" title="学习提醒" aria-label="打开学习提醒">
+          <span class="reminder-button-icon" aria-hidden="true">◷</span>
+          <span><small>学习提醒</small><strong id="reminderHeaderState">未开启</strong></span>
+        </button>
         <button class="account-button" id="openAccount" title="登录并同步学习进度">
           <span class="cloud-dot" id="cloudDot">☁</span>
           <span><small id="accountLabel">云同步</small><strong id="accountState">未登录</strong></span>
@@ -38,43 +45,53 @@
 
     <main>
       <section class="view active" id="calendarView">
+        <section class="current-task-card" id="currentTaskCard" aria-labelledby="currentTaskTitle">
+          <div class="current-task-copy">
+            <p class="current-task-now" id="currentTaskNow">现在</p>
+            <h2 id="currentTaskTitle">正在确定下一项任务</h2>
+            <p class="current-task-meta" id="currentTaskMeta">只会从你的真实周计划中选择。</p>
+            <p class="current-task-target" id="currentTaskTarget">完成标准会显示在这里。</p>
+            <p class="current-task-reason" id="currentTaskReason">完成后自动记录真实学习结果。</p>
+          </div>
+          <div class="current-task-actions">
+            <button class="primary-button current-task-primary" id="startCurrentTask" type="button">开始学习</button>
+            <div class="current-task-secondary">
+              <button class="text-button" id="adjustCurrentTask" type="button">调整计划</button>
+              <button class="text-button muted-text-button" id="skipCurrentTask" type="button">今天没空</button>
+            </div>
+          </div>
+        </section>
+
+        <aside class="external-study-effect hidden" id="externalStudyEffect" aria-live="polite">
+          <div>
+            <p>补录已生效</p>
+            <strong id="externalStudyEffectSummary">实际学习已更新</strong>
+            <span id="externalStudyEffectImpact">系统会据此重新判断当前任务。</span>
+          </div>
+          <button class="text-button" id="viewExternalStudyEffect" type="button">查看记录</button>
+        </aside>
+
+        <div class="focus-card hidden" id="tomorrowFocusCard">
+          <div class="focus-icon">✦</div>
+          <div>
+            <p>明日复习重点</p>
+            <strong id="tomorrowFocus">完成真实练习后，系统会整理明日重点。</strong>
+          </div>
+        </div>
+
         <div class="summary-row">
           <div class="week-control">
             <button class="round-button" id="prevWeek" aria-label="上一周">←</button>
             <div>
-              <p class="section-kicker">第一轮 · 第 1 周</p>
+              <p class="section-kicker" id="weekRoundLabel">第一轮 · 第 1 周</p>
               <h2 id="weekRangeTitle">本周计划</h2>
             </div>
             <button class="round-button" id="nextWeek" aria-label="下一周">→</button>
           </div>
           <div class="week-stats">
             <div><span>本周计划</span><strong id="plannedHours">7.2 小时</strong></div>
-            <div><span>已完成</span><strong id="completedHours">1.4 小时</strong></div>
-            <div class="progress-stat"><span>周进度</span><strong id="progressText">19%</strong><i><em id="progressBar"></em></i></div>
-          </div>
-        </div>
-
-        <div class="focus-card">
-          <div class="focus-icon">✦</div>
-          <div>
-            <p>明日复习重点</p>
-            <strong id="tomorrowFocus">明天按学习计划完成下一组系统练习。</strong>
-          </div>
-          <button class="text-button" data-view-jump="errors">查看错题 →</button>
-        </div>
-
-        <div class="reminder-card" id="dailyReminderCard">
-          <div class="reminder-copy">
-            <span class="reminder-icon">◷</span>
-            <div>
-              <strong id="dailyReminderTitle">每日复盘提醒</strong>
-              <p id="dailyReminderText">开启后，晚上根据当天打卡整理明日重点。</p>
-            </div>
-          </div>
-          <div class="reminder-controls">
-            <label class="toggle-line"><input type="checkbox" id="dailyReminderEnabled" /><span>开启</span></label>
-            <input type="time" id="dailyReminderTime" value="21:30" aria-label="每日复盘提醒时间" />
-            <button class="secondary-button compact" id="dailyReminderNotify" type="button">浏览器通知</button>
+            <div><span>本周实际</span><strong id="completedHours">1.4 小时</strong></div>
+            <div class="progress-stat"><span>任务进度</span><strong id="progressText">0%</strong><i><em id="progressBar"></em></i></div>
           </div>
         </div>
 
@@ -86,7 +103,7 @@
           <button class="legend-speaking hidden" id="speakingLegend" type="button" data-calendar-filter="speaking">口语</button>
           <button class="legend-mock" type="button" data-calendar-filter="mock">模拟测验</button>
           <button class="legend-dictation hidden" id="dictationLegend" type="button" data-calendar-filter="dictation">听写</button>
-          <button class="legend-review hidden" id="consolidationLegend" type="button" data-calendar-filter="consolidation">巩固练习</button>
+          <button class="legend-consolidation hidden" id="consolidationLegend" type="button" data-calendar-filter="consolidation">巩固练习</button>
           <button class="legend-review hidden" id="reviewLegend" type="button" data-calendar-filter="review">错题复盘</button>
         </div>
 
@@ -127,7 +144,9 @@
             <h2>学习进度</h2>
             <p>离暂定考试日 10月18日还有 120 天。</p>
           </div>
-          <div class="score-pill is-empty" id="scorePill"><small>当前模拟</small><strong>暂无</strong><span>完成模拟后生成</span></div>
+          <div class="progress-heading-side">
+            <div class="score-pill is-empty" id="scorePill"><small>当前模拟</small><strong>暂无</strong><span>完成模拟后生成</span></div>
+          </div>
         </div>
 
         <div class="progress-grid" id="progressGrid"></div>
@@ -142,18 +161,9 @@
       <h2 id="taskModalTitle">听力短对话</h2>
       <p class="modal-meta" id="taskModalMeta"></p>
       <div class="task-focus-box" id="taskFocusBox"></div>
-      <div class="standard-box flow-box" id="taskFlowIntro">
-        <h3>答题流程</h3>
-        <ul>
-          <li>确认题数</li>
-          <li>开始答题</li>
-          <li>系统记录结果</li>
-          <li>错题进入复盘</li>
-        </ul>
-      </div>
       <div class="checkin-form">
-        <h3 id="taskRecordTitle">本组设置</h3>
-        <div class="auto-record-box" id="taskAutoRecord">
+        <h3 class="hidden" id="taskRecordTitle">学习记录</h3>
+        <div class="auto-record-box hidden" id="taskAutoRecord">
           <span>系统自动记录</span>
           <strong>答题后自动统计正确率、错题和用时。</strong>
         </div>
@@ -165,10 +175,6 @@
             <option value="20">20题 · 深度练习</option>
           </select>
         </label>
-        <div class="practice-mode-note hidden" id="practiceModeNote">
-          <span>学习模式</span>
-          <strong>提交后显示中文解析，帮你把这一题学懂。</strong>
-        </div>
         <label id="reflectionField" class="hidden">完成后反思 <small>可选</small><textarea id="taskNote" rows="2" placeholder="完成答题后，可以补一句哪里卡住了"></textarea></label>
       </div>
       <div class="task-edit-panel hidden" id="taskEditPanel">
@@ -195,6 +201,7 @@
       </div>
       <div class="modal-actions">
         <button class="secondary-button" id="editTaskPlan">编辑计划</button>
+        <button class="secondary-button" id="skipTaskPlan">这次没做，重新安排</button>
         <button class="primary-button" id="openPractice">开始学习</button>
         <button class="secondary-button hidden" id="saveReflection">保存反思</button>
       </div>
@@ -249,26 +256,87 @@
   <div class="modal-backdrop hidden" id="settingsModal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
     <div class="modal-panel settings-panel">
       <button class="modal-close" data-close="settingsModal">×</button>
-      <p class="section-kicker">约 1 分钟</p>
-      <h2 id="settingsTitle">先了解你的学习情况</h2>
-      <p class="settings-intro">不确定的项目可以跳过，之后随时修改。</p>
-      <form id="settingsForm">
+      <p class="section-kicker">学习计划设置</p>
+      <h2 id="settingsTitle">告诉系统怎么安排</h2>
+      <p class="settings-intro" id="settingsStepIntro">先确认学习目标，已有选项可以直接继续。</p>
+      <nav class="settings-steps" aria-label="学习计划设置步骤">
+        <button class="settings-step-tab active" type="button" data-settings-step-tab="0" aria-current="step"><span>1</span><strong>学习目标</strong></button>
+        <button class="settings-step-tab" type="button" data-settings-step-tab="1"><span>2</span><strong>学习时间</strong></button>
+        <button class="settings-step-tab" type="button" data-settings-step-tab="2"><span>3</span><strong>补充资料</strong></button>
+      </nav>
+      <form id="settingsForm" class="settings-form">
+        <section class="settings-section settings-step active" data-settings-step="0" aria-labelledby="settingsGoalHeading">
+          <div class="settings-section-heading"><div><h3 id="settingsGoalHeading">目标与基础</h3><p>确定考试范围和需要优先加强的内容。</p></div></div>
         <fieldset><legend>考试名称</legend><div class="option-grid three"><label><input type="radio" name="exam" value="TOPIK" checked /><span>TOPIK<small>韩国语能力考试</small></span></label><label><input type="radio" name="exam" value="IELTS" /><span>雅思 IELTS<small>学术类 / 培训类</small></span></label><label><input type="radio" name="exam" value="OTHER" /><span>其他<small>自定义填写</small></span></label></div></fieldset>
         <fieldset id="levelFieldset"><legend id="levelLegend">考试类型</legend><div class="option-grid two"><label><input type="radio" name="level" value="I" checked /><span><b id="levelOneTitle">TOPIK I</b><small id="levelOneNote">初级试卷 · 听力与阅读</small></span></label><label><input type="radio" name="level" value="II" /><span><b id="levelTwoTitle">TOPIK II</b><small id="levelTwoNote">中高级试卷 · 听力、写作与阅读</small></span></label></div></fieldset>
         <fieldset id="targetGradeFieldset"><legend>目标等级 <small>按总分评定，并非逐级报考</small></legend><div class="chip-options" id="targetGradeOptions"><label><input type="radio" name="targetGrade" value="1" /><span>1级</span></label><label><input type="radio" name="targetGrade" value="2" checked /><span>2级</span></label></div><p class="field-help" id="targetGradeHelp">报考 TOPIK I，成绩达到对应分数后评为1级或2级。</p></fieldset>
         <fieldset class="custom-exam-fields hidden" id="customExamFields"><legend>自定义考试</legend><div class="form-split"><label>考试或学习项目名称<input id="customExamName" type="text" placeholder="例如：教师资格证、Python入门" /></label><label>目标 <small>可选</small><input id="customExamGoal" type="text" placeholder="例如：笔试通过、完成基础课程" /></label></div></fieldset>
-        <fieldset class="planning-fields"><legend>学习目标与期限</legend><div class="form-split"><label>考试日期 <small>不确定可空</small><input id="examDate" type="date" /></label><label>第一轮计划用时 <small>可之后修改</small><span class="input-with-unit"><input id="firstRoundWeeks" type="number" min="1" max="52" step="1" value="6" /><b>周</b></span></label></div><label>补充学习范围 <small>可选。填写教材章节、老师要求、特殊目标或不想练的内容。</small><textarea id="studyContent" rows="3" placeholder="例如：延世韩国语 3-4 册第 5-8 课；先补语法，再加强听力；暂时不练口语。"></textarea></label></fieldset>
+        <fieldset class="planning-fields"><legend>目标日期</legend><div class="form-split"><label>考试日期 <small>不确定可空</small><input id="examDate" type="date" /></label><label>第一轮计划用时 <small>可之后修改</small><span class="input-with-unit"><input id="firstRoundWeeks" type="number" min="1" max="52" step="1" value="6" /><b>周</b></span></label></div></fieldset>
         <fieldset><legend>当前基础 <small>可选</small></legend><div class="chip-options"><label><input type="radio" name="foundation" value="入门" /><span>入门</span></label><label><input type="radio" name="foundation" value="一般" checked /><span>一般</span></label><label><input type="radio" name="foundation" value="较好" /><span>较好</span></label><label><input type="radio" name="foundation" value="不确定" /><span>不确定</span></label></div></fieldset>
         <fieldset><legend>薄弱内容 <small>可多选，按考试自动调整</small></legend><div class="chip-options"><label id="listeningWeakOption"><input type="checkbox" name="weak" value="听力" checked /><span>听力</span></label><label id="readingWeakOption"><input type="checkbox" name="weak" value="阅读" checked /><span>阅读</span></label><label id="vocabWeakOption"><input type="checkbox" name="weak" value="词汇" /><span>词汇</span></label><label id="grammarWeakOption"><input type="checkbox" name="weak" value="语法" /><span>语法</span></label><label class="hidden" id="writingWeakOption"><input type="checkbox" name="weak" value="写作" /><span>写作</span></label><label class="hidden" id="speakingWeakOption"><input type="checkbox" name="weak" value="口语" /><span>口语</span></label></div><p class="field-help" id="weakHelp">TOPIK I 正式题型为听力和阅读；词汇、语法作为基础能力强化。</p></fieldset>
-        <fieldset><legend>每日强度</legend><div class="option-grid four"><label><input type="radio" name="intensity" value="轻量" /><span>轻量<small>30–45分钟</small></span></label><label><input type="radio" name="intensity" value="中等" checked /><span>中等<small>1–2小时</small></span></label><label><input type="radio" name="intensity" value="高强度" /><span>高强度<small>3–5小时</small></span></label><label><input type="radio" name="intensity" value="自定义" /><span>自定义<small>自己填写区间</small></span></label></div>
-          <div class="custom-duration hidden" id="customDuration"><label>每天最少<input type="number" id="durationMin" min="0.5" max="12" step="0.5" value="2" /><span>小时</span></label><span class="duration-dash">—</span><label>每天最多<input type="number" id="durationMax" min="0.5" max="12" step="0.5" value="4" /><span>小时</span></label></div>
+        </section>
+
+        <section class="settings-section settings-step" data-settings-step="1" aria-labelledby="settingsTimeHeading" hidden>
+          <div class="settings-section-heading"><div><h3 id="settingsTimeHeading">时间安排</h3><p>系统只会在你选定的日期和时间内排课。</p></div></div>
+        <fieldset><legend>每日强度</legend><div class="option-grid four"><label><input type="radio" name="intensity" value="轻量" /><span>轻量<small>30-45分钟</small></span></label><label><input type="radio" name="intensity" value="中等" checked /><span>中等<small>1-2小时</small></span></label><label><input type="radio" name="intensity" value="高强度" /><span>高强度<small>3-5小时</small></span></label><label><input type="radio" name="intensity" value="自定义" /><span>自定义<small>自己填写区间</small></span></label></div>
+          <div class="custom-duration hidden" id="customDuration"><label>每天最少<input type="number" id="durationMin" min="0.5" max="12" step="0.5" value="2" /><span>小时</span></label><span class="duration-dash">至</span><label>每天最多<input type="number" id="durationMax" min="0.5" max="12" step="0.5" value="4" /><span>小时</span></label></div>
         </fieldset>
         <fieldset><legend>每周学习日期 <small>可多选</small></legend><div class="chip-options"><label><input type="checkbox" name="studyDay" value="mon" checked /><span>周一</span></label><label><input type="checkbox" name="studyDay" value="tue" checked /><span>周二</span></label><label><input type="checkbox" name="studyDay" value="wed" checked /><span>周三</span></label><label><input type="checkbox" name="studyDay" value="thu" checked /><span>周四</span></label><label><input type="checkbox" name="studyDay" value="fri" checked /><span>周五</span></label><label><input type="checkbox" name="studyDay" value="sat" checked /><span>周六</span></label><label><input type="checkbox" name="studyDay" value="sun" checked /><span>周日</span></label></div></fieldset>
         <fieldset class="planning-fields"><legend>每天可学习时间</legend><div class="form-split"><label>开始时间<input id="availableStart" type="time" value="11:00" /></label><label>结束时间<input id="availableEnd" type="time" value="21:00" /></label></div><p class="field-help">课程只会安排在这个时间范围内，并默认避开午饭、晚饭和课间休息。</p></fieldset>
         <fieldset><legend>常用学习时段 <small>可多选，用于在可用时间内优先排课</small></legend><div class="chip-options"><label><input type="checkbox" name="time" value="上午" /><span>上午</span></label><label><input type="checkbox" name="time" value="下午" checked /><span>下午</span></label><label><input type="checkbox" name="time" value="晚上" checked /><span>晚上</span></label><label><input type="checkbox" name="time" value="不固定" /><span>不固定</span></label></div></fieldset>
-        <fieldset class="resource-fields"><legend>学习资料 <small>可选</small></legend><label>资料链接 <small>每行一个，可填写课程、考试官网或教材页面</small><textarea id="resourceLinks" rows="3" placeholder="https://...&#10;https://..."></textarea></label><label class="material-upload-zone"><input type="file" id="materialFiles" accept="image/*,.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.md" multiple /><span class="upload-icon">＋</span><span><strong>上传本地资料</strong><small>PDF、图片、Word、PPT、表格或文本；一次最多10个</small></span></label><div class="material-file-list" id="materialFileList"></div><label class="research-toggle"><input type="checkbox" id="autoResearch" checked /><span><strong>缺少资料时让AI搜索补充</strong><small>优先考试官网和权威资料，确认后才生成计划</small></span></label></fieldset>
-        <button class="primary-button full" type="submit">生成我的周计划</button>
+        </section>
+
+        <section class="settings-section settings-step settings-resource-step" data-settings-step="2" aria-labelledby="settingsResourceHeading" hidden>
+          <div class="settings-section-heading"><div><h3 id="settingsResourceHeading">补充范围与资料 <small>可选</small></h3><p>有教材或指定范围就补充；没有可以直接生成计划。</p></div></div>
+          <div class="settings-resource-body">
+            <fieldset class="planning-fields"><legend>补充学习范围</legend><label>教材章节或特殊要求 <small>也可以写不想练的内容。</small><textarea id="studyContent" rows="3" placeholder="例如：延世韩国语 3-4 册第 5-8 课；先补语法；暂时不练口语。"></textarea></label></fieldset>
+            <fieldset class="resource-fields"><legend>学习资料</legend><label>资料链接 <small>每行一个，可填写课程、考试官网或教材页面</small><textarea id="resourceLinks" rows="3" placeholder="https://...&#10;https://..."></textarea></label><label class="material-upload-zone"><input type="file" id="materialFiles" accept="image/*,.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.md" multiple /><span class="upload-icon">＋</span><span><strong>上传本地资料</strong><small>PDF、图片、Word、PPT、表格或文本；一次最多10个</small></span></label><div class="material-file-list" id="materialFileList"></div><label class="research-toggle"><input type="checkbox" id="autoResearch" checked /><span><strong>缺少资料时使用官方来源补充</strong><small>优先考试官网和公开样题，只用于校准题型与难度</small></span></label></fieldset>
+          </div>
+        </section>
+
+        <div class="settings-submit">
+          <div class="plan-generation-status hidden" id="planGenerationStatus" role="status" aria-live="polite">
+            <div class="plan-generation-head">
+              <span class="plan-generation-spinner" aria-hidden="true"></span>
+              <div><strong id="planGenerationTitle">正在整理学习设置</strong><p id="planGenerationDetail">确认目标、学习时间和资料范围。</p></div>
+            </div>
+            <div class="plan-generation-track" aria-hidden="true"><i id="planGenerationBar"></i></div>
+            <ol class="plan-generation-steps">
+              <li data-plan-generation-step="0">整理设置</li>
+              <li data-plan-generation-step="1">生成课程</li>
+              <li data-plan-generation-step="2">保留记录</li>
+              <li data-plan-generation-step="3">完成</li>
+            </ol>
+          </div>
+          <p id="settingsStepNote">第 1 步，共 3 步</p>
+          <div class="settings-step-actions">
+            <button class="text-button settings-back hidden" id="settingsBack" type="button">上一步</button>
+            <button class="primary-button" id="settingsNext" type="button">继续</button>
+            <button class="primary-button hidden" id="settingsSubmit" type="submit">生成周计划</button>
+          </div>
+        </div>
       </form>
+    </div>
+  </div>
+
+  <div class="modal-backdrop hidden" id="reminderModal" role="dialog" aria-modal="true" aria-labelledby="reminderModalTitle">
+    <div class="modal-panel reminder-panel">
+      <button class="modal-close" data-close="reminderModal">×</button>
+      <p class="section-kicker">学习提醒</p>
+      <h2 id="reminderModalTitle">每天几点提醒你查看明日重点？</h2>
+      <p class="settings-intro">到点后，系统会根据当天真实学习记录自动整理，并提醒你查看。</p>
+      <div class="reminder-card" id="dailyReminderCard">
+        <div class="reminder-copy">
+          <span class="reminder-icon">◷</span>
+          <div><strong id="dailyReminderTitle">明日重点提醒</strong><p id="dailyReminderText">尚未开启提醒。</p></div>
+        </div>
+        <div class="reminder-controls">
+          <label class="toggle-line"><input type="checkbox" id="dailyReminderEnabled" /><span>开启</span></label>
+          <input type="time" id="dailyReminderTime" value="21:30" aria-label="明日重点提醒时间" />
+        </div>
+      </div>
+      <button class="secondary-button full reminder-notify-button" id="dailyReminderNotify" type="button">允许浏览器通知</button>
+      <div class="modal-actions"><button class="primary-button" data-close="reminderModal">完成</button></div>
     </div>
   </div>
 
@@ -309,7 +377,7 @@
       <label class="upload-zone" id="uploadZone">
         <input type="file" id="errorFiles" accept="image/jpeg,image/png,image/webp" multiple />
         <span class="upload-icon">▧</span>
-        <strong>选择错题照片或PDF</strong>
+        <strong>选择错题照片</strong>
         <small>一次最多3张，可在下方预览和删除</small>
       </label>
       <div class="preview-section hidden" id="previewSection">
@@ -336,7 +404,7 @@
           <strong>图片中第 7 题的作答痕迹不清楚</strong>
           <div class="confirm-row"><button class="secondary-button import-choice">我选了②</button><button class="secondary-button import-choice">我选了③</button><button class="text-button">跳过此题</button></div>
         </article>
-        <p class="prototype-note">原型暂用示例结果演示流程；正式版将接入图片识别与题目分析。</p>
+        <p class="prototype-note">识别结果需要你确认；看不清的答案不会自动补猜。</p>
       </div>
 
       <div class="modal-actions">
@@ -353,18 +421,18 @@
       <p class="section-kicker">跨设备保存</p>
       <h2 id="accountTitle">登录后自动同步</h2>
       <p class="settings-intro" id="accountIntro">换电脑或手机登录同一账号，即可恢复课程表、打卡和错题集。</p>
-      <div id="signedOutAccount">
+      <form id="signedOutAccount" autocomplete="on" novalidate>
         <div class="checkin-form">
-          <label>邮箱<input id="accountEmail" type="email" autocomplete="email" placeholder="name@example.com" /></label>
-          <label>密码<input id="accountPassword" type="password" autocomplete="current-password" minlength="6" placeholder="至少6位" /></label>
+          <label>邮箱<input id="accountEmail" name="email" type="email" autocomplete="username" placeholder="name@example.com" /></label>
+          <label>密码<input id="accountPassword" name="password" type="password" autocomplete="current-password" minlength="6" placeholder="至少6位" /></label>
         </div>
         <div class="modal-actions account-actions">
-          <button class="secondary-button" id="signUpButton">注册账号</button>
-          <button class="primary-button" id="signInButton">登录并同步</button>
+          <button class="secondary-button" id="signUpButton" type="button">注册账号</button>
+          <button class="primary-button" id="signInButton" type="submit">登录并同步</button>
         </div>
-        <button class="text-button skip-login-button" id="skipLoginButton">先体验，稍后登录 →</button>
+        <button class="text-button skip-login-button" id="skipLoginButton" type="button">先体验，稍后登录 →</button>
         <p class="cloud-note">首次注册可能需要在邮箱中点击确认链接。</p>
-      </div>
+      </form>
       <div class="signed-in-box hidden" id="signedInAccount">
         <span class="overview-icon green">✓</span>
         <div><small>当前账号</small><strong id="signedInEmail"></strong><p id="lastSyncText">学习进度已自动保存</p></div>
@@ -376,7 +444,31 @@
     </div>
   </div>
 
+  <div class="modal-backdrop hidden" id="externalRecordModal" role="dialog" aria-modal="true" aria-labelledby="externalRecordTitle">
+    <div class="modal-panel task-panel">
+      <button class="modal-close" data-close="externalRecordModal">×</button>
+      <p class="section-kicker">站外学习补录</p>
+      <h2 id="externalRecordTitle">刚才学了什么？</h2>
+      <p class="modal-meta">说一句或输入一句，提交时间会自动记录。</p>
+      <div class="checkin-form">
+        <label for="externalStudyNote">一句话记录</label>
+        <span class="external-input-wrap">
+          <textarea id="externalStudyNote" rows="3" maxlength="160" placeholder="例如：刚背了25分钟单词；做了20分钟听力。"></textarea>
+          <button class="voice-input-button" id="startExternalVoiceInput" type="button" aria-label="开始语音输入" aria-pressed="false" title="开始语音输入">
+            <svg class="voice-mic-icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M12 15.5a3.5 3.5 0 0 0 3.5-3.5V7a3.5 3.5 0 1 0-7 0v5a3.5 3.5 0 0 0 3.5 3.5Z"/><path d="M5.5 11.5V12a6.5 6.5 0 0 0 13 0v-.5M12 18.5V22M9 22h6"/></svg>
+            <svg class="voice-stop-icon" aria-hidden="true" viewBox="0 0 24 24"><rect x="7" y="7" width="10" height="10" rx="1.5"/></svg>
+          </button>
+        </span>
+        <p class="voice-input-status" id="externalVoiceStatus">点输入框右侧的麦克风开始，说完再点一次结束。</p>
+      </div>
+      <div class="modal-actions">
+        <button class="secondary-button" data-close="externalRecordModal">取消</button>
+        <button class="primary-button" id="saveExternalRecord" type="button">确定</button>
+      </div>
+    </div>
+  </div>
+
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="app.js?v=20260710-tts-fallback-label"></script>
+  <script src="app.js?v=20260719-cloud-auth-status-v14"></script>
 </body>
 </html>
