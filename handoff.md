@@ -210,3 +210,7 @@ TOPIK I 系统听力兜底也已完成一题一原文修复。五道题现在对
 完整回归脚本为 `specs/full-regression.cli.js`，验收说明为 `specs/core-learning-loop.plan.md`。隔离浏览器已覆盖16组核心断言并全部通过，包括部分完成恢复、真实错题诊断、分类筛选、听写、单词消除、多模块补录和390px布局。生产 MiniMax TTS 返回真实 MPEG 音频；生产5题在线请求在智增增超时后约13秒明确降级到已验证题库，不会再等待近一分钟。
 
 唯一明确的外部阻塞仍是云同步：当前 Supabase 项目域名不可达，`/api/cloud-proxy` 返回502及中文提示。恢复跨设备登录需要替换或恢复有效的 `SUPABASE_URL` 与 `SUPABASE_ANON_KEY`，不要在仓库中记录密钥。接下来的产品工作应优先扩充真实 TOPIK 题图、原始音频、阅读/写作题库与 OCR 质量验证；不要再进行一轮全站重设计，也不要扩展 Reward Engine。
+
+最新视觉版本为 `20260719-impeccable-v16`，生产部署 ID `dpl_5nWvCX5ZouD7ZNxnTA56HMHg2mC5`，回退标签为 `checkpoint-20260719-pre-impeccable-redesign`（提交 `573c6da`）。本轮只强化浅色界面中的比例、字重、留白、状态和主操作层级，并修复820px头部入口挤出；没有改时间线卡片组件、学习闭环逻辑、Day1、Day7、PWA 或 Reward Engine。
+
+本机与生产站的1440px、820px与390px视觉验收和全学习闭环回归均已通过；三档页面级横向溢出为0，生产错误级控制台消息为0，`/api/cloud-config` 返回200。静态预览唯一错误仍为预期的 `/api/cloud-config` 404，因为本机静态服务器不承载函数路由。
