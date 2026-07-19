@@ -55,7 +55,7 @@ const expectedTopik102Assets = [
   ["topik-ii-listening-102-q001", "assets/materials/topik102-listening/question/q001.png", "assets/materials/topik102-listening/audio/2-01.mp3"],
   ["topik-ii-listening-102-q002", "assets/materials/topik102-listening/question/q002.png", "assets/materials/topik102-listening/audio/2-02.mp3"],
   ["topik-ii-listening-102-q003", "assets/materials/topik102-listening/question/q003.png", "assets/materials/topik102-listening/audio/2-03.mp3"],
-  ...Array.from({ length: 45 }, (_, index) => {
+  ...Array.from({ length: 47 }, (_, index) => {
     const questionNumber = index + 4;
     const padded = String(questionNumber).padStart(3, "0");
     const audioNumber = String(questionNumber).padStart(2, "0");
