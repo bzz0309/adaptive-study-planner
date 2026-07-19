@@ -53,6 +53,7 @@ async page => {
     const speakerRole = realMaterialQuestionsForContext({ settings, category: "listening", title: "听职业与身份" }, 5);
     const speakerAttitude = realMaterialQuestionsForContext({ settings, category: "listening", title: "听说话人态度" }, 5);
     const topic = realMaterialQuestionsForContext({ settings, category: "listening", title: "听主题与内容" }, 5);
+    const speakingMethod = realMaterialQuestionsForContext({ settings, category: "listening", title: "听说明方式" }, 5);
     const priorContext = realMaterialQuestionsForContext({ settings, category: "listening", title: "听对话前文推断" }, 5);
     const readingContent = realMaterialQuestionsForContext({ settings, category: "reading", title: "题干关键词定位" }, 5);
     const thirdBatch = realMaterialQuestionBank
@@ -67,6 +68,9 @@ async page => {
     const sixthBatch = realMaterialQuestionBank
       .flatMap(set => set.questions || [])
       .filter(item => /^topik-ii-listening-102-q(?:03[7-9]|04[0-2])$/.test(item.materialQuestionId || ""));
+    const seventhBatch = realMaterialQuestionBank
+      .flatMap(set => set.questions || [])
+      .filter(item => /^topik-ii-listening-102-q04[3-8]$/.test(item.materialQuestionId || ""));
     return {
       listening: listening.map(item => ({ id: item.materialQuestionId, audio: item.audioSrc, image: item.materialImage })),
       reading: reading.map(item => ({ id: item.materialQuestionId, instruction: item.instruction, passage: item.passage, image: item.materialImage })),
@@ -76,30 +80,35 @@ async page => {
       speakerRole: speakerRole.map(item => ({ id: item.materialQuestionId, audio: item.audioSrc, image: item.materialImage })),
       speakerAttitude: speakerAttitude.map(item => ({ id: item.materialQuestionId, audio: item.audioSrc, image: item.materialImage })),
       topic: topic.map(item => ({ id: item.materialQuestionId, audio: item.audioSrc, image: item.materialImage })),
+      speakingMethod: speakingMethod.map(item => ({ id: item.materialQuestionId, audio: item.audioSrc, image: item.materialImage })),
       priorContext: priorContext.map(item => ({ id: item.materialQuestionId, audio: item.audioSrc, image: item.materialImage })),
       readingContent: readingContent.map(item => ({ id: item.materialQuestionId, instruction: item.instruction, passage: item.passage, image: item.materialImage })),
       thirdBatch: thirdBatch.map(item => ({ id: item.materialQuestionId, audio: item.audioSrc, image: item.materialImage })),
       fourthBatch: fourthBatch.map(item => ({ id: item.materialQuestionId, audio: item.audioSrc, image: item.materialImage })),
       fifthBatch: fifthBatch.map(item => ({ id: item.materialQuestionId, audio: item.audioSrc, image: item.materialImage })),
-      sixthBatch: sixthBatch.map(item => ({ id: item.materialQuestionId, audio: item.audioSrc, image: item.materialImage }))
+      sixthBatch: sixthBatch.map(item => ({ id: item.materialQuestionId, audio: item.audioSrc, image: item.materialImage })),
+      seventhBatch: seventhBatch.map(item => ({ id: item.materialQuestionId, audio: item.audioSrc, image: item.materialImage }))
     };
   });
   check("listening routes to five verified TOPIK 102 questions", bankAudit.listening.length === 5 && bankAudit.listening.every(item => /^topik-ii-listening-102-q(?:00[4-9]|01[0-2]|023)$/.test(item.id)), JSON.stringify(bankAudit.listening));
   check("listening image and audio stay one-to-one", new Set(bankAudit.listening.map(item => item.audio)).size === 5 && new Set(bankAudit.listening.map(item => item.image)).size === 5 && bankAudit.listening.every(item => item.audio?.includes("topik102-listening/audio/") && item.image?.includes("topik102-listening/question/")), JSON.stringify(bankAudit.listening));
   check("reading routes to four verified TOPIK 102 questions", bankAudit.reading.length === 4 && bankAudit.reading.every(item => /^topik-ii-reading-102-q00[5-8]$/.test(item.id)), JSON.stringify(bankAudit.reading));
   check("reading instruction and passage remain separate", bankAudit.reading.every(item => item.instruction && item.passage && item.instruction !== item.passage && item.image?.includes("topik102-reading/question/")), JSON.stringify(bankAudit.reading));
-  check("content-match routes only to verified content questions", bankAudit.contentMatch.length === 14 && bankAudit.contentMatch.every(item => /^topik-ii-listening-102-q(?:01[3-6]|022|024|026|028|030|034|036|038|040|042)$/.test(item.id)), JSON.stringify(bankAudit.contentMatch));
+  check("content-match routes only to verified content questions", bankAudit.contentMatch.length === 17 && bankAudit.contentMatch.every(item => /^topik-ii-listening-102-q(?:01[3-6]|022|024|026|028|030|034|036|038|040|042|044|045|047)$/.test(item.id)), JSON.stringify(bankAudit.contentMatch));
   check("main-idea routes only to verified center-idea questions", bankAudit.mainIdea.length === 9 && bankAudit.mainIdea.every(item => /^topik-ii-listening-102-q(?:01[7-9]|020|021|025|031|037|041)$/.test(item.id)), JSON.stringify(bankAudit.mainIdea));
   check("speaker-intent routes only to verified questions 27 and 35", bankAudit.speakerIntent.length === 2 && bankAudit.speakerIntent.every(item => /^topik-ii-listening-102-q(?:027|035)$/.test(item.id)), JSON.stringify(bankAudit.speakerIntent));
   check("speaker-role routes only to verified question 29", bankAudit.speakerRole.length === 1 && bankAudit.speakerRole[0]?.id === "topik-ii-listening-102-q029", JSON.stringify(bankAudit.speakerRole));
-  check("speaker-attitude routes only to verified question 32", bankAudit.speakerAttitude.length === 1 && bankAudit.speakerAttitude[0]?.id === "topik-ii-listening-102-q032", JSON.stringify(bankAudit.speakerAttitude));
-  check("topic routes only to verified question 33", bankAudit.topic.length === 1 && bankAudit.topic[0]?.id === "topik-ii-listening-102-q033", JSON.stringify(bankAudit.topic));
+  check("speaker-attitude routes only to verified questions 32 and 48", bankAudit.speakerAttitude.length === 2 && bankAudit.speakerAttitude.every(item => /^topik-ii-listening-102-q(?:032|048)$/.test(item.id)), JSON.stringify(bankAudit.speakerAttitude));
+  check("topic routes only to verified questions 33 and 43", bankAudit.topic.length === 2 && bankAudit.topic.every(item => /^topik-ii-listening-102-q(?:033|043)$/.test(item.id)), JSON.stringify(bankAudit.topic));
+  check("speaking-method routes only to verified question 46", bankAudit.speakingMethod.length === 1 && bankAudit.speakingMethod[0]?.id === "topik-ii-listening-102-q046", JSON.stringify(bankAudit.speakingMethod));
   check("prior-context routes only to verified question 39", bankAudit.priorContext.length === 1 && bankAudit.priorContext[0]?.id === "topik-ii-listening-102-q039", JSON.stringify(bankAudit.priorContext));
   check("third listening batch is complete", bankAudit.thirdBatch.length === 4 && bankAudit.thirdBatch.every(item => item.audio?.includes("topik102-listening/audio/") && item.image?.includes("topik102-listening/question/")), JSON.stringify(bankAudit.thirdBatch));
   check("fourth listening batch is complete", bankAudit.fourthBatch.length === 6 && bankAudit.fourthBatch.every(item => item.audio?.includes("topik102-listening/audio/") && item.image?.includes("topik102-listening/question/")), JSON.stringify(bankAudit.fourthBatch));
   check("fifth listening batch is complete", bankAudit.fifthBatch.length === 6 && bankAudit.fifthBatch.every(item => item.audio?.includes("topik102-listening/audio/") && item.image?.includes("topik102-listening/question/")), JSON.stringify(bankAudit.fifthBatch));
   check("sixth listening batch is complete", bankAudit.sixthBatch.length === 6 && bankAudit.sixthBatch.every(item => item.audio?.includes("topik102-listening/audio/") && item.image?.includes("topik102-listening/question/")), JSON.stringify(bankAudit.sixthBatch));
-  check("new listening images and audio stay one-to-one", new Set([...bankAudit.contentMatch, ...bankAudit.mainIdea, ...bankAudit.speakerIntent, ...bankAudit.speakerRole, ...bankAudit.speakerAttitude, ...bankAudit.topic, ...bankAudit.thirdBatch, ...bankAudit.fourthBatch, ...bankAudit.fifthBatch, ...bankAudit.sixthBatch].map(item => item.audio)).size >= 29 && new Set([...bankAudit.contentMatch, ...bankAudit.mainIdea, ...bankAudit.speakerIntent, ...bankAudit.speakerRole, ...bankAudit.speakerAttitude, ...bankAudit.topic, ...bankAudit.thirdBatch, ...bankAudit.fourthBatch, ...bankAudit.fifthBatch, ...bankAudit.sixthBatch].map(item => item.image)).size >= 29, JSON.stringify({ contentMatch: bankAudit.contentMatch, mainIdea: bankAudit.mainIdea, speakerIntent: bankAudit.speakerIntent, speakerRole: bankAudit.speakerRole, speakerAttitude: bankAudit.speakerAttitude, topic: bankAudit.topic, sixthBatch: bankAudit.sixthBatch }));
+  check("seventh listening batch is complete", bankAudit.seventhBatch.length === 6 && bankAudit.seventhBatch.every(item => item.audio?.includes("topik102-listening/audio/") && item.image?.includes("topik102-listening/question/")), JSON.stringify(bankAudit.seventhBatch));
+  const routedListening = [...bankAudit.contentMatch, ...bankAudit.mainIdea, ...bankAudit.speakerIntent, ...bankAudit.speakerRole, ...bankAudit.speakerAttitude, ...bankAudit.topic, ...bankAudit.speakingMethod, ...bankAudit.thirdBatch, ...bankAudit.fourthBatch, ...bankAudit.fifthBatch, ...bankAudit.sixthBatch, ...bankAudit.seventhBatch];
+  check("new listening images and audio stay one-to-one", new Set(routedListening.map(item => item.audio)).size >= 35 && new Set(routedListening.map(item => item.image)).size >= 35, JSON.stringify({ contentMatch: bankAudit.contentMatch, mainIdea: bankAudit.mainIdea, speakerIntent: bankAudit.speakerIntent, speakerRole: bankAudit.speakerRole, speakerAttitude: bankAudit.speakerAttitude, topic: bankAudit.topic, speakingMethod: bankAudit.speakingMethod, seventhBatch: bankAudit.seventhBatch }));
   check("reading content-check routes to verified questions 9-12", bankAudit.readingContent.length === 4 && bankAudit.readingContent.every(item => /^topik-ii-reading-102-q(?:009|010|011|012)$/.test(item.id)), JSON.stringify(bankAudit.readingContent));
   check("new reading instruction and passage remain separate", bankAudit.readingContent.every(item => item.instruction && item.passage && item.instruction !== item.passage && item.image?.includes("topik102-reading/question/")), JSON.stringify(bankAudit.readingContent));
 

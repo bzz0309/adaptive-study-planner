@@ -55,7 +55,7 @@ const expectedTopik102Assets = [
   ["topik-ii-listening-102-q001", "assets/materials/topik102-listening/question/q001.png", "assets/materials/topik102-listening/audio/2-01.mp3"],
   ["topik-ii-listening-102-q002", "assets/materials/topik102-listening/question/q002.png", "assets/materials/topik102-listening/audio/2-02.mp3"],
   ["topik-ii-listening-102-q003", "assets/materials/topik102-listening/question/q003.png", "assets/materials/topik102-listening/audio/2-03.mp3"],
-  ...Array.from({ length: 39 }, (_, index) => {
+  ...Array.from({ length: 45 }, (_, index) => {
     const questionNumber = index + 4;
     const padded = String(questionNumber).padStart(3, "0");
     const audioNumber = String(questionNumber).padStart(2, "0");
@@ -114,6 +114,10 @@ check(
 check(
   runtimeSource.includes('matchTerms: ["听主题与内容"]'),
   "102nd topic listening set must expose explicit task match terms"
+);
+check(
+  runtimeSource.includes('matchTerms: ["听说明方式"]'),
+  "102nd speaking-method listening set must expose explicit task match terms"
 );
 check(
   runtimeSource.includes('matchTerms: ["听对话前文推断"]'),
