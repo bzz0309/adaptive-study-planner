@@ -124,7 +124,7 @@ check(
   "102nd prior-context listening set must expose explicit task match terms"
 );
 
-const expectedTopik102ReadingAssets = Array.from({ length: 8 }, (_, index) => {
+const expectedTopik102ReadingAssets = Array.from({ length: 14 }, (_, index) => {
   const padded = String(index + 5).padStart(3, "0");
   return [
     `topik-ii-reading-102-q${padded}`,
@@ -144,6 +144,10 @@ check(
 check(
   runtimeSource.includes('matchTerms: ["通知公告阅读", "图表信息读取", "题干关键词定位", "限时阅读"]'),
   "102nd content-check reading set must expose explicit task match terms"
+);
+check(
+  runtimeSource.includes('matchTerms: ["句子连接判断"]'),
+  "102nd cohesion reading set must expose explicit task match terms"
 );
 check(
   runtimeSource.includes("const taskText = materialContextText(context);") &&

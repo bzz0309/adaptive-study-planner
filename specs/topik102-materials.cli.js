@@ -56,6 +56,7 @@ async page => {
     const speakingMethod = realMaterialQuestionsForContext({ settings, category: "listening", title: "听说明方式" }, 5);
     const priorContext = realMaterialQuestionsForContext({ settings, category: "listening", title: "听对话前文推断" }, 5);
     const readingContent = realMaterialQuestionsForContext({ settings, category: "reading", title: "题干关键词定位" }, 5);
+    const readingCohesion = realMaterialQuestionsForContext({ settings, category: "reading", title: "句子连接判断" }, 10);
     const thirdBatch = realMaterialQuestionBank
       .flatMap(set => set.questions || [])
       .filter(item => /^topik-ii-listening-102-q02[1-4]$/.test(item.materialQuestionId || ""));
@@ -86,6 +87,7 @@ async page => {
       speakingMethod: speakingMethod.map(item => ({ id: item.materialQuestionId, audio: item.audioSrc, image: item.materialImage })),
       priorContext: priorContext.map(item => ({ id: item.materialQuestionId, audio: item.audioSrc, image: item.materialImage })),
       readingContent: readingContent.map(item => ({ id: item.materialQuestionId, instruction: item.instruction, passage: item.passage, image: item.materialImage })),
+      readingCohesion: readingCohesion.map(item => ({ id: item.materialQuestionId, instruction: item.instruction, passage: item.passage, image: item.materialImage })),
       thirdBatch: thirdBatch.map(item => ({ id: item.materialQuestionId, audio: item.audioSrc, image: item.materialImage })),
       fourthBatch: fourthBatch.map(item => ({ id: item.materialQuestionId, audio: item.audioSrc, image: item.materialImage })),
       fifthBatch: fifthBatch.map(item => ({ id: item.materialQuestionId, audio: item.audioSrc, image: item.materialImage })),
@@ -116,6 +118,8 @@ async page => {
   check("new listening images and audio stay one-to-one", new Set(routedListening.map(item => item.audio)).size >= 37 && new Set(routedListening.map(item => item.image)).size >= 37, JSON.stringify({ contentMatch: bankAudit.contentMatch, mainIdea: bankAudit.mainIdea, speakerIntent: bankAudit.speakerIntent, speakerRole: bankAudit.speakerRole, speakerAttitude: bankAudit.speakerAttitude, topic: bankAudit.topic, speakingMethod: bankAudit.speakingMethod, finalBatch: bankAudit.finalBatch }));
   check("reading content-check routes to verified questions 9-12", bankAudit.readingContent.length === 4 && bankAudit.readingContent.every(item => /^topik-ii-reading-102-q(?:009|010|011|012)$/.test(item.id)), JSON.stringify(bankAudit.readingContent));
   check("new reading instruction and passage remain separate", bankAudit.readingContent.every(item => item.instruction && item.passage && item.instruction !== item.passage && item.image?.includes("topik102-reading/question/")), JSON.stringify(bankAudit.readingContent));
+  check("reading cohesion routes to verified questions 13-18", bankAudit.readingCohesion.length === 6 && bankAudit.readingCohesion.every(item => /^topik-ii-reading-102-q(?:013|014|015|016|017|018)$/.test(item.id)), JSON.stringify(bankAudit.readingCohesion));
+  check("reading cohesion keeps instruction and passage separate", bankAudit.readingCohesion.every(item => item.instruction && item.passage && item.instruction !== item.passage && item.image?.includes("topik102-reading/question/")), JSON.stringify(bankAudit.readingCohesion));
 
   await seedTask({ category: "listening", title: "听力 · 判断下一步行动" });
   await page.evaluate(() => openTask("topik102-listening"));
