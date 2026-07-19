@@ -4653,7 +4653,7 @@ function scheduleDailyReminder() {
 
 const rewardCatalog = {
   "first-checkin": { badge: "DAY 1", visual: "companion-day1", companionDay: 1, title: "第一盏应援灯亮了", text: "给今天也在坚持学习的你亮一下", note: "今天的灯亮起来了。第一条记录已经留下，先陪你开始。" },
-  "checkin-7": { badge: "7", visual: "support-card", title: "一周安可", text: "你已经留下 7 天记录了。这周不一定每天都顺，但你还是把学习接住了。", note: "收下一张「本周没有断掉」应援小卡。" },
+  "checkin-7": { badge: "7", visual: "companion-day7", companionDay: 7, title: "本周应援卡", text: "连续 7 天的学习记录已经留下。", note: "抽一张属于这一周的应援卡。" },
   "checkin-14": { badge: "14", visual: "lyric-card", title: "慢慢有节奏", text: "这两周不是突然变厉害，是一点点把节奏找回来了。", note: "这一段节奏，先替你收好。" },
   "checkin-30": { badge: "30", visual: "ticket", title: "一个月巡演站", text: "你已经陪自己走过一个月。回头看，这些记录都是你一点点做过来的痕迹。", note: "收下一张「一个月站」纪念票根。" },
   "first-error-solved": { badge: "OK", title: "高音通过", text: "这道错题不是被跳过了，是被你慢慢拿下了。", note: "这题被你拿下了。" },
@@ -4672,6 +4672,25 @@ function readRewardState() {
 function writeRewardState(state) {
   localStorage.setItem("topikPrototypeRewards", JSON.stringify(state));
   scheduleCloudSave();
+}
+
+function dateKeyToUtcDay(dateKey) {
+  const match = String(dateKey || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return null;
+  const [, year, month, day] = match.map(Number);
+  const utcDay = Date.UTC(year, month - 1, day) / 86400000;
+  const parsed = new Date(utcDay * 86400000);
+  if (parsed.getUTCFullYear() !== year || parsed.getUTCMonth() !== month - 1 || parsed.getUTCDate() !== day) return null;
+  return utcDay;
+}
+
+function consecutiveCheckinStreak(dateKeys, endingDateKey) {
+  const endingDay = dateKeyToUtcDay(endingDateKey);
+  if (endingDay === null) return 0;
+  const recordedDays = new Set((Array.isArray(dateKeys) ? dateKeys : []).map(dateKeyToUtcDay).filter(day => day !== null));
+  let streak = 0;
+  for (let cursor = endingDay; recordedDays.has(cursor); cursor -= 1) streak += 1;
+  return streak;
 }
 
 function rewardVisualMarkup(reward) {
@@ -4837,12 +4856,12 @@ function recordCheckinReward(task) {
   const dateKey = beijingDateKey(task.checkin?.updatedAt ? new Date(task.checkin.updatedAt) : new Date());
   if (!state.checkinDates.includes(dateKey)) state.checkinDates.push(dateKey);
   writeRewardState(state);
-  const count = state.checkinDates.length;
+  const streak = consecutiveCheckinStreak(state.checkinDates, dateKey);
   unlockRewards([
     "first-checkin",
-    ...(count >= 7 ? ["checkin-7"] : []),
-    ...(count >= 14 ? ["checkin-14"] : []),
-    ...(count >= 30 ? ["checkin-30"] : [])
+    ...(streak >= 7 ? ["checkin-7"] : []),
+    ...(streak >= 14 ? ["checkin-14"] : []),
+    ...(streak >= 30 ? ["checkin-30"] : [])
   ]);
 }
 

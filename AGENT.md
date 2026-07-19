@@ -8,6 +8,8 @@ Adaptive Study Planner 是面向 TOPIK 备考的学习行为驱动系统：
 
 奖励系统只承担 Day1/Day7 等完成后的轻反馈，不替代学习主线。
 
+- Day1/Day7 触发只消费真实完成记录；Day7 必须是以本次完成日期为结尾的连续7个北京时间自然日，不能用累计打卡天数代替。主站只决定节点，Day1/Day7 展示继续交给冻结的 `reward-companion-system` 场景。
+
 ## 优先阅读
 
 - `docs/PRODUCT_OVERVIEW.md`：全局定位和体验主线。

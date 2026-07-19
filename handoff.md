@@ -214,3 +214,14 @@ TOPIK I 系统听力兜底也已完成一题一原文修复。五道题现在对
 最新视觉版本为 `20260719-impeccable-v16`，生产部署 ID `dpl_5nWvCX5ZouD7ZNxnTA56HMHg2mC5`，回退标签为 `checkpoint-20260719-pre-impeccable-redesign`（提交 `573c6da`）。本轮只强化浅色界面中的比例、字重、留白、状态和主操作层级，并修复820px头部入口挤出；没有改时间线卡片组件、学习闭环逻辑、Day1、Day7、PWA 或 Reward Engine。
 
 本机与生产站的1440px、820px与390px视觉验收和全学习闭环回归均已通过；三档页面级横向溢出为0，生产错误级控制台消息为0，`/api/cloud-config` 返回200。静态预览唯一错误仍为预期的 `/api/cloud-config` 404，因为本机静态服务器不承载函数路由。
+
+## 2026-07-19 - Day1 / Day7 奖励触发收口
+
+- 修改前回退标签为 `checkpoint-20260719-pre-reward-trigger-fix`，指向提交 `bf2de2e`。
+- Day1 已用第一次真实完成记录验证，可正确打开 `rewardDay=1` 的奖励页。
+- Day7 原实现按累计打卡日期数量触发，断开的7天也会误解锁；现在改为以本次完成日期结尾的连续7个北京时间自然日。
+- Day7 主站展示已从旧 ENCORE 卡切换到现有 `reward-companion-system` 的 `rewardDay=7`，主站不复制或修改抽卡状态机。
+- 新增 `specs/reward-milestones.cli.js`，覆盖 Day1、断续7天、连续7天、同日去重和 Day7 iframe；`specs/full-regression.cli.js` 全部核心学习闭环断言继续通过。
+- 当前仍未完成的外部/内容型事项：失效 Supabase 项目导致云登录不可用；真实 TOPIK 题图、原始音频和完整阅读/写作题库仍需持续导入；PDF 错题导入和长作文真实提交评改尚未实现。不要用固定样例伪装这些能力。
+- Day14 及更后节点仍为现有占位范围；本轮没有扩展 Reward Engine，也没有改 PWA。
+- 奖励伴侣部署 ID 为 `dpl_37HetoYgrCf3Lmh76cN1QCyXjnmx`；主站最终部署 ID 为 `dpl_EzrkVvj3YqXvs9p6PjqNCKG1AQx7`，资源版本 `20260719-reward-milestones-v17`。生产实际点击已覆盖 Day7 抽卡、正反面、收下，桌面和390px无页面级横向溢出，主站与奖励页错误级控制台消息均为0。

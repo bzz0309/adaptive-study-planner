@@ -15,7 +15,7 @@ RewardScene
 ├── Day365Ocean
 ```
 
-当前仅完整实现 `Day1Scene`，其余为 placeholder。
+当前已完整实现并冻结 `Day1Scene`，`Day7Card` 已实现抽卡、正反面查看与收藏五状态流程；Day14 及之后节点仍为 placeholder。
 
 ## 运行
 
