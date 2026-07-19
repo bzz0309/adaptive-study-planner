@@ -285,3 +285,5 @@ TOPIK I 系统听力兜底也已完成一题一原文修复。五道题现在对
 - `scripts/validate-real-material-bank.mjs` 已验证48道听力和8道阅读；`specs/topik102-materials.cli.js` 本机27项通过，`specs/full-regression.cli.js` 本机18项通过，390px无页面级横向溢出。
 - 下一批只剩听力49-50题；之后优先继续阅读13题以后。写作51-54仍需专用长文本保存与分项评改，不能放进四选一练习器。
 - 本批未修改既定视觉、时间线卡片、听写、Day1、Day7、PWA 或 Reward Engine；云登录仍由失效 Supabase 项目阻塞，与真题导入无关。
+- 已部署到生产主域名，部署 ID `dpl_G8rv9xLg356nwzV2RtV4ta9XkDVT`。生产首页命中 v24，脚本与本地提交一致，43-48题题图/音频均返回200；生产专项27项、完整学习闭环18项与错误级控制台0项均通过。
+- 回退标签为 `checkpoint-20260719-pre-topik102-seventh-batch`。
