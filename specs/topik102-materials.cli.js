@@ -47,15 +47,26 @@ async page => {
     const settings = { exam: "TOPIK", level: "II", targetGrade: "3", weak: ["听力", "阅读"] };
     const listening = realMaterialQuestionsForContext({ settings, category: "listening", title: "听力 · 判断下一步行动" }, 5);
     const reading = realMaterialQuestionsForContext({ settings, category: "reading", title: "通知公告阅读" }, 5);
+    const contentMatch = realMaterialQuestionsForContext({ settings, category: "listening", title: "听内容一致" }, 8);
+    const mainIdea = realMaterialQuestionsForContext({ settings, category: "listening", title: "听后复述" }, 5);
+    const readingContent = realMaterialQuestionsForContext({ settings, category: "reading", title: "题干关键词定位" }, 5);
     return {
       listening: listening.map(item => ({ id: item.materialQuestionId, audio: item.audioSrc, image: item.materialImage })),
-      reading: reading.map(item => ({ id: item.materialQuestionId, instruction: item.instruction, passage: item.passage, image: item.materialImage }))
+      reading: reading.map(item => ({ id: item.materialQuestionId, instruction: item.instruction, passage: item.passage, image: item.materialImage })),
+      contentMatch: contentMatch.map(item => ({ id: item.materialQuestionId, audio: item.audioSrc, image: item.materialImage })),
+      mainIdea: mainIdea.map(item => ({ id: item.materialQuestionId, audio: item.audioSrc, image: item.materialImage })),
+      readingContent: readingContent.map(item => ({ id: item.materialQuestionId, instruction: item.instruction, passage: item.passage, image: item.materialImage }))
     };
   });
   check("listening routes to five verified TOPIK 102 questions", bankAudit.listening.length === 5 && bankAudit.listening.every(item => /^topik-ii-listening-102-q(?:00[4-9]|01[0-2])$/.test(item.id)), JSON.stringify(bankAudit.listening));
   check("listening image and audio stay one-to-one", new Set(bankAudit.listening.map(item => item.audio)).size === 5 && new Set(bankAudit.listening.map(item => item.image)).size === 5 && bankAudit.listening.every(item => item.audio?.includes("topik102-listening/audio/") && item.image?.includes("topik102-listening/question/")), JSON.stringify(bankAudit.listening));
   check("reading routes to four verified TOPIK 102 questions", bankAudit.reading.length === 4 && bankAudit.reading.every(item => /^topik-ii-reading-102-q00[5-8]$/.test(item.id)), JSON.stringify(bankAudit.reading));
   check("reading instruction and passage remain separate", bankAudit.reading.every(item => item.instruction && item.passage && item.instruction !== item.passage && item.image?.includes("topik102-reading/question/")), JSON.stringify(bankAudit.reading));
+  check("content-match routes to verified questions 13-16", bankAudit.contentMatch.length === 4 && bankAudit.contentMatch.every(item => /^topik-ii-listening-102-q01[3-6]$/.test(item.id)), JSON.stringify(bankAudit.contentMatch));
+  check("main-idea routes to verified questions 17-20", bankAudit.mainIdea.length === 4 && bankAudit.mainIdea.every(item => /^topik-ii-listening-102-q(?:017|018|019|020)$/.test(item.id)), JSON.stringify(bankAudit.mainIdea));
+  check("new listening images and audio stay one-to-one", new Set([...bankAudit.contentMatch, ...bankAudit.mainIdea].map(item => item.audio)).size === 8 && new Set([...bankAudit.contentMatch, ...bankAudit.mainIdea].map(item => item.image)).size === 8, JSON.stringify({ contentMatch: bankAudit.contentMatch, mainIdea: bankAudit.mainIdea }));
+  check("reading content-check routes to verified questions 9-12", bankAudit.readingContent.length === 4 && bankAudit.readingContent.every(item => /^topik-ii-reading-102-q(?:009|010|011|012)$/.test(item.id)), JSON.stringify(bankAudit.readingContent));
+  check("new reading instruction and passage remain separate", bankAudit.readingContent.every(item => item.instruction && item.passage && item.instruction !== item.passage && item.image?.includes("topik102-reading/question/")), JSON.stringify(bankAudit.readingContent));
 
   await seedTask({ category: "listening", title: "听力 · 判断下一步行动" });
   await page.evaluate(() => openTask("topik102-listening"));

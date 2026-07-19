@@ -55,7 +55,7 @@ const expectedTopik102Assets = [
   ["topik-ii-listening-102-q001", "assets/materials/topik102-listening/question/q001.png", "assets/materials/topik102-listening/audio/2-01.mp3"],
   ["topik-ii-listening-102-q002", "assets/materials/topik102-listening/question/q002.png", "assets/materials/topik102-listening/audio/2-02.mp3"],
   ["topik-ii-listening-102-q003", "assets/materials/topik102-listening/question/q003.png", "assets/materials/topik102-listening/audio/2-03.mp3"],
-  ...Array.from({ length: 9 }, (_, index) => {
+  ...Array.from({ length: 17 }, (_, index) => {
     const questionNumber = index + 4;
     const padded = String(questionNumber).padStart(3, "0");
     const audioNumber = String(questionNumber).padStart(2, "0");
@@ -88,11 +88,19 @@ check(
   "102nd listening set must expose explicit task match terms"
 );
 check(
-  runtimeSource.includes('matchTerms: ["听力 · 判断下一步行动", "听内容一致"]'),
+  runtimeSource.includes('matchTerms: ["听力 · 判断下一步行动"]'),
   "102nd dialogue/action listening set must expose explicit task match terms"
 );
+check(
+  runtimeSource.includes('matchTerms: ["听内容一致"]'),
+  "102nd content-match listening set must expose explicit task match terms"
+);
+check(
+  runtimeSource.includes('matchTerms: ["听后复述"]'),
+  "102nd main-idea listening set must expose explicit task match terms"
+);
 
-const expectedTopik102ReadingAssets = Array.from({ length: 4 }, (_, index) => {
+const expectedTopik102ReadingAssets = Array.from({ length: 8 }, (_, index) => {
   const padded = String(index + 5).padStart(3, "0");
   return [
     `topik-ii-reading-102-q${padded}`,
@@ -108,6 +116,10 @@ expectedTopik102ReadingAssets.forEach(([id, imagePath]) => {
 check(
   runtimeSource.includes('matchTerms: ["通知公告阅读", "促销广告阅读", "图表信息读取"]'),
   "102nd reading set must expose explicit task match terms"
+);
+check(
+  runtimeSource.includes('matchTerms: ["通知公告阅读", "图表信息读取", "题干关键词定位", "限时阅读"]'),
+  "102nd content-check reading set must expose explicit task match terms"
 );
 check(
   runtimeSource.includes("const taskText = materialContextText(context);") &&
