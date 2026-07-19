@@ -225,3 +225,14 @@ TOPIK I 系统听力兜底也已完成一题一原文修复。五道题现在对
 - 当前仍未完成的外部/内容型事项：失效 Supabase 项目导致云登录不可用；真实 TOPIK 题图、原始音频和完整阅读/写作题库仍需持续导入；PDF 错题导入和长作文真实提交评改尚未实现。不要用固定样例伪装这些能力。
 - Day14 及更后节点仍为现有占位范围；本轮没有扩展 Reward Engine，也没有改 PWA。
 - 奖励伴侣部署 ID 为 `dpl_37HetoYgrCf3Lmh76cN1QCyXjnmx`；主站最终部署 ID 为 `dpl_EzrkVvj3YqXvs9p6PjqNCKG1AQx7`，资源版本 `20260719-reward-milestones-v17`。生产实际点击已覆盖 Day7 抽卡、正反面、收下，桌面和390px无页面级横向溢出，主站与奖励页错误级控制台消息均为0。
+
+## 2026-07-19 - 第102届真题第一批扩充
+
+- 回退点为标签 `checkpoint-20260719-pre-topik102-expansion`，指向提交 `b776130`。
+- runtime 已启用第102届 TOPIK II 听力1-12题和阅读5-8题；听力全部使用逐题原始 MP3，题图、题干、选项、原文、答案与中文解析按题号绑定。
+- 听力真实资料目录为 `assets/materials/topik102-listening/`；阅读真实资料目录为 `assets/materials/topik102-reading/`；导入范围见 `data/topik102-import-manifest.json`。
+- 写作51-54已经在原题卷和答案卷中确认，但未启用。下一步应先实现写作长文本提交、保存和分项评改，再导入，不得复用四选一判题器。
+- 继续扩题时沿用 `methods.md` 的扫描真题导入流程，并先补当前训练模板的严格 `matchTerms`；不要仅因同属听力或阅读就随机复用真题。
+- 专项验收脚本为 `specs/topik102-materials.cli.js`：覆盖题图/原音频一一对应、实际播放源、阅读结构和移动端；核心学习闭环仍使用 `specs/full-regression.cli.js`。两套测试均已通过。
+- 命中真实资料时 `loadExamDrivenPractice` 必须返回统一对象结构，不能退回旧数组形态，否则会造成界面误走异常兜底并产生不必要等待。
+- 当前生产版本为 `20260719-topik102-materials-v18`，部署 ID `dpl_8mQvoVgU25XTTbtoM6bHQUtd6xDE`；生产专项验收11项全部通过，新增音频/题图均为200且类型正确，控制台错误0。

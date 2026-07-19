@@ -1,0 +1,28 @@
+{
+  "exam": "TOPIK",
+  "session": 102,
+  "level": "II",
+  "sourceType": "user-provided-official-material",
+  "imported": {
+    "listening": {
+      "questions": "1-12",
+      "originalQuestionImages": true,
+      "originalPerQuestionAudio": true,
+      "transcriptsVerifiedAgainstSource": true,
+      "answersVerifiedAgainstAnswerSheet": true
+    },
+    "reading": {
+      "questions": "5-8",
+      "originalQuestionImages": true,
+      "answersVerifiedAgainstAnswerSheet": true
+    }
+  },
+  "verifiedButNotActivated": {
+    "writing": {
+      "questions": "51-54",
+      "reason": "The current runtime grades four-option questions only. These long-form questions must wait for a dedicated writing answer and review flow."
+    }
+  },
+  "routingPolicy": "Only tasks whose training point matches a set's matchTerms may use that set.",
+  "audioPolicy": "Original per-question audio is used when present; TTS remains fallback only."
+}

@@ -1,4 +1,5 @@
 import { existsSync, readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { resolve } from "node:path";
 
 const root = resolve(new URL("..", import.meta.url).pathname);
@@ -53,7 +54,17 @@ const runtimeSource = readFileSync(runtimePath, "utf8");
 const expectedTopik102Assets = [
   ["topik-ii-listening-102-q001", "assets/materials/topik102-listening/question/q001.png", "assets/materials/topik102-listening/audio/2-01.mp3"],
   ["topik-ii-listening-102-q002", "assets/materials/topik102-listening/question/q002.png", "assets/materials/topik102-listening/audio/2-02.mp3"],
-  ["topik-ii-listening-102-q003", "assets/materials/topik102-listening/question/q003.png", "assets/materials/topik102-listening/audio/2-03.mp3"]
+  ["topik-ii-listening-102-q003", "assets/materials/topik102-listening/question/q003.png", "assets/materials/topik102-listening/audio/2-03.mp3"],
+  ...Array.from({ length: 9 }, (_, index) => {
+    const questionNumber = index + 4;
+    const padded = String(questionNumber).padStart(3, "0");
+    const audioNumber = String(questionNumber).padStart(2, "0");
+    return [
+      `topik-ii-listening-102-q${padded}`,
+      `assets/materials/topik102-listening/question/q${padded}.png`,
+      `assets/materials/topik102-listening/audio/2-${audioNumber}.mp3`
+    ];
+  })
 ];
 
 expectedTopik102Assets.forEach(([id, imagePath, audioPath]) => {
@@ -64,9 +75,39 @@ expectedTopik102Assets.forEach(([id, imagePath, audioPath]) => {
   check(existsSync(resolve(root, audioPath)), `102nd listening audio file does not exist: ${audioPath}`);
 });
 
+const listeningAudioHashes = expectedTopik102Assets.map(([, , audioPath]) => {
+  return createHash("sha256").update(readFileSync(resolve(root, audioPath))).digest("hex");
+});
+check(
+  new Set(listeningAudioHashes).size === listeningAudioHashes.length,
+  "102nd listening per-question audio files must be distinct"
+);
+
 check(
   runtimeSource.includes('matchTerms: ["看图听关键词", "看图与图表理解"]'),
   "102nd listening set must expose explicit task match terms"
+);
+check(
+  runtimeSource.includes('matchTerms: ["听力 · 判断下一步行动", "听内容一致"]'),
+  "102nd dialogue/action listening set must expose explicit task match terms"
+);
+
+const expectedTopik102ReadingAssets = Array.from({ length: 4 }, (_, index) => {
+  const padded = String(index + 5).padStart(3, "0");
+  return [
+    `topik-ii-reading-102-q${padded}`,
+    `assets/materials/topik102-reading/question/q${padded}.png`
+  ];
+});
+
+expectedTopik102ReadingAssets.forEach(([id, imagePath]) => {
+  check(runtimeSource.includes(`materialQuestionId: "${id}"`), `Runtime is missing 102nd reading question: ${id}`);
+  check(runtimeSource.includes(`materialImage: "${imagePath}"`), `Runtime is missing 102nd reading image path: ${imagePath}`);
+  check(existsSync(resolve(root, imagePath)), `102nd reading image file does not exist: ${imagePath}`);
+});
+check(
+  runtimeSource.includes('matchTerms: ["通知公告阅读", "促销广告阅读", "图表信息读取"]'),
+  "102nd reading set must expose explicit task match terms"
 );
 check(
   runtimeSource.includes("const taskText = materialContextText(context);") &&
@@ -82,3 +123,4 @@ if (errors.length) {
 
 const questionCount = bank.reduce((total, set) => total + (set.questions?.length || 0), 0);
 console.log(`Real material bank validation passed: ${bank.length} set(s), ${questionCount} question(s)`);
+console.log(`TOPIK 102 runtime assets passed: ${expectedTopik102Assets.length} listening question(s), ${expectedTopik102ReadingAssets.length} reading question(s)`);
