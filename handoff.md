@@ -320,3 +320,11 @@ TOPIK I 系统听力兜底也已完成一题一原文修复。五道题现在对
 - 前端仍使用原账号弹窗和原状态结构，注册后直接登录；旧 Supabase 项目中的账号无法从不可达项目迁移，用户需在新系统首次注册一次。已有本机计划、错题和补录不会丢失，注册后会上传当前本机状态。
 - 本机 `specs/cloud-native-sync.cli.js` 5项通过，覆盖注册、保存、退出、重新登录恢复、错误密码和390px弹窗；`specs/full-regression.cli.js` 18项继续通过。虚构测试数据已精确清理。
 - 回退点为 `checkpoint-20260720-pre-cloud-login-migration`。生产部署 ID 为 `dpl_66aF43oiif8A8d889mWekTxcVfdo`，资源版本为 `20260720-native-cloud-v29`；主域名一次性账号完成注册、保存、退出、重新登录恢复、错误密码与390px验收，且测试记录已全部精确清理。本轮没有改既定视觉、时间线卡片、听写、Day1、Day7、PWA 或 Reward Engine。
+
+## 2026-07-20 - 单词消除连续学习
+
+- 单词消除现有四组共80个词：第一组保留原来的20词；第二组20词来自已导入的第102届 TOPIK II 真题材料；第三、四组40词来自目视核对的《完全掌握 TOPIK I 初级词汇》Unit 2。
+- 一组完成后优先复习真实听写不熟词和本组错配词，再进入下一组；全部80词完成后明确说明词库已完成，不伪装成无限新词。
+- 状态新增 `batchIndex`、`mode`、`reviewIds`、`mistakeIds`、`completedBatchIds` 和 `roundsCompleted`；旧的 `{ clearedIds }` 数据可直接迁移到第1组，不丢当前进度。
+- 专项脚本为 `specs/word-elimination-batches.cli.js`，完整闭环脚本为 `specs/full-regression.cli.js`。后续扩词只需向真实来源池追加，并保持每20词稳定分组。
+- 回退标签为 `checkpoint-20260720-pre-word-elimination-batches`。资源版本为 `20260720-word-elimination-v30`，生产部署 ID 为 `dpl_DHiD4mEjwBgh1Zufdy7L3GSrNAau`；生产专项7项与完整学习闭环22项全部通过。

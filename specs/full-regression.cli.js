@@ -113,6 +113,34 @@ async page => {
   check("correct word pair disappears and persists", (afterCorrectPair.clearedIds || []).includes(eliminationIds.first), JSON.stringify(afterCorrectPair));
 
   await page.evaluate(() => {
+    const firstBatchIds = wordEliminationBatches()[0].map(item => item.id);
+    writeWordEliminationState({ selectedWordId: "", selectedMeaningId: "", clearedIds: firstBatchIds, batchIndex: 0, mode: "batch", mistakeIds: [], reviewedWeakIds: [] });
+    renderWordEliminationView();
+  });
+  const completedFirstBatch = await page.evaluate(() => ({
+    title: document.querySelector(".elimination-empty strong")?.textContent.trim(),
+    action: document.querySelector("#continueWordElimination")?.textContent.trim(),
+    copy: document.querySelector(".elimination-empty p")?.textContent.trim()
+  }));
+  check("word elimination completion prioritizes real weak words", completedFirstBatch.title === "第 1 组已完成" && completedFirstBatch.action?.includes("不熟词") && completedFirstBatch.copy?.includes("听写不熟词"), JSON.stringify(completedFirstBatch));
+  await page.click("#continueWordElimination");
+  const weakReview = await page.evaluate(() => ({ state: readWordEliminationState(), labels: [...document.querySelectorAll(".elimination-tile strong")].map(node => node.textContent.trim()) }));
+  check("word elimination weak review uses saved learning result", weakReview.state.mode === "review" && weakReview.labels.includes("가방"), JSON.stringify(weakReview));
+  await page.evaluate(() => {
+    const state = readWordEliminationState();
+    writeWordEliminationState({ clearedIds: [...state.reviewIds] });
+    renderWordEliminationView();
+  });
+  check("weak review continues to the new batch", (await page.textContent("#continueWordElimination")).trim() === "开始下一组", await page.textContent("#continueWordElimination"));
+  await page.click("#continueWordElimination");
+  const secondBatch = await page.evaluate(() => ({
+    state: readWordEliminationState(),
+    progress: document.querySelector("#wordEliminationView .score-pill strong")?.textContent.trim(),
+    labels: [...document.querySelectorAll(".elimination-tile strong")].map(node => node.textContent.trim())
+  }));
+  check("next word elimination batch starts with new real vocabulary", secondBatch.state.batchIndex === 1 && secondBatch.progress === "0 / 20" && secondBatch.labels.includes("아르바이트") && secondBatch.state.completedBatchIds?.includes("batch-1"), JSON.stringify(secondBatch));
+
+  await page.evaluate(() => {
     switchView("calendar");
     openModal("externalRecordModal");
   });

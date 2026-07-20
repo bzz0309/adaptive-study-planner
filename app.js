@@ -236,6 +236,72 @@ const dictationItems = [
   { id: "send-opinion", pos: "短句", text: "의견을 문자로 보내 주세요.", zh: "请用短信发送意见。", pairing: "문자로 보내다", pairingZh: "用短信发送", example: "내일 오전까지 의견을 문자로 보내 주세요.", exampleZh: "请明天上午前把意见用短信发来。", note: "听力请求表达", source: "TOPIK 听力同型短句 · 样板" }
 ];
 
+const topik102WordEliminationItems = [
+  { id: "topik102-part-time", pos: "名", text: "아르바이트", zh: "兼职 / 打工", pairing: "아르바이트를 하다", pairingZh: "做兼职", example: "아르바이트 시간이 바뀌었어요.", exampleZh: "兼职时间变了。", note: "听力日程场景", source: "第102届 TOPIK II 听力" },
+  { id: "topik102-application", pos: "名", text: "신청", zh: "申请", pairing: "신청을 하다", pairingZh: "提出申请", example: "재발급 신청을 했어요.", exampleZh: "我申请了补发。", note: "听力办事场景", source: "第102届 TOPIK II 听力" },
+  { id: "topik102-presentation", pos: "名", text: "발표", zh: "发表 / 演讲", pairing: "발표를 준비하다", pairingZh: "准备演讲", example: "발표 자료를 준비했어요.", exampleZh: "准备了演讲资料。", note: "听力学校场景", source: "第102届 TOPIK II 听力" },
+  { id: "topik102-material", pos: "名", text: "자료", zh: "资料", pairing: "자료를 복사하다", pairingZh: "复印资料", example: "회의 자료를 복사해 주세요.", exampleZh: "请复印会议资料。", note: "听力办公场景", source: "第102届 TOPIK II 听力" },
+  { id: "topik102-copier", pos: "名", text: "복사기", zh: "复印机", pairing: "복사기를 사용하다", pairingZh: "使用复印机", example: "복사기가 고장 났어요.", exampleZh: "复印机坏了。", note: "听力办公场景", source: "第102届 TOPIK II 听力" },
+  { id: "topik102-delivery", pos: "名", text: "택배", zh: "快递", pairing: "택배를 받다", pairingZh: "收快递", example: "택배가 관리실에 있어요.", exampleZh: "快递在管理室。", note: "听力生活场景", source: "第102届 TOPIK II 听力" },
+  { id: "topik102-message", pos: "名", text: "문자", zh: "短信", pairing: "문자를 보내다", pairingZh: "发短信", example: "의견을 문자로 보내 주세요.", exampleZh: "请用短信发送意见。", note: "听力请求表达", source: "第102届 TOPIK II 听力" },
+  { id: "topik102-club", pos: "名", text: "동아리", zh: "社团", pairing: "동아리 회의", pairingZh: "社团会议", example: "오늘 동아리 회의가 있어요.", exampleZh: "今天有社团会议。", note: "听力学校场景", source: "第102届 TOPIK II 听力" },
+  { id: "topik102-office", pos: "名", text: "관리실", zh: "管理室", pairing: "관리실에 맡기다", pairingZh: "寄放在管理室", example: "관리실에 물어보세요.", exampleZh: "请去管理室问问。", note: "听力居住场景", source: "第102届 TOPIK II 听力" },
+  { id: "topik102-service", pos: "名", text: "서비스", zh: "服务", pairing: "서비스를 이용하다", pairingZh: "使用服务", example: "상담 서비스를 이용했어요.", exampleZh: "使用了咨询服务。", note: "听力咨询场景", source: "第102届 TOPIK II 听力" },
+  { id: "topik102-tax-accountant", pos: "名", text: "세무사", zh: "税务师", pairing: "세무사와 상담하다", pairingZh: "向税务师咨询", example: "세무사에게 서류를 보냈어요.", exampleZh: "把材料发给了税务师。", note: "听力职业场景", source: "第102届 TOPIK II 听力" },
+  { id: "topik102-consultation", pos: "名", text: "상담", zh: "咨询", pairing: "상담을 받다", pairingZh: "接受咨询", example: "전화로 상담을 받았어요.", exampleZh: "通过电话接受了咨询。", note: "听力咨询场景", source: "第102届 TOPIK II 听力" },
+  { id: "topik102-document", pos: "名", text: "서류", zh: "文件 / 材料", pairing: "서류를 제출하다", pairingZh: "提交材料", example: "필요한 서류를 준비하세요.", exampleZh: "请准备所需材料。", note: "听力办事场景", source: "第102届 TOPIK II 听力" },
+  { id: "topik102-rule", pos: "名", text: "규정", zh: "规定", pairing: "규정을 확인하다", pairingZh: "确认规定", example: "회사 규정을 확인했어요.", exampleZh: "确认了公司规定。", note: "听力职场场景", source: "第102届 TOPIK II 听力" },
+  { id: "topik102-income", pos: "名", text: "소득", zh: "收入", pairing: "소득을 신고하다", pairingZh: "申报收入", example: "소득 관련 서류가 필요해요.", exampleZh: "需要收入相关材料。", note: "听力生活信息", source: "第102届 TOPIK II 听力" },
+  { id: "topik102-blackout", pos: "名", text: "정전", zh: "停电", pairing: "정전이 발생하다", pairingZh: "发生停电", example: "갑자기 정전이 발생했어요.", exampleZh: "突然停电了。", note: "听力说明材料", source: "第102届 TOPIK II 听力" },
+  { id: "topik102-power-output", pos: "名", text: "발전량", zh: "发电量", pairing: "발전량이 늘다", pairingZh: "发电量增加", example: "태양광 발전량이 늘었어요.", exampleZh: "太阳能发电量增加了。", note: "听力讲座材料", source: "第102届 TOPIK II 听力" },
+  { id: "topik102-volunteer-group", pos: "名", text: "봉사단", zh: "志愿团", pairing: "봉사단에 참여하다", pairingZh: "参加志愿团", example: "해외 봉사단을 모집합니다.", exampleZh: "正在招募海外志愿团。", note: "听力公益主题", source: "第102届 TOPIK II 听力" },
+  { id: "topik102-childcare", pos: "名", text: "보육원", zh: "儿童福利院", pairing: "보육원을 방문하다", pairingZh: "访问儿童福利院", example: "봉사단이 보육원을 방문했어요.", exampleZh: "志愿团访问了儿童福利院。", note: "听力公益主题", source: "第102届 TOPIK II 听力" },
+  { id: "topik102-stamp", pos: "名", text: "우표", zh: "邮票", pairing: "우표를 모으다", pairingZh: "收集邮票", example: "박물관에서 옛날 우표를 봤어요.", exampleZh: "在博物馆看到了旧邮票。", note: "阅读博物馆主题", source: "第102届 TOPIK II 阅读" }
+];
+
+const completeMasteryWordEliminationItems = [
+  { id: "mastery-audience-seat", pos: "名", text: "객석", zh: "观众席", pairing: "객석을 채우다", pairingZh: "坐满观众席", example: "관객들이 객석에 앉았어요.", exampleZh: "观众们坐在观众席上。", note: "场所名词", source: "完全掌握 TOPIK I 初级词汇 · Unit 2" },
+  { id: "mastery-guest-room", pos: "名", text: "객실", zh: "客房", pairing: "객실 관리", pairingZh: "客房管理", example: "객실이 크고 깨끗해요.", exampleZh: "客房又大又干净。", note: "住宿场景", source: "完全掌握 TOPIK I 初级词汇 · Unit 2" },
+  { id: "mastery-street", pos: "名", text: "거리", zh: "距离 / 街道", pairing: "거리가 가깝다", pairingZh: "距离近", example: "집에서 학교까지 거리가 가까워요.", exampleZh: "从家到学校距离很近。", note: "位置表达", source: "完全掌握 TOPIK I 初级词汇 · Unit 2" },
+  { id: "mastery-spider", pos: "名", text: "거미", zh: "蜘蛛", pairing: "거미줄", pairingZh: "蜘蛛网", example: "창문에 거미줄이 있어요.", exampleZh: "窗户上有蜘蛛网。", note: "动物名词", source: "完全掌握 TOPIK I 初级词汇 · Unit 2" },
+  { id: "mastery-turtle", pos: "名", text: "거북이", zh: "乌龟", pairing: "거북이처럼 느리다", pairingZh: "像乌龟一样慢", example: "거북이가 천천히 걸어요.", exampleZh: "乌龟慢慢地走。", note: "动物名词", source: "完全掌握 TOPIK I 初级词汇 · Unit 2" },
+  { id: "mastery-change", pos: "名", text: "거스름돈", zh: "找零", pairing: "거스름돈을 받다", pairingZh: "拿找零", example: "거스름돈은 오천 원입니다.", exampleZh: "找零是五千韩元。", note: "购物场景", source: "完全掌握 TOPIK I 初级词汇 · Unit 2" },
+  { id: "mastery-living-room", pos: "名", text: "거실", zh: "客厅", pairing: "거실에서 텔레비전을 보다", pairingZh: "在客厅看电视", example: "가족이 거실에 모였어요.", exampleZh: "家人聚在客厅。", note: "居住场景", source: "完全掌握 TOPIK I 初级词汇 · Unit 2" },
+  { id: "mastery-mirror", pos: "名", text: "거울", zh: "镜子", pairing: "거울을 보다", pairingZh: "照镜子", example: "거울을 보고 머리를 정리했어요.", exampleZh: "照着镜子整理了头发。", note: "生活用品", source: "完全掌握 TOPIK I 初级词汇 · Unit 2" },
+  { id: "mastery-beggar", pos: "名", text: "거지", zh: "乞丐", pairing: "거지를 돕다", pairingZh: "帮助乞丐", example: "길에서 거지를 보았어요.", exampleZh: "在路上看到了乞丐。", note: "人物名词", source: "完全掌握 TOPIK I 初级词汇 · Unit 2" },
+  { id: "mastery-lie", pos: "名", text: "거짓말", zh: "谎话", pairing: "거짓말을 하다", pairingZh: "说谎", example: "친구에게 거짓말을 하지 마세요.", exampleZh: "不要对朋友说谎。", note: "交流表达", source: "完全掌握 TOPIK I 初级词汇 · Unit 2" },
+  { id: "mastery-foam", pos: "名", text: "거품", zh: "泡沫", pairing: "거품이 일다", pairingZh: "起泡沫", example: "비누에서 거품이 많이 나요.", exampleZh: "肥皂起了很多泡沫。", note: "生活名词", source: "完全掌握 TOPIK I 初级词汇 · Unit 2" },
+  { id: "mastery-worry", pos: "名", text: "걱정", zh: "担心 / 忧愁", pairing: "걱정이 없다", pairingZh: "没有担心的事", example: "시험 때문에 걱정이 많아요.", exampleZh: "因为考试很担心。", note: "情绪表达", source: "完全掌握 TOPIK I 初级词汇 · Unit 2" },
+  { id: "mastery-health", pos: "名", text: "건강", zh: "健康", pairing: "건강 검진", pairingZh: "体检", example: "운동은 건강에 좋아요.", exampleZh: "运动有益健康。", note: "健康主题", source: "完全掌握 TOPIK I 初级词汇 · Unit 2" },
+  { id: "mastery-opposite", pos: "名", text: "건너편", zh: "对面", pairing: "맞은편", pairingZh: "正对面", example: "우리 집 건너편에 마트가 있어요.", exampleZh: "我家对面有超市。", note: "位置表达", source: "完全掌握 TOPIK I 初级词汇 · Unit 2" },
+  { id: "mastery-construction", pos: "名", text: "건축", zh: "建筑 / 建造", pairing: "건축 회사", pairingZh: "建筑公司", example: "새 도서관을 건축하고 있어요.", exampleZh: "正在建造新图书馆。", note: "建筑主题", source: "完全掌握 TOPIK I 初级词汇 · Unit 2" },
+  { id: "mastery-step", pos: "名", text: "걸음", zh: "脚步", pairing: "걸음이 빠르다", pairingZh: "脚步快", example: "걸음을 천천히 옮겼어요.", exampleZh: "慢慢地挪动脚步。", note: "动作名词", source: "完全掌握 TOPIK I 初级词汇 · Unit 2" },
+  { id: "mastery-inspection", pos: "名", text: "검사", zh: "检查", pairing: "건강 검사", pairingZh: "健康检查", example: "병원에서 검사를 받았어요.", exampleZh: "在医院接受了检查。", note: "医疗场景", source: "完全掌握 TOPIK I 初级词汇 · Unit 2" },
+  { id: "mastery-search", pos: "名", text: "검색", zh: "搜索 / 检索", pairing: "인터넷 검색", pairingZh: "网络搜索", example: "인터넷에서 정보를 검색했어요.", exampleZh: "在网上搜索了信息。", note: "信息主题", source: "完全掌握 TOPIK I 初级词汇 · Unit 2" },
+  { id: "mastery-fear", pos: "名", text: "겁", zh: "害怕 / 胆怯", pairing: "겁이 나다", pairingZh: "感到害怕", example: "혼자 가려니 겁이 났어요.", exampleZh: "一个人去有点害怕。", note: "情绪表达", source: "完全掌握 TOPIK I 初级词汇 · Unit 2" },
+  { id: "mastery-board", pos: "名", text: "게시판", zh: "公告栏", pairing: "게시판에 붙이다", pairingZh: "贴在公告栏上", example: "게시판에서 공지를 확인했어요.", exampleZh: "在公告栏确认了通知。", note: "学校场景", source: "完全掌握 TOPIK I 初级词汇 · Unit 2" },
+  { id: "mastery-game", pos: "名", text: "게임", zh: "游戏 / 比赛", pairing: "게임을 하다", pairingZh: "玩游戏", example: "친구와 게임을 했어요.", exampleZh: "和朋友玩了游戏。", note: "休闲活动", source: "完全掌握 TOPIK I 初级词汇 · Unit 2" },
+  { id: "mastery-result", pos: "名", text: "결과", zh: "结果", pairing: "시험 결과", pairingZh: "考试结果", example: "검사 결과가 나왔어요.", exampleZh: "检查结果出来了。", note: "结果表达", source: "完全掌握 TOPIK I 初级词汇 · Unit 2" },
+  { id: "mastery-decision", pos: "名", text: "결정", zh: "决定", pairing: "결정을 내리다", pairingZh: "作出决定", example: "회의에서 중요한 결정을 했어요.", exampleZh: "在会议上作了重要决定。", note: "决策表达", source: "完全掌握 TOPIK I 初级词汇 · Unit 2" },
+  { id: "mastery-marriage", pos: "名", text: "결혼", zh: "结婚", pairing: "결혼을 하다", pairingZh: "结婚", example: "두 사람은 내년에 결혼해요.", exampleZh: "两个人明年结婚。", note: "家庭主题", source: "完全掌握 TOPIK I 初级词汇 · Unit 2" },
+  { id: "mastery-wedding", pos: "名", text: "결혼식", zh: "婚礼", pairing: "결혼식에 참석하다", pairingZh: "参加婚礼", example: "친구의 결혼식에 갔어요.", exampleZh: "参加了朋友的婚礼。", note: "家庭主题", source: "完全掌握 TOPIK I 初级词汇 · Unit 2" },
+  { id: "mastery-match", pos: "名", text: "경기", zh: "比赛 / 竞技", pairing: "축구 경기", pairingZh: "足球比赛", example: "경기가 끝났어요.", exampleZh: "比赛结束了。", note: "运动主题", source: "完全掌握 TOPIK I 初级词汇 · Unit 2" },
+  { id: "mastery-career", pos: "名", text: "경력", zh: "经历 / 工作经验", pairing: "경력이 부족하다", pairingZh: "经验不足", example: "이 일은 경력이 필요해요.", exampleZh: "这份工作需要经验。", note: "求职主题", source: "完全掌握 TOPIK I 初级词汇 · Unit 2" },
+  { id: "mastery-expense", pos: "名", text: "경비", zh: "经费 / 费用", pairing: "출장 경비", pairingZh: "出差费用", example: "여행 경비를 계산했어요.", exampleZh: "计算了旅行费用。", note: "费用表达", source: "完全掌握 TOPIK I 初级词汇 · Unit 2" },
+  { id: "mastery-competition", pos: "名", text: "경쟁", zh: "竞争", pairing: "경쟁이 치열하다", pairingZh: "竞争激烈", example: "두 회사의 경쟁이 치열해요.", exampleZh: "两家公司的竞争很激烈。", note: "社会主题", source: "完全掌握 TOPIK I 初级词汇 · Unit 2" },
+  { id: "mastery-police", pos: "名", text: "경찰", zh: "警察", pairing: "경찰에 신고하다", pairingZh: "报警", example: "길을 경찰에게 물어봤어요.", exampleZh: "向警察问了路。", note: "公共服务", source: "完全掌握 TOPIK I 初级词汇 · Unit 2" },
+  { id: "mastery-scenery", pos: "名", text: "경치", zh: "景色 / 风景", pairing: "경치가 아름답다", pairingZh: "风景优美", example: "산에서 보는 경치가 좋아요.", exampleZh: "从山上看到的景色很好。", note: "旅行主题", source: "完全掌握 TOPIK I 初级词汇 · Unit 2" },
+  { id: "mastery-tendency", pos: "名", text: "경향", zh: "倾向 / 趋势", pairing: "새로운 경향", pairingZh: "新趋势", example: "소비 경향이 달라졌어요.", exampleZh: "消费趋势发生了变化。", note: "社会主题", source: "完全掌握 TOPIK I 初级词汇 · Unit 2" },
+  { id: "mastery-experience", pos: "名", text: "경험", zh: "经验 / 经历", pairing: "경험이 많다", pairingZh: "经验丰富", example: "한국 생활 경험이 있어요.", exampleZh: "有在韩国生活的经历。", note: "经历表达", source: "完全掌握 TOPIK I 初级词汇 · Unit 2" },
+  { id: "mastery-stairs", pos: "名", text: "계단", zh: "楼梯", pairing: "계단을 오르다", pairingZh: "上楼梯", example: "계단으로 올라가세요.", exampleZh: "请走楼梯上去。", note: "场所名词", source: "完全掌握 TOPIK I 初级词汇 · Unit 2" },
+  { id: "mastery-egg", pos: "名", text: "계란", zh: "鸡蛋", pairing: "계란을 삶다", pairingZh: "煮鸡蛋", example: "아침에 계란을 먹었어요.", exampleZh: "早上吃了鸡蛋。", note: "饮食主题", source: "完全掌握 TOPIK I 初级词汇 · Unit 2" },
+  { id: "mastery-payment", pos: "名", text: "계산", zh: "计算 / 结账", pairing: "계산을 하다", pairingZh: "计算 / 结账", example: "식사가 끝나고 계산했어요.", exampleZh: "吃完饭后结了账。", note: "消费场景", source: "完全掌握 TOPIK I 初级词汇 · Unit 2" },
+  { id: "mastery-deposit", pos: "名", text: "계약금", zh: "定金", pairing: "계약금을 내다", pairingZh: "支付定金", example: "집 계약금을 먼저 냈어요.", exampleZh: "先支付了房屋定金。", note: "合同场景", source: "完全掌握 TOPIK I 初级词汇 · Unit 2" },
+  { id: "mastery-season", pos: "名", text: "계절", zh: "季节", pairing: "계절이 바뀌다", pairingZh: "季节更替", example: "제가 좋아하는 계절은 봄이에요.", exampleZh: "我喜欢的季节是春天。", note: "天气主题", source: "完全掌握 TOPIK I 初级词汇 · Unit 2" },
+  { id: "mastery-customer", pos: "名", text: "고객", zh: "顾客", pairing: "고객에게 친절하다", pairingZh: "热情待客", example: "고객의 의견을 들었어요.", exampleZh: "听取了顾客的意见。", note: "服务场景", source: "完全掌握 TOPIK I 初级词汇 · Unit 2" },
+  { id: "mastery-meat", pos: "名", text: "고기", zh: "肉", pairing: "고기를 굽다", pairingZh: "烤肉", example: "저녁에 고기를 구웠어요.", exampleZh: "晚上烤了肉。", note: "饮食主题", source: "完全掌握 TOPIK I 初级词汇 · Unit 2" }
+];
+
 function readDictationState() {
   const fallback = { index: 0, revealed: false, inputText: "", weakIds: [], knownIds: [], taskSession: null };
   try {
@@ -267,10 +333,37 @@ function dictationPracticeItems() {
   return dictationItems.filter(item => item.pos !== "短句" && !/\s/.test(item.text));
 }
 
+function wordEliminationPracticeItems() {
+  return [...dictationPracticeItems(), ...topik102WordEliminationItems, ...completeMasteryWordEliminationItems];
+}
+
+function wordEliminationBatches() {
+  const items = wordEliminationPracticeItems();
+  return Array.from({ length: Math.ceil(items.length / 20) }, (_, index) => items.slice(index * 20, (index + 1) * 20));
+}
+
 function readWordEliminationState() {
-  const fallback = { selectedWordId: "", selectedMeaningId: "", clearedIds: [] };
+  const fallback = {
+    selectedWordId: "",
+    selectedMeaningId: "",
+    clearedIds: [],
+    batchIndex: 0,
+    mode: "batch",
+    reviewIds: [],
+    reviewedWeakIds: [],
+    mistakeIds: [],
+    completedBatchIds: [],
+    roundsCompleted: 0
+  };
   try {
-    return { ...fallback, ...(JSON.parse(localStorage.getItem(wordEliminationStorageKey) || "null") || {}) };
+    const saved = JSON.parse(localStorage.getItem(wordEliminationStorageKey) || "null") || {};
+    const batches = wordEliminationBatches();
+    return {
+      ...fallback,
+      ...saved,
+      batchIndex: Math.max(0, Math.min(batches.length - 1, Number(saved.batchIndex) || 0)),
+      mode: saved.mode === "review" ? "review" : "batch"
+    };
   } catch {
     return fallback;
   }
@@ -476,13 +569,49 @@ function stableEliminationRank(value = "") {
   return [...String(value)].reduce((hash, character) => ((hash * 31) + character.charCodeAt(0)) >>> 0, 2166136261);
 }
 
-function wordEliminationTiles(items = dictationPracticeItems()) {
+function wordEliminationTiles(items = wordEliminationPracticeItems()) {
   return items
     .flatMap(item => ([
       { key: `word-${item.id}`, id: item.id, type: "word", label: item.text, language: "韩文" },
       { key: `meaning-${item.id}`, id: item.id, type: "meaning", label: item.zh, language: "中文" }
     ]))
     .sort((a, b) => stableEliminationRank(`v2-${a.key}`) - stableEliminationRank(`v2-${b.key}`));
+}
+
+function currentWordEliminationItems(state = readWordEliminationState()) {
+  const pool = wordEliminationPracticeItems();
+  if (state.mode === "review") {
+    const reviewIds = new Set(state.reviewIds || []);
+    return pool.filter(item => reviewIds.has(item.id));
+  }
+  return wordEliminationBatches()[state.batchIndex] || wordEliminationBatches()[0] || [];
+}
+
+function pendingWordEliminationReviewIds(state = readWordEliminationState()) {
+  const poolIds = new Set(wordEliminationPracticeItems().map(item => item.id));
+  const reviewedIds = new Set(state.reviewedWeakIds || []);
+  const dictationWeakIds = readDictationState().weakIds || [];
+  return [...new Set([...(state.mistakeIds || []), ...dictationWeakIds])]
+    .filter(id => poolIds.has(id) && !reviewedIds.has(id));
+}
+
+function nextRegularWordEliminationBatchIndex(state = readWordEliminationState()) {
+  const completedIds = new Set(state.completedBatchIds || []);
+  const batches = wordEliminationBatches();
+  return batches.findIndex((_, index) => index !== state.batchIndex && !completedIds.has(`batch-${index + 1}`));
+}
+
+function wordEliminationCompletionAction(state = readWordEliminationState()) {
+  const completedIds = new Set(state.completedBatchIds || []);
+  if (state.mode === "batch") completedIds.add(`batch-${state.batchIndex + 1}`);
+  const normalizedState = { ...state, completedBatchIds: [...completedIds] };
+  if (state.mode !== "review") {
+    const reviewIds = pendingWordEliminationReviewIds(normalizedState);
+    if (reviewIds.length) return { type: "review", ids: reviewIds, label: `先复习 ${reviewIds.length} 个不熟词` };
+  }
+  const nextIndex = nextRegularWordEliminationBatchIndex(normalizedState);
+  if (nextIndex >= 0) return { type: "batch", batchIndex: nextIndex, label: "开始下一组" };
+  return { type: "restart", batchIndex: 0, label: "从第一组重新巩固" };
 }
 
 function currentDictationItem(state = readDictationState()) {
@@ -4103,10 +4232,23 @@ function renderWordEliminationView() {
   const view = $("#wordEliminationView");
   if (!view) return;
   const state = readWordEliminationState();
-  const items = dictationPracticeItems();
+  const items = currentWordEliminationItems(state);
   const clearedIds = new Set(state.clearedIds || []);
   const remainingTiles = wordEliminationTiles(items).filter(item => !clearedIds.has(item.id));
   const selectedType = state.selectedWordId ? "韩文" : state.selectedMeaningId ? "中文" : "";
+  const batches = wordEliminationBatches();
+  const completedBatchIds = new Set(state.completedBatchIds || []);
+  const completedRegularCount = completedBatchIds.size * 20 + (state.mode === "batch" ? clearedIds.size : 0);
+  const groupLabel = state.mode === "review" ? "不熟词复习" : `第 ${state.batchIndex + 1} 组 · 共 ${batches.length} 组`;
+  const completionAction = remainingTiles.length ? null : wordEliminationCompletionAction(state);
+  const completionTitle = state.mode === "review"
+    ? "不熟词复习完成"
+    : `第 ${state.batchIndex + 1} 组已完成`;
+  const completionCopy = completionAction?.type === "review"
+    ? "先把本组错配和听写不熟词再配一次，然后继续新词。"
+    : completionAction?.type === "batch"
+      ? "下一组来自已导入的第102届 TOPIK II 真题词汇。"
+      : `当前 ${wordEliminationPracticeItems().length} 个词已全部完成，本轮记录已保留。`;
   view.innerHTML = `<div class="page-heading">
     <div>
       <p class="section-kicker">词义配对 · 消除练习</p>
@@ -4114,7 +4256,7 @@ function renderWordEliminationView() {
       <p>韩文和中文混排。先点任意一张，再点对应翻译。</p>
     </div>
     <div class="score-pill">
-      <small>进度</small><strong>${clearedIds.size} / ${items.length}</strong><span>${remainingTiles.length ? "继续配对" : "全部完成"}</span>
+      <small>${groupLabel}</small><strong>${clearedIds.size} / ${items.length}</strong><span>${state.mode === "batch" ? `总进度 ${Math.min(wordEliminationPracticeItems().length, completedRegularCount)} / ${wordEliminationPracticeItems().length}` : "完成后继续新词"}</span>
     </div>
   </div>
   <div class="word-elimination-panel">
@@ -4133,8 +4275,11 @@ function renderWordEliminationView() {
         </button>`;
       }).join("")}
     </div>` : `<div class="elimination-empty">
-      <strong>这一轮词都消除了</strong>
-      <p>可以重新开始，或者回到听写继续练不熟词。</p>
+      <div>
+        <strong>${completionTitle}</strong>
+        <p>${completionCopy}</p>
+      </div>
+      <button class="primary-button" type="button" id="continueWordElimination">${completionAction?.label || "继续"}</button>
     </div>`}
   </div>`;
   bindWordEliminationEvents();
@@ -4173,7 +4318,11 @@ function selectWordEliminationTile(type = "", id = "") {
         clearedIds: [...new Set([...(current.clearedIds || []), id])]
       });
     } else {
-      writeWordEliminationState({ selectedWordId: "", selectedMeaningId: "" });
+      writeWordEliminationState({
+        selectedWordId: "",
+        selectedMeaningId: "",
+        mistakeIds: [...new Set([...(current.mistakeIds || []), id, current[otherKey]])]
+      });
     }
     wordEliminationResolving = false;
     wordEliminationTimer = null;
@@ -4190,6 +4339,49 @@ function bindWordEliminationEvents() {
     wordEliminationTimer = null;
     wordEliminationResolving = false;
     writeWordEliminationState({ selectedWordId: "", selectedMeaningId: "", clearedIds: [] });
+    renderWordEliminationView();
+  });
+  $("#continueWordElimination")?.addEventListener("click", () => {
+    const state = readWordEliminationState();
+    const action = wordEliminationCompletionAction(state);
+    const completedBatchIds = new Set(state.completedBatchIds || []);
+    if (state.mode === "batch") completedBatchIds.add(`batch-${state.batchIndex + 1}`);
+    if (action.type === "review") {
+      writeWordEliminationState({
+        selectedWordId: "",
+        selectedMeaningId: "",
+        clearedIds: [],
+        mode: "review",
+        reviewIds: action.ids,
+        completedBatchIds: [...completedBatchIds]
+      });
+    } else if (action.type === "batch") {
+      writeWordEliminationState({
+        selectedWordId: "",
+        selectedMeaningId: "",
+        clearedIds: [],
+        mode: "batch",
+        reviewIds: [],
+        reviewedWeakIds: state.mode === "review"
+          ? [...new Set([...(state.reviewedWeakIds || []), ...(state.reviewIds || [])])]
+          : state.reviewedWeakIds || [],
+        batchIndex: action.batchIndex,
+        completedBatchIds: [...completedBatchIds]
+      });
+    } else {
+      writeWordEliminationState({
+        selectedWordId: "",
+        selectedMeaningId: "",
+        clearedIds: [],
+        mode: "batch",
+        reviewIds: [],
+        reviewedWeakIds: [],
+        mistakeIds: [],
+        batchIndex: 0,
+        completedBatchIds: [],
+        roundsCompleted: (Number(state.roundsCompleted) || 0) + 1
+      });
+    }
     renderWordEliminationView();
   });
 }
