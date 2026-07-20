@@ -683,3 +683,12 @@
 - 页面显示“第几组 / 共几组”、当前组进度与80词总进度；全部完成后诚实提示当前80词已完成，并用完成轮次保留重练记录。
 - `specs/full-regression.cli.js` 完整学习闭环22项通过；新增 `specs/word-elimination-batches.cli.js`，四组、真题与教材来源、弱项优先、80/80、轮次保留和390px布局7项通过。语法、差异检查与 Vercel 正式构建通过。
 - 已部署到生产主域名，部署 ID `dpl_DHiD4mEjwBgh1Zufdy7L3GSrNAau`，资源版本 `20260720-word-elimination-v30`；生产专项7项和完整学习闭环22项全部通过。
+
+## 2026-07-20 - 听写与单词消除按 TOPIK 等级分池
+
+- 纠正原80词混合池：TOPIK I 与 TOPIK II 不再共享初级基础词。TOPIK I 使用60个初级教材词；TOPIK II 使用20个第102届真题词和40个《完全掌握 TOPIK II 中高级词汇》Unit 1词条，共60个中高级词。
+- 中高级教材 PDF 已渲染并目视核对词条页；为保证单词消除一一配对，同形异义词只保留一个义项，韩文、中文和稳定ID均无重复。
+- 听写与单词消除改为读取同一个当前等级词池；页面显示当前 TOPIK 等级、目标级别、导入数量和词源范围。切换等级会重置当前题序/分组，旧等级的不熟词与消除进度不会串入。
+- 本机专项11项和完整学习闭环22项通过；TOPIK I/II 均为3组×20词，390px无页面级横向溢出。本轮未改日历卡片、视觉系统、云登录、Day1、Day7、PWA 或 Reward Engine。
+- 修改前回退标签为 `checkpoint-20260720-pre-level-scoped-vocabulary`。
+- 正式构建和生产部署通过，部署 ID `dpl_8HMPfJT6cKdegVaH4dytt5zks1jy`，资源版本 `20260720-level-vocabulary-v31`；生产专项11项与完整学习闭环22项全部通过。

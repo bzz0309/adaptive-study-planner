@@ -328,3 +328,11 @@ TOPIK I 系统听力兜底也已完成一题一原文修复。五道题现在对
 - 状态新增 `batchIndex`、`mode`、`reviewIds`、`mistakeIds`、`completedBatchIds` 和 `roundsCompleted`；旧的 `{ clearedIds }` 数据可直接迁移到第1组，不丢当前进度。
 - 专项脚本为 `specs/word-elimination-batches.cli.js`，完整闭环脚本为 `specs/full-regression.cli.js`。后续扩词只需向真实来源池追加，并保持每20词稳定分组。
 - 回退标签为 `checkpoint-20260720-pre-word-elimination-batches`。资源版本为 `20260720-word-elimination-v30`，生产部署 ID 为 `dpl_DHiD4mEjwBgh1Zufdy7L3GSrNAau`；生产专项7项与完整学习闭环22项全部通过。
+
+## 2026-07-20 - TOPIK 等级词库边界
+
+- 听写和单词消除现在共用 `vocabularyPracticeProfile()`：设置为 TOPIK I 时只加载60个初级教材词；设置为 TOPIK II 时只加载60个中高级词，其中20个来自已启用的第102届 TOPIK II 真题，40个来自目视核对的《完全掌握 TOPIK II 中高级词汇》Unit 1。
+- 不再用 TOPIK I 基础词补 TOPIK II 数量。切换等级会更换词池并清理不属于当前池的题序、不熟词和消除状态；两个模块的ID与顺序保持一致。
+- 当前只承诺可靠的 TOPIK I / TOPIK II 大等级边界。教材没有给每个词标注3、4、5、6级，因此页面可以显示用户目标级别，但不能宣称这60词已经精确按单级划分。
+- 回退标签为 `checkpoint-20260720-pre-level-scoped-vocabulary`；专项脚本为 `specs/word-elimination-batches.cli.js`，并继续运行 `specs/full-regression.cli.js`。
+- 生产版本为 `20260720-level-vocabulary-v31`，部署 ID `dpl_8HMPfJT6cKdegVaH4dytt5zks1jy`；生产专项11项与完整学习闭环22项全部通过。

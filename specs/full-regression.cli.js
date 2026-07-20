@@ -56,7 +56,7 @@ async page => {
   check("error includes actionable improvement", Boolean(completed.errors[0].action), JSON.stringify(completed.errors[0] || {}));
 
   await page.evaluate(() => {
-    const settings = { examLevel: "TOPIK II", targetLevel: "3", weakAreas: ["听力", "阅读"], intensity: "medium", firstRoundWeeks: 1, studyDays: ["sun"], availableStart: "11:00", availableEnd: "21:00", preferredSlots: ["afternoon"], planStartDate: "2026-07-13" };
+    const settings = { exam: "TOPIK", level: "II", targetGrade: "3", weak: ["听力", "阅读"], intensity: "medium", firstRoundWeeks: 1, studyDays: ["sun"], availableStart: "11:00", availableEnd: "21:00", preferredSlots: ["afternoon"], planStartDate: "2026-07-13" };
     const seededTasks = [
       { id: "done-listening", weekIndex: 0, day: "sun", start: "11:00", end: "11:40", category: "listening", title: "已完成听力", note: "真实完成", status: "completed", standards: ["完成5题"], checkin: { correct: 4, total: 5, actualSeconds: 1200 } },
       { id: "reading", weekIndex: 0, day: "sun", start: "13:30", end: "14:10", category: "reading", title: "阅读任务", note: "阅读说明", status: "planned", standards: ["完成5题"] }
@@ -83,7 +83,7 @@ async page => {
     answerCard: Boolean(document.querySelector("#dictationView .dictation-answer-card")),
     handwritingLabel: document.querySelector("#openDictationHandwriting span")?.textContent.trim()
   }));
-  check("dictation starts clean with explanation placeholder", dictationInitial.progress === "1 / 20" && dictationInitial.explanation?.includes("核对答案") && !dictationInitial.answerCard, JSON.stringify(dictationInitial));
+  check("dictation starts clean with selected-level pool and explanation placeholder", dictationInitial.progress === "1 / 60" && dictationInitial.explanation?.includes("核对答案") && !dictationInitial.answerCard, JSON.stringify(dictationInitial));
   check("dictation handwriting entry is explicit", dictationInitial.handwritingLabel === "打开手写板", JSON.stringify(dictationInitial));
   await page.fill("#dictationInput", "가바");
   await page.click("#revealDictationAnswer");
@@ -125,7 +125,7 @@ async page => {
   check("word elimination completion prioritizes real weak words", completedFirstBatch.title === "第 1 组已完成" && completedFirstBatch.action?.includes("不熟词") && completedFirstBatch.copy?.includes("听写不熟词"), JSON.stringify(completedFirstBatch));
   await page.click("#continueWordElimination");
   const weakReview = await page.evaluate(() => ({ state: readWordEliminationState(), labels: [...document.querySelectorAll(".elimination-tile strong")].map(node => node.textContent.trim()) }));
-  check("word elimination weak review uses saved learning result", weakReview.state.mode === "review" && weakReview.labels.includes("가방"), JSON.stringify(weakReview));
+  check("word elimination weak review uses saved learning result", weakReview.state.mode === "review" && weakReview.labels.includes("아르바이트"), JSON.stringify(weakReview));
   await page.evaluate(() => {
     const state = readWordEliminationState();
     writeWordEliminationState({ clearedIds: [...state.reviewIds] });
@@ -138,7 +138,7 @@ async page => {
     progress: document.querySelector("#wordEliminationView .score-pill strong")?.textContent.trim(),
     labels: [...document.querySelectorAll(".elimination-tile strong")].map(node => node.textContent.trim())
   }));
-  check("next word elimination batch starts with new real vocabulary", secondBatch.state.batchIndex === 1 && secondBatch.progress === "0 / 20" && secondBatch.labels.includes("아르바이트") && secondBatch.state.completedBatchIds?.includes("batch-1"), JSON.stringify(secondBatch));
+  check("next word elimination batch starts with new real vocabulary", secondBatch.state.batchIndex === 1 && secondBatch.progress === "0 / 20" && secondBatch.labels.includes("IT 산업") && secondBatch.state.completedBatchIds?.includes("batch-1"), JSON.stringify(secondBatch));
 
   await page.evaluate(() => {
     switchView("calendar");

@@ -302,10 +302,61 @@ const completeMasteryWordEliminationItems = [
   { id: "mastery-meat", pos: "名", text: "고기", zh: "肉", pairing: "고기를 굽다", pairingZh: "烤肉", example: "저녁에 고기를 구웠어요.", exampleZh: "晚上烤了肉。", note: "饮食主题", source: "完全掌握 TOPIK I 初级词汇 · Unit 2" }
 ];
 
+const completeMasteryTopikIIWordItems = [
+  { id: "mastery2-it-industry", pos: "名", text: "IT 산업", zh: "IT产业", pairing: "IT 산업이 성장하다", pairingZh: "IT产业发展", example: "대전은 한국 IT 산업의 중심지이다.", exampleZh: "大田是韩国IT产业的中心。", note: "产业主题", source: "完全掌握 TOPIK II 中高级词汇 · Unit 1" },
+  { id: "mastery2-pc-room", pos: "名", text: "PC실", zh: "电脑室", pairing: "PC실을 이용하다", pairingZh: "使用电脑室", example: "PC실에 함부로 들어가시면 안 돼요.", exampleZh: "请不要随便进入电脑室。", note: "设施场景", source: "完全掌握 TOPIK II 中高级词汇 · Unit 1" },
+  { id: "mastery2-livelihood", pos: "名", text: "가계", zh: "生计", pairing: "가계를 꾸리다", pairingZh: "维持生计", example: "아버지는 소작농으로 가계를 꾸려 나갔다.", exampleZh: "爸爸靠务农维持生计。", note: "生活主题", source: "完全掌握 TOPIK II 中高级词汇 · Unit 1" },
+  { id: "mastery2-interference", pos: "名", text: "간섭", zh: "干涉 / 干预", pairing: "간섭을 받다", pairingZh: "受到干涉", example: "아이들은 부모의 간섭이나 훈계를 싫어한다.", exampleZh: "孩子们不喜欢父母的干涉或训斥。", note: "社会关系", source: "完全掌握 TOPIK II 中高级词汇 · Unit 1" },
+  { id: "mastery2-art-song", pos: "名", text: "가곡", zh: "艺术歌曲", pairing: "가곡을 부르다", pairingZh: "演唱艺术歌曲", example: "음악 시험에서 이탈리아 가곡을 불렀다.", exampleZh: "音乐考试时演唱了意大利艺术歌曲。", note: "文化艺术", source: "完全掌握 TOPIK II 中高级词汇 · Unit 1" },
+  { id: "mastery2-processing", pos: "名", text: "가공", zh: "加工", pairing: "가공 무역", pairingZh: "加工贸易", example: "가공 무역을 더욱 발전시켜야 한다.", exampleZh: "应该进一步发展加工贸易。", note: "经济主题", source: "完全掌握 TOPIK II 中高级词汇 · Unit 1" },
+  { id: "mastery2-furniture-store", pos: "名", text: "가구점", zh: "家具店", pairing: "가구점에서 사다", pairingZh: "在家具店购买", example: "가구점에서 장롱 하나를 샀다.", exampleZh: "在家具店买了一个衣柜。", note: "消费场景", source: "完全掌握 TOPIK II 中高级词汇 · Unit 1" },
+  { id: "mastery2-possibility", pos: "名", text: "가능성", zh: "可能性", pairing: "가능성이 크다", pairingZh: "可能性大", example: "성공할 가능성이 있다.", exampleZh: "有成功的可能性。", note: "抽象名词", source: "完全掌握 TOPIK II 中高级词汇 · Unit 1" },
+  { id: "mastery2-approximately", pos: "依存名", text: "가량", zh: "左右 / 大约", pairing: "30세가량", pairingZh: "30岁左右", example: "문을 여니 30세가량 되어 보이는 미남이 있었다.", exampleZh: "开门后看到一位30岁左右的男子。", note: "数量表达", source: "完全掌握 TOPIK II 中高级词汇 · Unit 1" },
+  { id: "mastery2-horizontal", pos: "名", text: "가로", zh: "横向", pairing: "가로로 놓다", pairingZh: "横着放", example: "책상 위에 가로와 세로의 길이가 같은 종이가 있었다.", exampleZh: "桌上有一张长宽相同的纸。", note: "方向表达", source: "完全掌握 TOPIK II 中高级词汇 · Unit 1" },
+  { id: "mastery2-powder", pos: "名", text: "가루", zh: "粉末", pairing: "가루가 되다", pairingZh: "变成粉末", example: "뼈는 한 줌의 가루가 되었다.", exampleZh: "骨骼变成了一把粉末。", note: "物质名词", source: "完全掌握 TOPIK II 中高级词汇 · Unit 1" },
+  { id: "mastery2-palanquin", pos: "名", text: "가마", zh: "轿子", pairing: "가마를 타다", pairingZh: "坐轿子", example: "진주와 금으로 장식된 가마가 마당에 놓여 있었다.", exampleZh: "院子里放着一顶镶有珍珠和金银的轿子。", note: "传统文化", source: "完全掌握 TOPIK II 中高级词汇 · Unit 1" },
+  { id: "mastery2-indirect", pos: "名", text: "간접적", zh: "间接", pairing: "간접적으로 알다", pairingZh: "间接了解", example: "역사는 흔적을 통해 간접적으로 알아낼 수밖에 없다.", exampleZh: "历史只能通过遗迹间接了解。", note: "逻辑表达", source: "完全掌握 TOPIK II 中高级词汇 · Unit 1" },
+  { id: "mastery2-prospect", pos: "名", text: "가망", zh: "希望 / 指望", pairing: "가망이 있다", pairingZh: "有希望", example: "의사는 살아날 가망이 없다고 했다.", exampleZh: "医生说没有活下来的希望。", note: "抽象名词", source: "完全掌握 TOPIK II 中高级词汇 · Unit 1" },
+  { id: "mastery2-family-clan", pos: "名", text: "가문", zh: "家族 / 家门", pairing: "가문의 영광", pairingZh: "家门的荣耀", example: "가문의 영광이다.", exampleZh: "这是家门的荣耀。", note: "家庭主题", source: "完全掌握 TOPIK II 中高级词汇 · Unit 1" },
+  { id: "mastery2-housework", pos: "名", text: "가사", zh: "家务", pairing: "가사 활동", pairingZh: "家务活动", example: "주부의 가사 활동이 예전보다 간편해졌다.", exampleZh: "主妇的家务活动比以前更简便了。", note: "生活主题", source: "完全掌握 TOPIK II 中高级词汇 · Unit 1" },
+  { id: "mastery2-gas", pos: "名", text: "가스", zh: "煤气 / 天然气", pairing: "가스를 켜다", pairingZh: "打开煤气", example: "겨울이 되면 가스 요금도 많이 나온다.", exampleZh: "到了冬天煤气费也会增加。", note: "生活能源", source: "完全掌握 TOPIK II 中高级词汇 · Unit 1" },
+  { id: "mastery2-humidifier", pos: "名", text: "가습기", zh: "加湿器", pairing: "가습기를 켜다", pairingZh: "打开加湿器", example: "건조하면 가습기를 켜야 한다.", exampleZh: "干燥时应该打开加湿器。", note: "生活用品", source: "完全掌握 TOPIK II 中高级词汇 · Unit 1" },
+  { id: "mastery2-thorn", pos: "名", text: "가시", zh: "刺", pairing: "가시가 박히다", pairingZh: "扎进刺", example: "장미의 가시에 손을 찔렸다.", exampleZh: "手被玫瑰刺扎了。", note: "自然名词", source: "完全掌握 TOPIK II 中高级词汇 · Unit 1" },
+  { id: "mastery2-pretense", pos: "名", text: "가식", zh: "虚伪 / 假意", pairing: "가식과 허위", pairingZh: "虚伪与欺骗", example: "가식과 허위가 많은 물질주의는 버려야 한다.", exampleZh: "应该摒弃充满虚伪的物质主义。", note: "抽象名词", source: "完全掌握 TOPIK II 中高级词汇 · Unit 1" },
+  { id: "mastery2-gayageum", pos: "名", text: "가야금", zh: "伽倻琴", pairing: "가야금을 연주하다", pairingZh: "演奏伽倻琴", example: "방 한구석에 가야금이 놓여 있었다.", exampleZh: "房间一角放着伽倻琴。", note: "传统文化", source: "完全掌握 TOPIK II 中高级词汇 · Unit 1" },
+  { id: "mastery2-dwelling", pos: "名", text: "가옥", zh: "房屋 / 住宅", pairing: "가옥이 침수되다", pairingZh: "住宅进水", example: "비가 많이 내려 가옥이 침수되었다.", exampleZh: "因为大雨住宅进水了。", note: "居住主题", source: "完全掌握 TOPIK II 中高级词汇 · Unit 1" },
+  { id: "mastery2-subscriber", pos: "名", text: "가입자", zh: "加入者 / 用户", pairing: "가입자가 늘다", pairingZh: "用户增加", example: "환경 보호 단체의 가입자가 늘고 있다.", exampleZh: "环保团体的加入者正在增加。", note: "社会主题", source: "完全掌握 TOPIK II 中高级词汇 · Unit 1" },
+  { id: "mastery2-head-of-household", pos: "名", text: "가장", zh: "家长 / 一家之主", pairing: "가장의 역할", pairingZh: "一家之主的角色", example: "한국은 부계 가장 원칙을 따른다.", exampleZh: "韩国沿袭父系家长原则。", note: "家庭主题", source: "完全掌握 TOPIK II 中高级词汇 · Unit 1" },
+  { id: "mastery2-family-oriented", pos: "名", text: "가정적", zh: "顾家 / 家庭型", pairing: "가정적인 분위기", pairingZh: "家庭氛围", example: "그 집 남편은 아주 가정적이다.", exampleZh: "那家的丈夫很顾家。", note: "人物描述", source: "完全掌握 TOPIK II 中高级词汇 · Unit 1" },
+  { id: "mastery2-family-values", pos: "名", text: "가족관", zh: "家庭观", pairing: "가족관이 변하다", pairingZh: "家庭观发生变化", example: "가족관이라는 개념이 점차 사라지고 있다.", exampleZh: "家庭观这一概念正在逐渐消失。", note: "社会主题", source: "完全掌握 TOPIK II 中高级词汇 · Unit 1" },
+  { id: "mastery2-various", pos: "名", text: "가지가지", zh: "各种各样", pairing: "가지가지 성격", pairingZh: "各种性格", example: "사람마다 성격이 가지가지이다.", exampleZh: "每个人的性格各不相同。", note: "描述表达", source: "完全掌握 TOPIK II 中高级词汇 · Unit 1" },
+  { id: "mastery2-fake", pos: "名", text: "가짜", zh: "假货 / 伪造品", pairing: "가짜 상품", pairingZh: "假冒商品", example: "값싼 상품일수록 가짜가 더 많다.", exampleZh: "越便宜的商品假货越多。", note: "消费主题", source: "完全掌握 TOPIK II 中高级词汇 · Unit 1" },
+  { id: "mastery2-livestock", pos: "名", text: "가축", zh: "家畜", pairing: "가축을 기르다", pairingZh: "饲养家畜", example: "강물이 범람해 가축과 도구가 떠내려갔다.", exampleZh: "江水泛滥，家畜和工具被冲走了。", note: "农业主题", source: "完全掌握 TOPIK II 中高级词汇 · Unit 1" },
+  { id: "mastery2-value", pos: "名", text: "가치", zh: "价值", pairing: "가치가 있다", pairingZh: "有价值", example: "가치 있는 일을 위해 헌신한다.", exampleZh: "为有价值的事情献身。", note: "抽象名词", source: "完全掌握 TOPIK II 中高级词汇 · Unit 1" },
+  { id: "mastery2-values", pos: "名", text: "가치관", zh: "价值观", pairing: "가치관을 지키다", pairingZh: "坚守价值观", example: "법은 사회의 가치관을 지켜 주는 보호 장치이다.", exampleZh: "法律是守护社会价值观的保护装置。", note: "社会主题", source: "完全掌握 TOPIK II 中高级词汇 · Unit 1" },
+  { id: "mastery2-each", pos: "名", text: "각각", zh: "各个 / 各自", pairing: "각각 들어가다", pairingZh: "各自进入", example: "각각 자기 방으로 들어가 버렸다.", exampleZh: "各自回到了自己的房间。", note: "范围表达", source: "完全掌握 TOPIK II 中高级词汇 · Unit 1" },
+  { id: "mastery2-cornea", pos: "名", text: "각막", zh: "角膜", pairing: "각막염", pairingZh: "角膜炎", example: "각막염에 걸린 환자가 급증하고 있다.", exampleZh: "角膜炎患者正在骤增。", note: "医疗主题", source: "完全掌握 TOPIK II 中高级词汇 · Unit 1" },
+  { id: "mastery2-resolve", pos: "名", text: "각오", zh: "觉悟 / 决心", pairing: "각오를 다지다", pairingZh: "坚定决心", example: "굳은 각오로 임무를 완성해야 한다.", exampleZh: "应该以坚定的决心完成任务。", note: "态度表达", source: "完全掌握 TOPIK II 中高级词汇 · Unit 1" },
+  { id: "mastery2-each-person", pos: "名", text: "각자", zh: "各自", pairing: "각자의 일", pairingZh: "各自的事情", example: "사고 당시 각자가 겪었던 일을 말씀해 주세요.", exampleZh: "请讲述事故当时各自的经历。", note: "范围表达", source: "完全掌握 TOPIK II 中高级词汇 · Unit 1" },
+  { id: "mastery2-all-kinds", pos: "名", text: "각종", zh: "各种", pairing: "각종 질병", pairingZh: "各种疾病", example: "예전에는 보기 어려웠던 각종 성인병이 늘고 있다.", exampleZh: "过去少见的各种成人病正在增加。", note: "范围表达", source: "完全掌握 TOPIK II 中高级词汇 · Unit 1" },
+  { id: "mastery2-seasoning", pos: "名", text: "간", zh: "咸淡 / 调味", pairing: "간을 맞추다", pairingZh: "调味", example: "간이 맞는지 확인해 보세요.", exampleZh: "请确认一下咸淡是否合适。", note: "饮食表达", source: "完全掌握 TOPIK II 中高级词汇 · Unit 1" },
+  { id: "mastery2-signboard", pos: "名", text: "간판", zh: "招牌", pairing: "간판을 걸다", pairingZh: "挂招牌", example: "극장 간판을 쳐다보았다.", exampleZh: "抬头看了剧场的招牌。", note: "场所名词", source: "完全掌握 TOPIK II 中高级词汇 · Unit 1" },
+  { id: "mastery2-interval", pos: "名", text: "간격", zh: "间隔", pairing: "간격을 두다", pairingZh: "保持间隔", example: "두 집은 규칙적인 간격을 두고 있다.", exampleZh: "两栋房子保持着规律的间隔。", note: "空间表达", source: "完全掌握 TOPIK II 中高级词汇 · Unit 1" },
+  { id: "mastery2-roundtable", pos: "名", text: "간담회", zh: "座谈会", pairing: "간담회를 개최하다", pairingZh: "举行座谈会", example: "성희롱 문제에 관해 간담회를 개최했다.", exampleZh: "就性骚扰问题举行了座谈会。", note: "社会活动", source: "完全掌握 TOPIK II 中高级词汇 · Unit 1" }
+];
+
 function readDictationState() {
-  const fallback = { index: 0, revealed: false, inputText: "", weakIds: [], knownIds: [], taskSession: null };
+  const profile = vocabularyPracticeProfile();
+  const fallback = { index: 0, revealed: false, inputText: "", weakIds: [], knownIds: [], taskSession: null, profileKey: profile.key };
   try {
-    return { ...fallback, ...(JSON.parse(localStorage.getItem(dictationStorageKey) || "null") || {}) };
+    const saved = JSON.parse(localStorage.getItem(dictationStorageKey) || "null") || {};
+    const profileChanged = Boolean(saved.profileKey && saved.profileKey !== profile.key);
+    const normalized = profileChanged ? fallback : { ...fallback, ...saved, profileKey: profile.key };
+    const poolIds = new Set(profile.items.map(item => item.id));
+    normalized.weakIds = (normalized.weakIds || []).filter(id => poolIds.has(id));
+    normalized.knownIds = (normalized.knownIds || []).filter(id => poolIds.has(id));
+    if (saved.profileKey !== profile.key) localStorage.setItem(dictationStorageKey, JSON.stringify(normalized));
+    return normalized;
   } catch {
     return fallback;
   }
@@ -329,12 +380,30 @@ function normalizedDictationAnswerState(state = readDictationState(), item = cur
   };
 }
 
+function vocabularyPracticeProfile(settings = readStudySettings()) {
+  const foundationItems = dictationItems.filter(item => item.pos !== "短句" && !/\s/.test(item.text));
+  const topikIItems = [...foundationItems, ...completeMasteryWordEliminationItems];
+  const isTopikII = settings.exam === "TOPIK" && settings.level === "II";
+  const targetGrade = String(settings.targetGrade || (isTopikII ? "4" : "2"));
+  const items = isTopikII
+    ? [...topik102WordEliminationItems, ...completeMasteryTopikIIWordItems]
+    : topikIItems;
+  return {
+    key: `TOPIK-${isTopikII ? "II" : "I"}-${targetGrade}`,
+    level: isTopikII ? "II" : "I",
+    targetGrade,
+    label: `TOPIK ${isTopikII ? "II" : "I"} · 目标${targetGrade}级`,
+    scope: isTopikII ? "已导入 TOPIK II 真题词 + 中高级教材词" : "已导入 TOPIK I 初级教材词",
+    items
+  };
+}
+
 function dictationPracticeItems() {
-  return dictationItems.filter(item => item.pos !== "短句" && !/\s/.test(item.text));
+  return vocabularyPracticeProfile().items;
 }
 
 function wordEliminationPracticeItems() {
-  return [...dictationPracticeItems(), ...topik102WordEliminationItems, ...completeMasteryWordEliminationItems];
+  return vocabularyPracticeProfile().items;
 }
 
 function wordEliminationBatches() {
@@ -343,6 +412,7 @@ function wordEliminationBatches() {
 }
 
 function readWordEliminationState() {
+  const profile = vocabularyPracticeProfile();
   const fallback = {
     selectedWordId: "",
     selectedMeaningId: "",
@@ -353,17 +423,23 @@ function readWordEliminationState() {
     reviewedWeakIds: [],
     mistakeIds: [],
     completedBatchIds: [],
-    roundsCompleted: 0
+    roundsCompleted: 0,
+    profileKey: profile.key
   };
   try {
     const saved = JSON.parse(localStorage.getItem(wordEliminationStorageKey) || "null") || {};
+    const profileChanged = Boolean(saved.profileKey && saved.profileKey !== profile.key);
+    const activeSaved = profileChanged ? {} : saved;
     const batches = wordEliminationBatches();
-    return {
+    const normalized = {
       ...fallback,
-      ...saved,
-      batchIndex: Math.max(0, Math.min(batches.length - 1, Number(saved.batchIndex) || 0)),
-      mode: saved.mode === "review" ? "review" : "batch"
+      ...activeSaved,
+      profileKey: profile.key,
+      batchIndex: Math.max(0, Math.min(batches.length - 1, Number(activeSaved.batchIndex) || 0)),
+      mode: activeSaved.mode === "review" ? "review" : "batch"
     };
+    if (saved.profileKey !== profile.key) localStorage.setItem(wordEliminationStorageKey, JSON.stringify(normalized));
+    return normalized;
   } catch {
     return fallback;
   }
@@ -4132,6 +4208,7 @@ async function recognizeDictationHandwriting() {
 function renderDictationView() {
   const view = $("#dictationView");
   if (!view) return;
+  const vocabularyProfile = vocabularyPracticeProfile();
   const state = readDictationState();
   const practiceItems = dictationPracticeItems();
   const taskSession = dictationTaskSession(state);
@@ -4155,7 +4232,7 @@ function renderDictationView() {
     <div>
       <p class="section-kicker">${taskSession ? `周计划任务 · ${escapeImportText(linkedTaskTitle)}` : "听写训练 · 手写记忆"}</p>
       <h2>听写</h2>
-      <p>${taskSession ? `完成本组 ${progressTotal} 个词，系统会记录正确率、不熟词和实际用时。` : "播放单词，输入听到的韩文，再核对答案。"}</p>
+      <p>${taskSession ? `完成本组 ${progressTotal} 个词，系统会记录正确率、不熟词和实际用时。` : "播放单词，输入听到的韩文，再核对答案。"}<br><small>${escapeImportText(vocabularyProfile.label)} · 已导入 ${vocabularyProfile.items.length} 词 · ${escapeImportText(vocabularyProfile.scope)}</small></p>
     </div>
     <button class="score-pill dictation-score-button${!taskSession && weakIds.size ? "" : " is-empty"}" id="reviewWeakDictation" type="button" ${!taskSession && weakIds.size ? "" : "disabled"} aria-label="${taskSession ? `本组已核对 ${answeredCount} 个词` : (weakIds.size ? `${weakIds.size} 个不熟词，点击重新练习` : "暂无不熟词")}">
       <small>${taskSession ? "本组进度" : "当前进度"}</small><strong>${safeIndex + 1} / ${progressTotal}</strong><span>${taskSession ? `已核对 ${answeredCount} 个` : (weakIds.size ? `${weakIds.size} 个不熟，点此重做` : "暂无不熟词")}</span>
@@ -4231,6 +4308,7 @@ function renderDictationView() {
 function renderWordEliminationView() {
   const view = $("#wordEliminationView");
   if (!view) return;
+  const vocabularyProfile = vocabularyPracticeProfile();
   const state = readWordEliminationState();
   const items = currentWordEliminationItems(state);
   const clearedIds = new Set(state.clearedIds || []);
@@ -4247,13 +4325,13 @@ function renderWordEliminationView() {
   const completionCopy = completionAction?.type === "review"
     ? "先把本组错配和听写不熟词再配一次，然后继续新词。"
     : completionAction?.type === "batch"
-      ? "下一组来自已导入的第102届 TOPIK II 真题词汇。"
+      ? `下一组继续使用${vocabularyProfile.label}的已导入词库。`
       : `当前 ${wordEliminationPracticeItems().length} 个词已全部完成，本轮记录已保留。`;
   view.innerHTML = `<div class="page-heading">
     <div>
       <p class="section-kicker">词义配对 · 消除练习</p>
       <h2>单词消除</h2>
-      <p>韩文和中文混排。先点任意一张，再点对应翻译。</p>
+      <p>韩文和中文混排。先点任意一张，再点对应翻译。<br><small>${escapeImportText(vocabularyProfile.label)} · 已导入 ${vocabularyProfile.items.length} 词 · ${escapeImportText(vocabularyProfile.scope)}</small></p>
     </div>
     <div class="score-pill">
       <small>${groupLabel}</small><strong>${clearedIds.size} / ${items.length}</strong><span>${state.mode === "batch" ? `总进度 ${Math.min(wordEliminationPracticeItems().length, completedRegularCount)} / ${wordEliminationPracticeItems().length}` : "完成后继续新词"}</span>
