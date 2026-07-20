@@ -386,6 +386,8 @@ h2 { margin: 0; font-size: 25px; letter-spacing: 0; }
 .word-elimination-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
 .word-elimination-header strong { font-size: 18px; }
 .word-elimination-header p { margin: 5px 0 0; color: var(--muted); font-size: 12px; }
+.word-elimination-tools { display: flex; align-items: center; gap: 8px; }
+.word-elimination-tools .sound-toggle[aria-pressed="true"] { color: #1f6b43; border-color: #9cc8ad; background: #eef7f0; }
 .elimination-mixed-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
 .elimination-tile { position: relative; display: grid; min-height: 78px; appearance: none; place-items: center; align-content: center; gap: 6px; padding: 12px 10px; border: 1px solid #d9d6cc; border-radius: 14px; color: var(--ink); background: #fff; cursor: pointer; font: inherit; text-align: center; transition: transform .16s ease, border-color .16s ease, background .16s ease, opacity .24s ease; }
 .elimination-tile:hover { border-color: #9eb7a5; background: #f7faf5; }
@@ -1128,7 +1130,8 @@ legend small { color: var(--muted); font-size: 9px; font-weight: 600; }
   .dictation-side { grid-template-columns: 1fr; }
   .word-elimination-panel { padding: 18px; }
   .word-elimination-header { align-items: flex-start; flex-direction: column; }
-  .word-elimination-header .secondary-button { width: 100%; }
+  .word-elimination-tools { width: 100%; }
+  .word-elimination-header .secondary-button { flex: 1; width: auto; }
   .elimination-mixed-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
   .page-heading { align-items: flex-start; flex-direction: column; }
   .progress-heading-side { width: 100%; align-items: stretch; flex-direction: column; }

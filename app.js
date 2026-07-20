@@ -109,6 +109,7 @@ let dictationInkStrokes = [];
 let dictationHandwritingRecognizer = null;
 let wordEliminationResolving = false;
 let wordEliminationTimer = null;
+let wordEliminationAudioContext = null;
 
 const defaultTasks = [
   { id: 1, day: "mon", start: "11:00", end: "11:40", category: "listening", title: "短对话诊断", note: "辨认场所、人物与行动", status: "completed", standards: ["首遍不暂停完成15题", "正确率达到80%", "错题复听并写下漏听关键词", "次日重做错题"] },
@@ -207,6 +208,7 @@ const weakTokenMap = { "听力": "listening", "阅读": "reading", "词汇": "vo
 const planSchemaVersion = "24";
 const dictationStorageKey = "topikPrototypeDictationState";
 const wordEliminationStorageKey = "topikPrototypeWordEliminationState";
+const wordEliminationSoundStorageKey = "topikPrototypeWordEliminationSound";
 const externalStudyStorageKey = "topikPrototypeExternalStudyRecords";
 let externalVoiceRecognition = null;
 let externalVoiceBaseText = "";
@@ -4345,6 +4347,61 @@ function renderDictationView() {
   bindDictationEvents();
 }
 
+function wordEliminationSoundEnabled() {
+  return localStorage.getItem(wordEliminationSoundStorageKey) !== "off";
+}
+
+function writeWordEliminationSoundEnabled(enabled = true) {
+  localStorage.setItem(wordEliminationSoundStorageKey, enabled ? "on" : "off");
+  return enabled;
+}
+
+function playWordEliminationSound(kind = "correct") {
+  if (!wordEliminationSoundEnabled()) return;
+  document.dispatchEvent(new CustomEvent("word-elimination-sound", { detail: { kind } }));
+  if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextClass) return;
+  try {
+    wordEliminationAudioContext ||= new AudioContextClass();
+    const context = wordEliminationAudioContext;
+    if (context.state === "suspended") context.resume().catch(() => {});
+    const sequences = {
+      correct: [
+        { frequency: 620, at: 0, duration: 0.08, volume: 0.035 },
+        { frequency: 820, at: 0.07, duration: 0.11, volume: 0.032 }
+      ],
+      error: [
+        { frequency: 210, at: 0, duration: 0.1, volume: 0.024, type: "triangle" },
+        { frequency: 170, at: 0.08, duration: 0.12, volume: 0.02, type: "triangle" }
+      ],
+      complete: [
+        { frequency: 523.25, at: 0, duration: 0.12, volume: 0.032 },
+        { frequency: 659.25, at: 0.09, duration: 0.13, volume: 0.03 },
+        { frequency: 783.99, at: 0.18, duration: 0.18, volume: 0.028 }
+      ]
+    };
+    const now = context.currentTime;
+    (sequences[kind] || sequences.correct).forEach(note => {
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+      const start = now + note.at;
+      const end = start + note.duration;
+      oscillator.type = note.type || "sine";
+      oscillator.frequency.setValueAtTime(note.frequency, start);
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(note.volume, start + 0.012);
+      gain.gain.exponentialRampToValueAtTime(0.0001, end);
+      oscillator.connect(gain);
+      gain.connect(context.destination);
+      oscillator.start(start);
+      oscillator.stop(end + 0.02);
+    });
+  } catch {
+    // Audio feedback is optional; visual feedback remains available.
+  }
+}
+
 function renderWordEliminationView() {
   const view = $("#wordEliminationView");
   if (!view) return;
@@ -4383,7 +4440,10 @@ function renderWordEliminationView() {
         <strong>找到对应的韩文和中文</strong>
         <p id="eliminationFeedback" role="status">${selectedType ? `已选${selectedType}，再点对应翻译` : "配对正确后，两张卡会一起消失"}</p>
       </div>
-      <button class="secondary-button compact" type="button" id="resetWordElimination">重新开始</button>
+      <div class="word-elimination-tools">
+        <button class="secondary-button compact sound-toggle" type="button" id="toggleWordEliminationSound" aria-pressed="${wordEliminationSoundEnabled() ? "true" : "false"}">音效 ${wordEliminationSoundEnabled() ? "开" : "关"}</button>
+        <button class="secondary-button compact" type="button" id="resetWordElimination">重新开始</button>
+      </div>
     </div>
     ${remainingTiles.length ? `<div class="elimination-mixed-grid">
       ${remainingTiles.map(tile => {
@@ -4424,9 +4484,12 @@ function selectWordEliminationTile(type = "", id = "") {
   const clickedTile = document.querySelector(`[data-elimination-type="${type}"][data-elimination-id="${id}"]`);
   const selectedTile = document.querySelector(".elimination-tile.is-selected");
   const feedback = $("#eliminationFeedback");
+  const willCompleteGroup = matched && currentWordEliminationItems(current).every(item => (current.clearedIds || []).includes(item.id) || item.id === id);
   clickedTile?.classList.add(matched ? "is-clearing" : "is-error");
   selectedTile?.classList.add(matched ? "is-clearing" : "is-error");
   if (feedback) feedback.textContent = matched ? "配对正确" : "不是这一组，再试一次";
+  playWordEliminationSound(matched ? "correct" : "error");
+  if (willCompleteGroup) window.setTimeout(() => playWordEliminationSound("complete"), 210);
 
   wordEliminationTimer = window.setTimeout(() => {
     if (matched) {
@@ -4452,6 +4515,11 @@ function bindWordEliminationEvents() {
   $$("[data-elimination-type][data-elimination-id]").forEach(button => button.addEventListener("click", () => {
     selectWordEliminationTile(button.dataset.eliminationType || "", button.dataset.eliminationId || "");
   }));
+  $("#toggleWordEliminationSound")?.addEventListener("click", () => {
+    const enabled = writeWordEliminationSoundEnabled(!wordEliminationSoundEnabled());
+    renderWordEliminationView();
+    if (enabled) playWordEliminationSound("correct");
+  });
   $("#resetWordElimination")?.addEventListener("click", () => {
     if (wordEliminationTimer) window.clearTimeout(wordEliminationTimer);
     wordEliminationTimer = null;

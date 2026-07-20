@@ -345,3 +345,11 @@ TOPIK I 系统听力兜底也已完成一题一原文修复。五道题现在对
 - 当前实现不是无限运行时生成。第5组完成后诚实提示100词已全部完成；未来扩容只需向对应已核验词池追加词条，分组数会自动增加。
 - 回退标签：`checkpoint-20260720-pre-auto-vocabulary-unlock`。本机 `specs/word-elimination-batches.cli.js` 13项、`specs/full-regression.cli.js` 22项通过；未改既定视觉、计划和奖励架构。
 - 生产资源版本：`20260720-auto-vocabulary-v32`；部署 ID：`dpl_7Bh9amq1BBV7qVAHCYMVGpSpCCo6`。生产专项13项与完整学习闭环22项通过。
+
+## 2026-07-20 - 单词消除音效交接
+
+- 单词消除使用本地 Web Audio 生成错配、正确配对和整组完成三种短反馈，不依赖 MiniMax TTS、外部音频文件或网络请求。
+- “音效 开/关”是次要操作，默认开启并写入本机偏好；关闭后所有单词消除音效停止，页面重新渲染后仍保持该状态。
+- 不支持 Web Audio、播放受限或启用减少动态效果时会静默降级，原有卡片消除、进度、错词和续组状态不受影响。
+- 修改前回退标签：`checkpoint-20260720-pre-word-elimination-sound`。本机专项17项与完整学习闭环22项通过；本轮未改计划、听写、云同步、Day1、Day7、PWA 或 Reward Engine。
+- 生产资源版本：`20260720-word-sound-v33`；部署 ID：`dpl_2GEub1DqTJKb2VaaL4P5cwQt6NG3`。生产专项17项与完整学习闭环22项通过。

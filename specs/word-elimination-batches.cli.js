@@ -28,6 +28,51 @@ async page => {
   check("TOPIK II dictation and elimination share the selected-level pool", sharedTopikII.profile.label === "TOPIK II · 目标3级" && sharedTopikII.dictationIds.join(",") === sharedTopikII.eliminationIds.join(",") && sharedTopikII.copy?.includes("已导入 100 词") && sharedTopikII.profile.items.every(item => item.source?.includes("TOPIK II")), JSON.stringify({ profile: sharedTopikII.profile, copy: sharedTopikII.copy }));
   check("TOPIK II pool has no duplicate cards", new Set(sharedTopikII.profile.items.map(item => item.id)).size === 100 && new Set(sharedTopikII.profile.items.map(item => item.text)).size === 100 && new Set(sharedTopikII.profile.items.map(item => item.zh)).size === 100, JSON.stringify(sharedTopikII.profile.items.map(item => ({ id: item.id, text: item.text, zh: item.zh }))));
 
+  const soundSetup = await page.evaluate(() => {
+    window.__wordEliminationSounds = [];
+    document.addEventListener("word-elimination-sound", event => window.__wordEliminationSounds.push(event.detail.kind));
+    const [first, second] = currentWordEliminationItems();
+    return {
+      first: first.id,
+      second: second.id,
+      label: document.querySelector("#toggleWordEliminationSound")?.textContent.trim(),
+      pressed: document.querySelector("#toggleWordEliminationSound")?.getAttribute("aria-pressed")
+    };
+  });
+  check("sound feedback is on by default and explicitly controllable", soundSetup.label === "音效 开" && soundSetup.pressed === "true", JSON.stringify(soundSetup));
+  await page.click("#toggleWordEliminationSound");
+  const soundOff = await page.evaluate(() => ({
+    label: document.querySelector("#toggleWordEliminationSound")?.textContent.trim(),
+    pressed: document.querySelector("#toggleWordEliminationSound")?.getAttribute("aria-pressed"),
+    saved: localStorage.getItem("topikPrototypeWordEliminationSound")
+  }));
+  await page.click(`[data-elimination-type="word"][data-elimination-id="${soundSetup.first}"]`);
+  await page.click(`[data-elimination-type="meaning"][data-elimination-id="${soundSetup.second}"]`);
+  await page.waitForTimeout(300);
+  const mutedSounds = await page.evaluate(() => window.__wordEliminationSounds);
+  check("sound feedback can be muted and stays muted", soundOff.label === "音效 关" && soundOff.pressed === "false" && soundOff.saved === "off" && mutedSounds.length === 0, JSON.stringify({ soundOff, mutedSounds }));
+  await page.click("#toggleWordEliminationSound");
+  await page.evaluate(() => { window.__wordEliminationSounds = []; });
+  await page.click(`[data-elimination-type="word"][data-elimination-id="${soundSetup.first}"]`);
+  await page.click(`[data-elimination-type="meaning"][data-elimination-id="${soundSetup.second}"]`);
+  await page.waitForTimeout(400);
+  await page.click(`[data-elimination-type="word"][data-elimination-id="${soundSetup.first}"]`);
+  await page.click(`[data-elimination-type="meaning"][data-elimination-id="${soundSetup.first}"]`);
+  await page.waitForTimeout(350);
+  const pairSounds = await page.evaluate(() => window.__wordEliminationSounds);
+  check("wrong and correct pairs emit distinct sounds", pairSounds.includes("error") && pairSounds.includes("correct"), JSON.stringify(pairSounds));
+
+  await page.evaluate(firstId => {
+    window.__wordEliminationSounds = [];
+    writeWordEliminationState({ selectedWordId: "", selectedMeaningId: "", clearedIds: currentWordEliminationItems().filter(item => item.id !== firstId).map(item => item.id) });
+    renderWordEliminationView();
+  }, soundSetup.first);
+  await page.click(`[data-elimination-type="word"][data-elimination-id="${soundSetup.first}"]`);
+  await page.click(`[data-elimination-type="meaning"][data-elimination-id="${soundSetup.first}"]`);
+  await page.waitForTimeout(600);
+  const completionSound = await page.evaluate(() => ({ sounds: window.__wordEliminationSounds, completed: Boolean(document.querySelector(".elimination-empty")) }));
+  check("last pair emits a separate group completion sound", completionSound.completed && completionSound.sounds.join(",") === "correct,complete", JSON.stringify(completionSound));
+
   await page.evaluate(() => {
     writeWordEliminationState({ clearedIds: wordEliminationBatches()[0].map(item => item.id), batchIndex: 0, mode: "batch", mistakeIds: [], reviewedWeakIds: [] });
     renderWordEliminationView();
