@@ -929,8 +929,12 @@ function prioritizedStudyTokens(tokens = [], profile = studyPerformanceProfile()
 function defaultStudyTokens(settings = {}) {
   if (settings.exam === "IELTS") return ["listening", "reading", "writing", "speaking"];
   if (settings.exam === "OTHER") return ["reading", "vocab", "writing"];
-  if (settings.level === "II") return ["listening", "reading", "writing"];
+  if (settings.level === "II") return ["listening", "reading"];
   return ["listening", "reading"];
+}
+
+function isUnavailableStudyToken(token, settings = {}) {
+  return settings.exam === "TOPIK" && settings.level === "II" && normalizeStudyCategory(token) === "writing";
 }
 
 function hasActualReviewNeed() {
@@ -969,7 +973,10 @@ function scopedConsolidationTemplates(tokens = []) {
 function scopedStudyTokens(settings = readStudySettings()) {
   const defaults = defaultStudyTokens(settings);
   const explicit = userSelectedStudyTokens(settings);
-  return [...new Set((explicit.length ? explicit : selectedStudyTokens(settings, defaults)).map(normalizeStudyCategory))];
+  const supported = (explicit.length ? explicit : selectedStudyTokens(settings, defaults))
+    .map(normalizeStudyCategory)
+    .filter(token => !isUnavailableStudyToken(token, settings));
+  return [...new Set(supported.length ? supported : defaults)];
 }
 
 function allowedTaskCategories(settings = readStudySettings(), hasReviewNeed = hasActualReviewNeed()) {
@@ -984,6 +991,10 @@ function constrainTasksToStudyScope(sourceTasks = [], settings = readStudySettin
   const scopedTokens = scopedStudyTokens(settings);
   const allowedCategories = allowedTaskCategories(settings, hasReviewNeed);
   const cleaned = (sourceTasks || []).filter(task => {
+    // Scope changes affect future planning only. A task with a real learning or
+    // adjustment trail remains part of history even if its module is no longer
+    // selected or temporarily unavailable for new plans.
+    if (hasPracticeRecord(task) || task.status === "cancelled" || (task.adjustments || []).length) return true;
     const category = normalizeStudyCategory(task.category);
     if (!allowedCategories.has(category)) return false;
     if (taskMentionsUnselectedScope(task, scopedTokens)) return false;
@@ -1177,7 +1188,7 @@ function updateTargetGradeOptions(level = "I", selectedGrade = "") {
 function updateExamOptions(exam, level = "I") {
   const isIELTS = exam === "IELTS";
   const isOther = exam === "OTHER";
-  const isTopikII = !isIELTS && level === "II";
+  const isTopikII = exam === "TOPIK" && level === "II";
   $("#levelFieldset").classList.toggle("hidden", isOther);
   $("#targetGradeFieldset").classList.toggle("hidden", exam !== "TOPIK");
   $("#customExamFields").classList.toggle("hidden", !isOther);
@@ -1185,11 +1196,14 @@ function updateExamOptions(exam, level = "I") {
   $("#levelOneTitle").textContent = isIELTS ? "学术类" : "TOPIK I";
   $("#levelOneNote").textContent = isIELTS ? "Academic" : "初级试卷 · 听力与阅读";
   $("#levelTwoTitle").textContent = isIELTS ? "培训类" : "TOPIK II";
-  $("#levelTwoNote").textContent = isIELTS ? "General Training" : "中高级试卷 · 听力、写作与阅读";
+  $("#levelTwoNote").textContent = isIELTS ? "General Training" : "中高级试卷 · 当前开放听力与阅读";
   if (exam === "TOPIK") updateTargetGradeOptions(level, $('input[name="targetGrade"]:checked')?.value);
   $("#vocabWeakOption").classList.toggle("hidden", isIELTS && !isOther);
   $("#grammarWeakOption").classList.toggle("hidden", isIELTS && !isOther);
   $("#writingWeakOption").classList.toggle("hidden", !(isIELTS || isTopikII || isOther));
+  const writingInput = $('#writingWeakOption input');
+  writingInput.disabled = isTopikII;
+  $("#writingWeakOption span").textContent = isTopikII ? "写作（专项建设中）" : "写作";
   $("#speakingWeakOption").classList.toggle("hidden", !(isIELTS || isOther));
   if (isOther) {
     $("#weakHelp").textContent = "请选择适合这个考试或学习项目的能力项；补充范围可写教材章节、老师要求或特殊目标。";
@@ -1199,9 +1213,9 @@ function updateExamOptions(exam, level = "I") {
     $("#weakHelp").textContent = "雅思按听力、阅读、写作、口语四项安排；学术类与培训类的阅读、写作任务不同。";
   } else {
     $('#speakingWeakOption input').checked = false;
-    if (!isTopikII) $('#writingWeakOption input').checked = false;
+    if (isTopikII || level === "I") writingInput.checked = false;
     $("#weakHelp").textContent = isTopikII
-      ? "TOPIK II 包含听力、写作和阅读；词汇、语法作为三部分的基础能力。"
+      ? "当前开放听力和阅读；写作51–54题将在专用长文本训练中开放。词汇、语法作为基础强化。"
       : "TOPIK I 正式题型为听力和阅读；词汇、语法作为基础能力强化。";
   }
 }

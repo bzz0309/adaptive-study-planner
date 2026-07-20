@@ -1,4 +1,5 @@
 async page => {
+  await page.setViewportSize({ width: 1280, height: 900 });
   const results = [];
   const check = (name, passed, details = "") => {
     results.push({ name, passed, details });
@@ -23,6 +24,38 @@ async page => {
   await page.reload({ waitUntil: "domcontentloaded" });
   const fresh = await page.evaluate(() => ({ title: document.querySelector("#currentTaskTitle")?.textContent.trim(), tasks: JSON.parse(localStorage.getItem("topikPrototypeTasks") || "[]"), cards: document.querySelectorAll(".task-card").length }));
   check("fresh user has no fake plan", fresh.title?.includes("生成") && !fresh.tasks.length && !fresh.cards, JSON.stringify(fresh));
+
+  const writingBoundary = await page.evaluate(() => {
+    const settings = { exam: "TOPIK", level: "II", targetGrade: "3", weak: ["写作"], intensity: "medium", firstRoundWeeks: 1, studyDays: ["sun"], availableStart: "11:00", availableEnd: "21:00", preferredSlots: ["afternoon"], planStartDate: "2026-07-13" };
+    updateExamOptions("TOPIK", "II");
+    return {
+      categories: generatePlanFromSettings(settings).map(task => task.category),
+      disabled: document.querySelector('#writingWeakOption input')?.disabled,
+      label: document.querySelector("#writingWeakOption span")?.textContent.trim(),
+      help: document.querySelector("#weakHelp")?.textContent.trim()
+    };
+  });
+  check("unfinished TOPIK II writing is not scheduled as a fake quiz", !writingBoundary.categories.includes("writing") && writingBoundary.categories.every(category => ["listening", "reading"].includes(category)), JSON.stringify(writingBoundary));
+  check("TOPIK II writing boundary is explained in settings", writingBoundary.disabled && writingBoundary.label.includes("专项建设中") && writingBoundary.help.includes("51–54题"), JSON.stringify(writingBoundary));
+
+  const writingRestoredForOtherExam = await page.evaluate(() => {
+    updateExamOptions("OTHER", "II");
+    return {
+      disabled: document.querySelector('#writingWeakOption input')?.disabled,
+      label: document.querySelector("#writingWeakOption span")?.textContent.trim()
+    };
+  });
+  check("switching away from TOPIK II restores writing selection", !writingRestoredForOtherExam.disabled && writingRestoredForOtherExam.label === "写作", JSON.stringify(writingRestoredForOtherExam));
+
+  const preservedHistory = await page.evaluate(() => {
+    const settings = { exam: "TOPIK", level: "II", targetGrade: "3", weak: ["听力", "阅读"] };
+    const source = [
+      { id: "completed-writing", category: "writing", status: "completed", checkin: { total: 1, correct: 1, actualSeconds: 600 } },
+      { id: "future-writing", category: "writing", status: "planned" }
+    ];
+    return constrainTasksToStudyScope(source, settings).map(task => task.id);
+  });
+  check("scope changes preserve real history but remove unsupported future tasks", preservedHistory.includes("completed-writing") && !preservedHistory.includes("future-writing"), JSON.stringify(preservedHistory));
 
   await seedTask("reading");
   await page.evaluate(() => openTask("audit-reading"));
@@ -178,5 +211,5 @@ async page => {
   await page.setViewportSize({ width: 390, height: 844 });
   const mobile = await page.evaluate(() => ({ width: document.documentElement.clientWidth, scroll: document.documentElement.scrollWidth }));
   check("mobile page has no horizontal overflow", mobile.scroll <= mobile.width + 1, JSON.stringify(mobile));
-  return results;
+  return { passed: results.length, checks: results.map(result => result.name) };
 }

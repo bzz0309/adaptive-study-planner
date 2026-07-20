@@ -979,7 +979,9 @@ function dailyStudyStarts(settings = {}, blocksPerDay = 1, blockMinutes = 45, da
 function selectedPlanCategories(settings = {}, fallbackCategories = []) {
   const weakMap = { "听力": "listening", "阅读": "reading", "词汇": "vocab", "语法": "vocab", "写作": "writing", "口语": "speaking" };
   const selected = [...new Set((settings.weak || []).map(item => weakMap[item]).filter(Boolean))];
-  return selected.length ? selected : fallbackCategories;
+  const supported = (selected.length ? selected : fallbackCategories)
+    .filter(category => !(settings.exam === "TOPIK" && settings.level === "II" && category === "writing"));
+  return supported.length ? supported : ["listening", "reading"];
 }
 
 function selectedPlanScope(categories = []) {
@@ -991,7 +993,7 @@ function selectedPlanScope(categories = []) {
 function fallbackPlan(settings = {}) {
   const days = settings.studyDays?.length ? settings.studyDays : ["mon", "tue", "wed", "thu", "fri"];
   const baseCategories = settings.exam === "TOPIK" && settings.level === "II"
-    ? ["listening", "writing", "reading", "vocab"]
+    ? ["listening", "reading", "vocab"]
     : settings.exam === "IELTS"
       ? ["listening", "reading", "writing", "speaking"]
       : ["listening", "reading", "vocab"];

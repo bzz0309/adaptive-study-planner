@@ -717,3 +717,11 @@
 - 生产使用用户同一手写样本实测返回 `태`；生产 `/api/tts` 返回 HTTP 200、`audio/mpeg`、提供方 `minimax` 和13812字节真实音频。
 - `specs/full-regression.cli.js` 新增手写画布紧裁切断言，生产隔离浏览器23项完整学习闭环通过，错误级控制台消息0；正式构建通过。
 - 修改前回退标签为 `checkpoint-20260720-pre-esm-api-fix`；生产部署 ID 为 `dpl_ECTyxJoDHocz8BXCZnAkBmoaJiCH`。本轮未修改周计划、时间线卡片、Day1、Day7、PWA 或 Reward Engine。
+
+## 2026-07-20 - 晚间试用版发布收口
+
+- 修正 TOPIK II 写作边界：在51-54题专用长文本训练完成前，不再把写作排成不真实的四选一任务；设置中明确显示“专项建设中”。切换到雅思或其他考试后写作选择会恢复。
+- 调整学习范围时保留已有完成、部分完成、取消和调整记录，只清理尚未开始且不受当前范围支持的未来任务，避免为了收敛计划丢失真实历史。
+- 完整学习闭环本机27项通过；同轮已通过真题材料32项、单词消除17项、Day1/Day7奖励10项和原生云同步5项，共91项发布检查。正式站点三档布局无页面溢出、无无名控件、控制台错误0。
+- 生产手写样本返回 `태`；MiniMax TTS 返回200、`audio/mpeg`、18420字节。正式构建和部署成功，资源版本 `20260720-release-hardening-v34`，部署 ID `dpl_7LzdSSyPvBE1mfc2x4sLnMisZnYP`。
+- 本批前回退标签为 `checkpoint-20260720-pre-release-hardening`。本轮未修改 Day1、Day7、PWA 或 Reward Engine 架构。
