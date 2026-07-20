@@ -319,4 +319,4 @@ TOPIK I 系统听力兜底也已完成一题一原文修复。五道题现在对
 - 密码仅保存随机盐 `scrypt` 散列；会话签名密钥和 Blob 令牌只存在 Vercel环境变量。本地 `.env.local` 已忽略，任何测试或交接不得输出其内容。
 - 前端仍使用原账号弹窗和原状态结构，注册后直接登录；旧 Supabase 项目中的账号无法从不可达项目迁移，用户需在新系统首次注册一次。已有本机计划、错题和补录不会丢失，注册后会上传当前本机状态。
 - 本机 `specs/cloud-native-sync.cli.js` 5项通过，覆盖注册、保存、退出、重新登录恢复、错误密码和390px弹窗；`specs/full-regression.cli.js` 18项继续通过。虚构测试数据已精确清理。
-- 回退点为 `checkpoint-20260720-pre-cloud-login-migration`。本轮没有改既定视觉、时间线卡片、听写、Day1、Day7、PWA 或 Reward Engine；待完成生产部署和生产隔离账号复核后补部署ID。
+- 回退点为 `checkpoint-20260720-pre-cloud-login-migration`。生产部署 ID 为 `dpl_66aF43oiif8A8d889mWekTxcVfdo`，资源版本为 `20260720-native-cloud-v29`；主域名一次性账号完成注册、保存、退出、重新登录恢复、错误密码与390px验收，且测试记录已全部精确清理。本轮没有改既定视觉、时间线卡片、听写、Day1、Day7、PWA 或 Reward Engine。
