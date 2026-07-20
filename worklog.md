@@ -692,3 +692,12 @@
 - 本机专项11项和完整学习闭环22项通过；TOPIK I/II 均为3组×20词，390px无页面级横向溢出。本轮未改日历卡片、视觉系统、云登录、Day1、Day7、PWA 或 Reward Engine。
 - 修改前回退标签为 `checkpoint-20260720-pre-level-scoped-vocabulary`。
 - 正式构建和生产部署通过，部署 ID `dpl_8HMPfJT6cKdegVaH4dytt5zks1jy`，资源版本 `20260720-level-vocabulary-v31`；生产专项11项与完整学习闭环22项全部通过。
+
+## 2026-07-20 - TOPIK II 词库自动续组
+
+- TOPIK II 共用词池从60词扩到100词：保留20个第102届真题词，并把目视核对的《完全掌握 TOPIK II 中高级词汇》Unit 1教材词扩到80个；新增词来自扫描页14-18。
+- 单词消除自动形成5组，每组20词。完成第3组后直接出现并进入第4组，不需要用户再通知更新；第4组结束后同样进入第5组。
+- 听写同步使用同一100词池；TOPIK I 仍保持60个初级词、3组，等级边界和已有学习状态规则不变。
+- 不使用运行时AI随机造词。当前100词全部完成后会如实显示词库已完成；后续只通过继续导入并核验真实教材或真题词扩容。
+- 回退标签为 `checkpoint-20260720-pre-auto-vocabulary-unlock`；本机专项13项与完整学习闭环22项通过。本轮未修改既定视觉、计划、Day1、Day7、PWA 或 Reward Engine。
+- 资源版本为 `20260720-auto-vocabulary-v32`，生产部署 ID 为 `dpl_7Bh9amq1BBV7qVAHCYMVGpSpCCo6`；生产专项13项与完整学习闭环22项全部通过。

@@ -336,3 +336,12 @@ TOPIK I 系统听力兜底也已完成一题一原文修复。五道题现在对
 - 当前只承诺可靠的 TOPIK I / TOPIK II 大等级边界。教材没有给每个词标注3、4、5、6级，因此页面可以显示用户目标级别，但不能宣称这60词已经精确按单级划分。
 - 回退标签为 `checkpoint-20260720-pre-level-scoped-vocabulary`；专项脚本为 `specs/word-elimination-batches.cli.js`，并继续运行 `specs/full-regression.cli.js`。
 - 生产版本为 `20260720-level-vocabulary-v31`，部署 ID `dpl_8HMPfJT6cKdegVaH4dytt5zks1jy`；生产专项11项与完整学习闭环22项全部通过。
+
+## 2026-07-20 - TOPIK II 自动续组交接
+
+- TOPIK II 听写与单词消除当前共用100个已核验词：20个第102届真题词 + 80个《完全掌握 TOPIK II 中高级词汇》Unit 1词。新增40词经扫描页14-18目视核对。
+- 单词消除由词池长度自动生成5组，每组20词；第3组完成后自动解锁第4组，第4组完成后自动解锁第5组，无需用户或开发者逐组补数据。
+- 弱词优先级保持不变：先复习真实听写不熟词和本组错配，再进入下一组新词。TOPIK I 仍为60词、3组。
+- 当前实现不是无限运行时生成。第5组完成后诚实提示100词已全部完成；未来扩容只需向对应已核验词池追加词条，分组数会自动增加。
+- 回退标签：`checkpoint-20260720-pre-auto-vocabulary-unlock`。本机 `specs/word-elimination-batches.cli.js` 13项、`specs/full-regression.cli.js` 22项通过；未改既定视觉、计划和奖励架构。
+- 生产资源版本：`20260720-auto-vocabulary-v32`；部署 ID：`dpl_7Bh9amq1BBV7qVAHCYMVGpSpCCo6`。生产专项13项与完整学习闭环22项通过。

@@ -83,7 +83,7 @@ async page => {
     answerCard: Boolean(document.querySelector("#dictationView .dictation-answer-card")),
     handwritingLabel: document.querySelector("#openDictationHandwriting span")?.textContent.trim()
   }));
-  check("dictation starts clean with selected-level pool and explanation placeholder", dictationInitial.progress === "1 / 60" && dictationInitial.explanation?.includes("核对答案") && !dictationInitial.answerCard, JSON.stringify(dictationInitial));
+  check("dictation starts clean with selected-level pool and explanation placeholder", dictationInitial.progress === "1 / 100" && dictationInitial.explanation?.includes("核对答案") && !dictationInitial.answerCard, JSON.stringify(dictationInitial));
   check("dictation handwriting entry is explicit", dictationInitial.handwritingLabel === "打开手写板", JSON.stringify(dictationInitial));
   await page.fill("#dictationInput", "가바");
   await page.click("#revealDictationAnswer");
