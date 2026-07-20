@@ -1,2 +1,4 @@
 .vercel
 .playwright-cli/
+.env*
+node_modules/

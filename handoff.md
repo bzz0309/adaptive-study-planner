@@ -312,3 +312,11 @@ TOPIK I 系统听力兜底也已完成一题一原文修复。五道题现在对
 - 仍未进入 runtime 的真实阅读题为1-4、23-50；写作51-54仍需专用长文本学习流程。
 - 本机专项32项、完整学习闭环18项和生产专项32项通过；生产错误级控制台消息0。
 - 生产部署 ID 为 `dpl_48gFcbReSNSJ6czZamUXvqRvzcyM`，资源版本为 `20260720-topik102-reading-v27`；回退标签为 `checkpoint-20260720-pre-topik102-reading-passage`，功能提交为 `df2a72c`。
+
+## 2026-07-20 - 云登录阻塞解除
+
+- 原 Supabase 项目失效问题已由本站原生云提供方替代：`/api/cloud-auth` 负责注册、登录、刷新和用户读取，`/api/cloud-state` 负责当前登录用户的学习状态保存与恢复；私有 Vercel Blob 不公开用户文件。
+- 密码仅保存随机盐 `scrypt` 散列；会话签名密钥和 Blob 令牌只存在 Vercel环境变量。本地 `.env.local` 已忽略，任何测试或交接不得输出其内容。
+- 前端仍使用原账号弹窗和原状态结构，注册后直接登录；旧 Supabase 项目中的账号无法从不可达项目迁移，用户需在新系统首次注册一次。已有本机计划、错题和补录不会丢失，注册后会上传当前本机状态。
+- 本机 `specs/cloud-native-sync.cli.js` 5项通过，覆盖注册、保存、退出、重新登录恢复、错误密码和390px弹窗；`specs/full-regression.cli.js` 18项继续通过。虚构测试数据已精确清理。
+- 回退点为 `checkpoint-20260720-pre-cloud-login-migration`。本轮没有改既定视觉、时间线卡片、听写、Day1、Day7、PWA 或 Reward Engine；待完成生产部署和生产隔离账号复核后补部署ID。

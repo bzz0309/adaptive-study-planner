@@ -22,11 +22,16 @@ export default function handler(req, res) {
 
   const url = normalizeSupabaseUrl(process.env.SUPABASE_URL);
   const anonKey = String(process.env.SUPABASE_ANON_KEY || "").trim();
+  const nativeEnabled = Boolean(
+    String(process.env.BLOB_READ_WRITE_TOKEN || "").trim()
+    && String(process.env.CLOUD_SESSION_SECRET || "").trim()
+  );
 
   res.statusCode = 200;
   res.end(JSON.stringify({
-    enabled: Boolean(url && anonKey),
-    url: url || "",
-    anonKey: anonKey || ""
+    enabled: nativeEnabled || Boolean(url && anonKey),
+    provider: nativeEnabled ? "native" : "supabase",
+    url: nativeEnabled ? "" : (url || ""),
+    anonKey: nativeEnabled ? "" : (anonKey || "")
   }));
 }

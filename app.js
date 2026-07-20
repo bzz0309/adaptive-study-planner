@@ -2740,6 +2740,34 @@ function cloudProxyFetch(path, options = {}) {
     try { payload = JSON.parse(payload); }
     catch { payload = {}; }
   }
+  if (cloud.config?.provider === "native") {
+    const authorization = headers.Authorization || "";
+    const requestHeaders = {
+      "Content-Type": "application/json",
+      ...(authorization ? { Authorization: authorization } : {})
+    };
+    if (path.startsWith("/auth/v1/")) {
+      let action = "";
+      if (path.startsWith("/auth/v1/signup")) action = "signup";
+      else if (path.includes("grant_type=password")) action = "signin";
+      else if (path.includes("grant_type=refresh_token")) action = "refresh";
+      else if (path === "/auth/v1/user") action = "user";
+      else if (path === "/auth/v1/logout") action = "logout";
+      return fetch("/api/cloud-auth", {
+        method: "POST",
+        headers: requestHeaders,
+        body: JSON.stringify({ action, ...(payload || {}) })
+      });
+    }
+    if (path.startsWith("/rest/v1/study_state")) {
+      const action = String(options.method || "GET").toUpperCase() === "GET" ? "load" : "save";
+      return fetch("/api/cloud-state", {
+        method: "POST",
+        headers: requestHeaders,
+        body: JSON.stringify({ action, data: payload?.data })
+      });
+    }
+  }
   return fetch("/api/cloud-proxy", {
     method: "POST",
     headers: {
@@ -2991,10 +3019,12 @@ async function initializeCloud() {
       .trim()
       .replace(/\/+$/, "")
       .replace(/\/(?:rest|auth|storage)\/v1$/i, "");
+    const provider = payload?.provider === "native" ? "native" : "supabase";
     cloud.config = {
       ...payload,
+      provider,
       url: normalizedUrl,
-      enabled: Boolean(payload?.enabled && normalizedUrl)
+      enabled: Boolean(payload?.enabled && (provider === "native" || normalizedUrl))
     };
   } catch { cloud.config = { enabled: false }; }
   const redirected = readAuthRedirectSession();
