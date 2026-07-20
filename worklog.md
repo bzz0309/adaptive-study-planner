@@ -709,3 +709,11 @@
 - 使用 Impeccable 的微交互原则保持反馈克制，只服务于状态确认，没有加入装饰动画或新色彩。
 - 本批前回退标签为 `checkpoint-20260720-pre-word-elimination-sound`；本机单词消除专项17项和完整学习闭环22项通过，390px无页面级横向溢出。
 - 正式构建与生产复测通过；资源版本为 `20260720-word-sound-v33`，生产部署 ID 为 `dpl_2GEub1DqTJKb2VaaL4P5cwQt6NG3`。生产专项17项与完整学习闭环22项全部通过。
+
+## 2026-07-20 - 听写手写识别与 MiniMax API 恢复
+
+- 用户清晰写出韩文音节仍提示未识别。生产日志确认第一层根因是项目使用 ESM，但 `/api/study-assistant` 与 `/api/tts` 仍用 CommonJS 导出，函数在接收请求后、调用模型前即崩溃；两条路由已统一改为 `export default`。
+- 接口恢复后，同一失败样本一度被视觉模型误识别为拆散字母 `ㅔㅎ`。前端现按真实笔迹外接框紧裁切后再发送；服务端过滤没有预组合韩文音节的结果，并在智增增的 OpenAI 兼容链路内有限尝试视觉模型，不切换到 Qwen。
+- 生产使用用户同一手写样本实测返回 `태`；生产 `/api/tts` 返回 HTTP 200、`audio/mpeg`、提供方 `minimax` 和13812字节真实音频。
+- `specs/full-regression.cli.js` 新增手写画布紧裁切断言，生产隔离浏览器23项完整学习闭环通过，错误级控制台消息0；正式构建通过。
+- 修改前回退标签为 `checkpoint-20260720-pre-esm-api-fix`；生产部署 ID 为 `dpl_ECTyxJoDHocz8BXCZnAkBmoaJiCH`。本轮未修改周计划、时间线卡片、Day1、Day7、PWA 或 Reward Engine。

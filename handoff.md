@@ -353,3 +353,10 @@ TOPIK I 系统听力兜底也已完成一题一原文修复。五道题现在对
 - 不支持 Web Audio、播放受限或启用减少动态效果时会静默降级，原有卡片消除、进度、错词和续组状态不受影响。
 - 修改前回退标签：`checkpoint-20260720-pre-word-elimination-sound`。本机专项17项与完整学习闭环22项通过；本轮未改计划、听写、云同步、Day1、Day7、PWA 或 Reward Engine。
 - 生产资源版本：`20260720-word-sound-v33`；部署 ID：`dpl_2GEub1DqTJKb2VaaL4P5cwQt6NG3`。生产专项17项与完整学习闭环22项通过。
+
+## 2026-07-20 - 手写识别生产恢复交接
+
+- `/api/study-assistant` 和 `/api/tts` 已从错误的 CommonJS 导出改为 ESM `export default`，解决生产 `module is not defined in ES module scope`；后续新增 API 路由必须继续遵守这一边界。
+- 听写手写图片现在按笔迹外接框紧裁切；在线结果必须包含完整预组合韩文音节，只返回拆散兼容字母时会继续尝试智增增 OpenAI 兼容链路中的下一个视觉模型。
+- 用户失败样本已在生产直接复测为 `태`。MiniMax TTS 同轮返回200、`audio/mpeg`、13812字节，原始音频优先规则未改。
+- 生产完整学习闭环23项通过，错误级控制台消息0；部署 ID `dpl_ECTyxJoDHocz8BXCZnAkBmoaJiCH`，回退标签 `checkpoint-20260720-pre-esm-api-fix`。

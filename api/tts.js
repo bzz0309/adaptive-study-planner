@@ -438,7 +438,7 @@ async function fetchExternalTts(text, body = {}, diagnostics) {
   return audio;
 }
 
-module.exports = async function tts(req, res) {
+export default async function tts(req, res) {
   if (req.method !== "POST") return sendJson(res, 405, { error: "Method not allowed" });
 
   try {

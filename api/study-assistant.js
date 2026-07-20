@@ -1449,7 +1449,7 @@ async function handleVision(settings = {}) {
   return requestErrorImportVision({
     baseUrl: openAiBaseUrl(),
     apiKey: process.env.OPENAI_API_KEY,
-    model: process.env.OPENAI_VISION_MODEL || process.env.OPENAI_HANDWRITING_MODEL || process.env.OPENAI_MODEL || "gpt-4.1-mini",
+    model: process.env.OPENAI_VISION_MODEL || process.env.OPENAI_HANDWRITING_MODEL || "gpt-4o",
     images
   });
 }
@@ -1467,6 +1467,7 @@ function handwritingPrompt() {
   return [
     "Recognize only the handwritten Korean Hangul in this image.",
     "Ignore printed interface text, borders, guide lines, icons, and buttons.",
+    "Reconstruct complete precomposed Hangul syllable blocks such as 태; never return separated compatibility jamo such as ㅌㅐ or ㅔㅎ.",
     "Return strict JSON only: {\"candidates\":[\"first\",\"second\",\"third\"]}.",
     "The first candidate must be the most likely exact transcription.",
     "Return 1 to 3 short Korean candidates. Do not translate or explain."
@@ -1477,7 +1478,7 @@ function normalizeHandwritingCandidates(payload = {}) {
   const values = Array.isArray(payload.candidates) ? payload.candidates : [];
   return [...new Set(values
     .map(value => compact(value).replace(/[^\u1100-\u11ff\u3130-\u318f\uac00-\ud7af\s]/g, "").trim())
-    .filter(Boolean))].slice(0, 3);
+    .filter(value => /[\uac00-\ud7af]/.test(value)))].slice(0, 3);
 }
 
 async function requestHandwritingRecognition({ baseUrl, apiKey, model, image }) {
@@ -1512,11 +1513,20 @@ async function handleHandwriting(settings = {}) {
   const image = validateHandwritingImage(settings.image);
   const provider = String(process.env.AI_PROVIDER || "openai").trim().toLowerCase();
   const providers = [];
-  if (provider === "openai" && process.env.OPENAI_API_KEY) providers.push({
-    baseUrl: openAiBaseUrl(),
-    apiKey: process.env.OPENAI_API_KEY,
-    model: process.env.OPENAI_HANDWRITING_MODEL || process.env.OPENAI_MODEL || "gpt-4.1-mini"
-  });
+  if (provider === "openai" && process.env.OPENAI_API_KEY) {
+    const models = [...new Set([
+      process.env.OPENAI_HANDWRITING_MODEL,
+      process.env.OPENAI_VISION_MODEL,
+      "gpt-4.1-mini",
+      "gpt-4o",
+      "gpt-4o-mini"
+    ].filter(Boolean))];
+    models.forEach(model => providers.push({
+      baseUrl: openAiBaseUrl(),
+      apiKey: process.env.OPENAI_API_KEY,
+      model
+    }));
+  }
   if (provider === "qwen" && process.env.QWEN_API_KEY) providers.push({
     baseUrl: process.env.QWEN_BASE_URL || "https://dashscope.aliyuncs.com/compatible-mode/v1",
     apiKey: process.env.QWEN_API_KEY,
@@ -1528,12 +1538,14 @@ async function handleHandwriting(settings = {}) {
     try {
       const candidates = await requestHandwritingRecognition({ ...provider, image });
       if (candidates.length) return { candidates, source: "online" };
-    } catch {}
+    } catch (error) {
+      console.error("Handwriting provider failed:", provider.model, error.message);
+    }
   }
   throw new Error("handwriting_recognition_failed");
 }
 
-module.exports = async function studyAssistant(req, res) {
+export default async function studyAssistant(req, res) {
   if (req.method !== "POST") return send(res, 405, { error: "Method not allowed" });
   try {
     const body = await parseBody(req);

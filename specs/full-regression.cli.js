@@ -85,6 +85,25 @@ async page => {
   }));
   check("dictation starts clean with selected-level pool and explanation placeholder", dictationInitial.progress === "1 / 100" && dictationInitial.explanation?.includes("核对答案") && !dictationInitial.answerCard, JSON.stringify(dictationInitial));
   check("dictation handwriting entry is explicit", dictationInitial.handwritingLabel === "打开手写板", JSON.stringify(dictationInitial));
+  await page.click("#openDictationHandwriting");
+  await page.waitForTimeout(100);
+  const handwritingCrop = await page.evaluate(async () => {
+    const canvas = document.querySelector("#dictationCanvas");
+    const bounds = canvas.getBoundingClientRect();
+    const x = bounds.width / 2;
+    const y = bounds.height / 2;
+    dictationInkStrokes = [{ startedAt: Date.now(), points: [
+      { x: x - 50, y: y - 55, t: Date.now() },
+      { x: x + 50, y: y + 55, t: Date.now() + 1 }
+    ] }];
+    const image = new Image();
+    const loaded = new Promise(resolve => { image.onload = resolve; });
+    image.src = dictationCanvasImageData();
+    await loaded;
+    return { canvasWidth: canvas.width, imageWidth: image.width, imageHeight: image.height };
+  });
+  check("handwriting image is cropped tightly around the ink", handwritingCrop.imageWidth < handwritingCrop.canvasWidth / 2 && handwritingCrop.imageWidth > 100 && handwritingCrop.imageHeight > 100, JSON.stringify(handwritingCrop));
+  await page.evaluate(() => clearDictationCanvas());
   await page.fill("#dictationInput", "가바");
   await page.click("#revealDictationAnswer");
   const dictationWrong = await page.evaluate(() => ({ state: readDictationState(), result: document.querySelector(".dictation-answer-card")?.textContent }));

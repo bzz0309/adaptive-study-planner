@@ -65,6 +65,8 @@ Adaptive Study Planner 是面向 TOPIK 备考的学习行为驱动系统：
 - Reward Engine 是学习完成后的反馈层。除非明确请求，不改 Day1、Day7、RewardScene、PWA 或 Day7 状态机。
 - 不把 API Key、环境变量值或私有资料写入仓库文档。
 - 当前生产提供方分工固定为：在线出题和手写识别使用智增增承载的 OpenAI 兼容模型（`AI_PROVIDER=openai`、`OPENAI_ALLOW_CUSTOM_BASE_URL=true`），无原始音频时的 TTS 使用已配置的 MiniMax（`TTS_PROVIDER=minimax`）。
+- `package.json` 使用 ESM，Vercel API 文件必须以 `export default` 导出；不得再使用 `module.exports`，否则生产函数会在进入模型请求前崩溃。
+- 在线手写识别发送前必须按真实笔迹边界紧裁切，过滤只含兼容字母而没有完整韩文音节的结果，并按已配置视觉模型、`gpt-4.1-mini`、`gpt-4o`、`gpt-4o-mini` 顺序有限兜底；不得把 `ㅔㅎ` 一类拆散字母当成成功答案。
 - Qwen 和 ElevenLabs 不参与默认链路；不得因检测到其密钥就自动抢占当前提供方。原题 `audioSrc` 始终优先于任何 TTS。
 - 历史错题导入只宣称已实现的图片格式；当前为 JPG、PNG、WebP，一次最多3张，PDF未实现前不得显示为可选格式。
 - 错题照片必须经过真实视觉识别与逐题确认；看不清的题干、选项和答案保持空缺并提示确认，禁止用固定样例或模型猜测冒充真实原题。

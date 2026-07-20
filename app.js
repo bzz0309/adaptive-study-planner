@@ -4160,15 +4160,30 @@ function setDictationInputValue(value = "") {
 function dictationCanvasImageData() {
   const canvas = $("#dictationCanvas");
   if (!canvas) return "";
-  const maxWidth = 1024;
-  const scale = Math.min(1, maxWidth / Math.max(1, canvas.width));
+  const bounds = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / Math.max(1, bounds.width);
+  const scaleY = canvas.height / Math.max(1, bounds.height);
+  const points = dictationInkStrokes.flatMap(stroke => stroke.points || []);
+  const padding = 36;
+  const minX = points.length ? Math.min(...points.map(point => point.x)) : 0;
+  const minY = points.length ? Math.min(...points.map(point => point.y)) : 0;
+  const maxX = points.length ? Math.max(...points.map(point => point.x)) : bounds.width;
+  const maxY = points.length ? Math.max(...points.map(point => point.y)) : bounds.height;
+  const sourceX = Math.max(0, Math.floor((minX - padding) * scaleX));
+  const sourceY = Math.max(0, Math.floor((minY - padding) * scaleY));
+  const sourceRight = Math.min(canvas.width, Math.ceil((maxX + padding) * scaleX));
+  const sourceBottom = Math.min(canvas.height, Math.ceil((maxY + padding) * scaleY));
+  const sourceWidth = Math.max(1, sourceRight - sourceX);
+  const sourceHeight = Math.max(1, sourceBottom - sourceY);
+  const maxDimension = 768;
+  const scale = Math.min(1, maxDimension / Math.max(sourceWidth, sourceHeight));
   const output = document.createElement("canvas");
-  output.width = Math.max(1, Math.round(canvas.width * scale));
-  output.height = Math.max(1, Math.round(canvas.height * scale));
+  output.width = Math.max(1, Math.round(sourceWidth * scale));
+  output.height = Math.max(1, Math.round(sourceHeight * scale));
   const context = output.getContext("2d");
   context.fillStyle = "#ffffff";
   context.fillRect(0, 0, output.width, output.height);
-  context.drawImage(canvas, 0, 0, output.width, output.height);
+  context.drawImage(canvas, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, output.width, output.height);
   return output.toDataURL("image/jpeg", 0.88);
 }
 
